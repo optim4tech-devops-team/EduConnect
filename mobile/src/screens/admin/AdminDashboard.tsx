@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +24,6 @@ interface StatCard {
   label: string;
   value: number;
   emoji: string;
-  bg: string;
 }
 
 interface QuickAction {
@@ -36,30 +34,30 @@ interface QuickAction {
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'addClass', label: 'Sınıf Ekle', icon: 'add-circle-outline', route: 'ManageClasses' },
-  { key: 'addTeacher', label: 'Öğretmen Ekle', icon: 'person-add-outline', route: 'ManageTeachers' },
-  { key: 'announce', label: 'Duyuru Gönder', icon: 'megaphone-outline', route: 'Announcements' },
+  { key: 'addClass',    label: 'Sınıf Ekle',     icon: 'add-circle-outline',  route: 'Siniflar'    },
+  { key: 'addTeacher',  label: 'Öğretmen Ekle',  icon: 'person-add-outline',  route: 'Ogretmenler' },
+  { key: 'announce',    label: 'Duyuru Gönder',  icon: 'megaphone-outline',   route: 'Duyurular'   },
 ];
 
 const MOCK_STATS: AdminStatsDto = {
-  classCount: 6,
+  classCount:   6,
   teacherCount: 8,
   studentCount: 124,
-  parentCount: 98,
+  parentCount:  98,
 };
 
 const MOCK_CLASSES: ClassDto[] = [
-  { id: 'c1', name: 'Papatyalar', teacherId: 't1', teacherName: 'Ayşe Yılmaz', studentCount: 22, schoolId: 's1' },
-  { id: 'c2', name: 'Güneşler', teacherId: 't2', teacherName: 'Mehmet Kaya', studentCount: 19, schoolId: 's1' },
-  { id: 'c3', name: 'Yıldızlar', teacherId: 't3', teacherName: 'Fatma Demir', studentCount: 21, schoolId: 's1' },
-  { id: 'c4', name: 'Kartallar', teacherId: 't4', teacherName: 'Ali Çelik', studentCount: 18, schoolId: 's1' },
+  { id: 'c1', name: 'Papatyalar', teacherId: 't1', teacherName: 'Ayşe Yılmaz',  studentCount: 22, schoolId: 's1' },
+  { id: 'c2', name: 'Güneşler',   teacherId: 't2', teacherName: 'Mehmet Kaya',  studentCount: 19, schoolId: 's1' },
+  { id: 'c3', name: 'Yıldızlar',  teacherId: 't3', teacherName: 'Fatma Demir',  studentCount: 21, schoolId: 's1' },
+  { id: 'c4', name: 'Kartallar',  teacherId: 't4', teacherName: 'Ali Çelik',    studentCount: 18, schoolId: 's1' },
 ];
 
 export default function AdminDashboard() {
   const navigation = useNavigation<AdminNavProp>();
   const { user } = useAuthStore();
 
-  const [stats, setStats] = useState<AdminStatsDto>(MOCK_STATS);
+  const [stats,   setStats]   = useState<AdminStatsDto>(MOCK_STATS);
   const [classes, setClasses] = useState<ClassDto[]>(MOCK_CLASSES);
   const [loading, setLoading] = useState(true);
 
@@ -73,7 +71,6 @@ export default function AdminDashboard() {
       setStats(statsRes.data);
       setClasses(classesRes.data);
     } catch {
-      // fallback to mock data
       setStats(MOCK_STATS);
       setClasses(MOCK_CLASSES);
     } finally {
@@ -81,18 +78,16 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const statCards: StatCard[] = [
-    { key: 'class', label: 'Sınıf', value: stats.classCount, emoji: '🏫', bg: Colors.SECONDARY },
-    { key: 'teacher', label: 'Öğretmen', value: stats.teacherCount, emoji: '👩‍🏫', bg: Colors.SECONDARY },
-    { key: 'student', label: 'Öğrenci', value: stats.studentCount, emoji: '👧', bg: Colors.SECONDARY },
+    { key: 'class',   label: 'Sınıf',     value: stats.classCount,   emoji: '🏫' },
+    { key: 'teacher', label: 'Öğretmen',  value: stats.teacherCount, emoji: '👩‍🏫' },
+    { key: 'student', label: 'Öğrenci',   value: stats.studentCount, emoji: '👧' },
   ];
 
   const renderStatCard = ({ item }: { item: StatCard }) => (
-    <View style={[styles.statCard, { backgroundColor: item.bg }]}>
+    <View style={styles.statCard}>
       <Text style={styles.statEmoji}>{item.emoji}</Text>
       <Text style={styles.statValue}>{item.value}</Text>
       <Text style={styles.statLabel}>{item.label}</Text>
@@ -103,7 +98,7 @@ export default function AdminDashboard() {
     <TouchableOpacity
       style={styles.classItem}
       activeOpacity={0.75}
-      onPress={() => navigation.navigate('ManageClasses' as never)}
+      onPress={() => navigation.navigate('Siniflar' as never)}
     >
       <View style={styles.classIconCircle}>
         <Text style={styles.classIconText}>{item.name.charAt(0)}</Text>
@@ -124,7 +119,7 @@ export default function AdminDashboard() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.BACKGROUND} />
 
-      {/* Header */}
+      {/* ── Header ──────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Yönetici Paneli</Text>
@@ -145,7 +140,7 @@ export default function AdminDashboard() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Banner Card */}
+        {/* ── Banner Card ─────────────────────────────────────────── */}
         <View style={styles.bannerCard}>
           <View style={styles.bannerTextBlock}>
             <Text style={styles.bannerTitle}>EduLink Yönetimi</Text>
@@ -158,7 +153,7 @@ export default function AdminDashboard() {
           <View style={styles.bannerCircle2} />
         </View>
 
-        {/* Stats Row */}
+        {/* ── Stats Row ───────────────────────────────────────────── */}
         <Text style={styles.sectionTitle}>Genel Durum</Text>
         {loading ? (
           <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} />
@@ -174,7 +169,7 @@ export default function AdminDashboard() {
           />
         )}
 
-        {/* Quick Actions */}
+        {/* ── Quick Actions ────────────────────────────────────────── */}
         <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
         <View style={styles.actionsRow}>
           {QUICK_ACTIONS.map((action) => (
@@ -190,10 +185,10 @@ export default function AdminDashboard() {
           ))}
         </View>
 
-        {/* Classes List */}
+        {/* ── Classes List ─────────────────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Sınıflar</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('ManageClasses' as never)}>
+          <TouchableOpacity onPress={() => navigation.navigate('Siniflar' as never)}>
             <Text style={styles.seeAll}>Tümünü Gör</Text>
           </TouchableOpacity>
         </View>
@@ -350,6 +345,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 12,
     alignItems: 'center',
+    backgroundColor: Colors.SECONDARY,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -381,7 +377,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
