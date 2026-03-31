@@ -1,0 +1,30 @@
+# .NET
+**/obj/
+**/bin/
+*.user
+*.suo
+.vs/
+
+# Node/Mobile
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/.env
+
+# Python
+ai-service/__pycache__/
+ai-service/*.pyc
+ai-service/.env
+ai-service/venv/
+ai-service/.venv/
+
+# Environment
+.env
+*.env.local
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db

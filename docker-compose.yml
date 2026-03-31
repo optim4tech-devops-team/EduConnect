@@ -1,0 +1,90 @@
+version: '3.9'
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: edulink_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edulink}
+      POSTGRES_USER: ${POSTGRES_USER:-edulink_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edulink_pass_change_me}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edulink_user} -d ${POSTGRES_DB:-edulink}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: edulink_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: edulink_ai
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-edulink_user}:${POSTGRES_PASSWORD:-edulink_pass_change_me}@db:5432/${POSTGRES_DB:-edulink}
+      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:-ai-internal-key-change-me}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./ai-service:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: EduLink.Api/Dockerfile
+    container_name: edulink_backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__DefaultConnection: "Host=db;Database=${POSTGRES_DB:-edulink};Username=${POSTGRES_USER:-edulink_user};Password=${POSTGRES_PASSWORD:-edulink_pass_change_me}"
+      ConnectionStrings__Redis: ${REDIS_URL:-redis://redis:6379}
+      Jwt__Secret: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production-min-32-chars}
+      Jwt__ExpiryMinutes: ${JWT_EXPIRY_MINUTES:-60}
+      Jwt__RefreshExpiryDays: ${JWT_REFRESH_EXPIRY_DAYS:-30}
+      Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME}
+      Cloudinary__ApiKey: ${CLOUDINARY_API_KEY}
+      Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET}
+      AiService__BaseUrl: ${AI_SERVICE_URL:-http://ai-service:8000}
+      AiService__ApiKey: ${AI_SERVICE_API_KEY:-ai-internal-key-change-me}
+      Firebase__ServerKey: ${FIREBASE_SERVER_KEY}
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
