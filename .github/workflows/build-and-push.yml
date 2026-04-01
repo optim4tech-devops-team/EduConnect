@@ -24,8 +24,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check secrets
+        run: |
+          echo "USERNAME length: ${#REGISTRY_USERNAME}"
+          echo "PASSWORD length: ${#REGISTRY_PASSWORD}"
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+
       - name: Login to Registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login registry.bibanka.com -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+        run: echo "$REGISTRY_PASSWORD" | docker login registry.bibanka.com -u "$REGISTRY_USERNAME" --password-stdin
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -47,7 +58,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Login to Registry
-        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login registry.bibanka.com -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+        run: echo "$REGISTRY_PASSWORD" | docker login registry.bibanka.com -u "$REGISTRY_USERNAME" --password-stdin
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
