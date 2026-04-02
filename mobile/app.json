@@ -3,6 +3,7 @@
     "name": "EduLink",
     "slug": "edulink",
     "version": "1.0.0",
+    "newArchEnabled": true,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -52,7 +53,9 @@
           "cameraPermission": "EduLink kameranızı kullanmak istiyor."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      "expo-router"
     ],
     "extra": {
       "eas": {

@@ -130,11 +130,42 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ─── Auto Migrate ─────────────────────────────────────────────────────────
+// ─── Auto Migrate + Seed ──────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+
+    // Seed default school and admin user if they don't exist
+    if (!db.Schools.Any())
+    {
+        var school = new EduLink.Domain.Entities.School
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Name = "EduLink Demo Okul",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Schools.Add(school);
+        db.SaveChanges();
+    }
+
+    if (!db.Users.Any(u => u.Email == "admin@edulink.com"))
+    {
+        var schoolId = db.Schools.First().Id;
+        var admin = new EduLink.Domain.Entities.User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Admin Kullanıcı",
+            Email = "admin@edulink.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            Role = EduLink.Domain.Enums.UserRole.Admin,
+            SchoolId = schoolId,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Users.Add(admin);
+        db.SaveChanges();
+    }
 }
 
 // ─── Middleware Pipeline ─────────────────────────────────────────────────

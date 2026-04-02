@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,14 +11,19 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  TextInput as TextInputType,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import Colors from '../../theme/colors';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@edulink.com');
+  const [password, setPassword] = useState('Admin123!');
+  const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading } = useAuthStore();
+  const passwordRef = useRef<TextInputType>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -35,177 +40,287 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.BACKGROUND} />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {/* Logo area */}
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoEmoji}>🎓</Text>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
+
+      {/* Top gradient header */}
+      <LinearGradient
+        colors={['#FF6B35', '#FF8C42', '#FFB347']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        {/* Decorative circles */}
+        <View style={styles.circle1} />
+        <View style={styles.circle2} />
+        <View style={styles.circle3} />
+
+        {/* Logo */}
+        <View style={styles.logoArea}>
+          <View style={styles.logoIconContainer}>
+            <Ionicons name="school" size={44} color="#FFFFFF" />
+          </View>
           <Text style={styles.logoTitle}>EduLink</Text>
           <Text style={styles.logoSubtitle}>Anaokulu Takip Sistemi</Text>
         </View>
+      </LinearGradient>
 
-        {/* Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Hoş Geldiniz</Text>
-          <Text style={styles.cardSubtitle}>Hesabınıza giriş yapın</Text>
+      {/* Form card */}
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Hoş Geldiniz</Text>
+            <Text style={styles.cardSubtitle}>Hesabınıza giriş yapın</Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>E-posta</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="ornek@okul.com"
-              placeholderTextColor="#B0B0B0"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={email}
-              onChangeText={setEmail}
-              editable={!isLoading}
-            />
+            {/* Email */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>E-posta</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color="#8896AB" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="ornek@okul.com"
+                  placeholderTextColor="#B8C0CC"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={email}
+                  onChangeText={setEmail}
+                  editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                />
+              </View>
+            </View>
+
+            {/* Password */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Şifre</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="#8896AB" style={styles.inputIcon} />
+                <TextInput
+                  ref={passwordRef}
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#B8C0CC"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!isLoading}
+                  onSubmitEditing={handleLogin}
+                  returnKeyType="done"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(v => !v)}
+                  style={styles.eyeButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#8896AB"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Login button */}
+            <TouchableOpacity
+              onPress={handleLogin}
+              disabled={isLoading}
+              activeOpacity={0.85}
+              style={styles.buttonOuter}
+            >
+              <LinearGradient
+                colors={isLoading ? ['#FFB380', '#FFB380'] : ['#FF6B35', '#FF8C42']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.loginButton}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.loginButtonText}>GİRİŞ YAP</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Şifre</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#B0B0B0"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              editable={!isLoading}
-              onSubmitEditing={handleLogin}
-              returnKeyType="done"
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={Colors.WHITE} size="small" />
-            ) : (
-              <Text style={styles.loginButtonText}>GİRİŞ YAP</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Footer note */}
-        <Text style={styles.footerNote}>
-          Hesabınız yok mu? Okul yöneticinize başvurun.
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {/* Footer */}
+          <Text style={styles.footerNote}>
+            Hesabınız yok mu? Okul yöneticinize başvurun.
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: '#F4F6FA',
+  },
+  header: {
+    height: 280,
+    justifyContent: 'flex-end',
+    paddingBottom: 32,
+    overflow: 'hidden',
+  },
+  circle1: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    top: -60,
+    right: -50,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    top: 40,
+    left: -30,
+  },
+  circle3: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    bottom: 20,
+    right: 60,
+  },
+  logoArea: {
+    alignItems: 'center',
+  },
+  logoIconContainer: {
+    width: 84,
+    height: 84,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  logoTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(0,0,0,0.15)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  logoSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scroll: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoEmoji: {
-    fontSize: 64,
-    marginBottom: 8,
-  },
-  logoTitle: {
-    fontSize: 38,
-    fontWeight: '800',
-    color: Colors.PRIMARY,
-    letterSpacing: 1,
-  },
-  logoSubtitle: {
-    fontSize: 15,
-    color: Colors.TEXT,
-    opacity: 0.65,
-    marginTop: 4,
-    letterSpacing: 0.3,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 32,
   },
   card: {
-    backgroundColor: Colors.WHITE,
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowColor: '#1A2138',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.10,
+    shadowRadius: 20,
+    elevation: 8,
   },
   cardTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
-    color: Colors.TEXT,
+    color: '#1A2138',
     marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: Colors.TEXT,
-    opacity: 0.5,
-    marginBottom: 24,
+    color: '#8896AB',
+    marginBottom: 28,
   },
   inputGroup: {
-    marginBottom: 18,
+    marginBottom: 20,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.TEXT,
-    marginBottom: 6,
+    color: '#4A5568',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F9FC',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E8EDF5',
+    paddingHorizontal: 14,
+    minHeight: 52,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    backgroundColor: Colors.LIGHT_GRAY,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    flex: 1,
     fontSize: 15,
-    color: Colors.TEXT,
-    borderWidth: 1,
-    borderColor: Colors.BORDER,
+    color: '#1A2138',
+    paddingVertical: 14,
+  },
+  eyeButton: {
+    paddingLeft: 8,
+  },
+  buttonOuter: {
+    marginTop: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: Colors.PRIMARY,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.40,
+    shadowRadius: 12,
+    elevation: 6,
   },
   loginButton: {
-    backgroundColor: Colors.PRIMARY,
-    borderRadius: 14,
-    paddingVertical: 16,
+    paddingVertical: 17,
     alignItems: 'center',
-    marginTop: 8,
-    shadowColor: Colors.PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  loginButtonDisabled: {
-    opacity: 0.65,
+    borderRadius: 16,
   },
   loginButtonText: {
-    color: Colors.WHITE,
-    fontSize: 16,
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 1.5,
   },
   footerNote: {
     textAlign: 'center',
-    marginTop: 28,
+    marginTop: 24,
     fontSize: 13,
-    color: Colors.TEXT,
-    opacity: 0.5,
+    color: '#8896AB',
     lineHeight: 20,
   },
 });

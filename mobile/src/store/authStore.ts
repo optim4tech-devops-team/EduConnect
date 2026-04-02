@@ -2,6 +2,28 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { authApi, UserDto } from '@/api/client';
 
+// Shape returned by the backend login/refresh endpoints (flat, not nested)
+interface FlatAuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  role: string;
+  userId: string;
+  fullName: string;
+  avatarUrl?: string;
+  schoolId: string;
+}
+
+function mapToUserDto(flat: FlatAuthResponse, email: string): UserDto {
+  return {
+    id: flat.userId,
+    name: flat.fullName,
+    role: flat.role as UserDto['role'],
+    avatarUrl: flat.avatarUrl,
+    schoolId: flat.schoolId,
+    email,
+  };
+}
+
 interface AuthState {
   user: UserDto | null;
   accessToken: string | null;
@@ -9,7 +31,6 @@ interface AuthState {
   isInitialized: boolean;
   error: string | null;
 
-  // Actions
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setTokens: (access: string, refresh: string) => Promise<void>;
@@ -17,7 +38,7 @@ interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   accessToken: null,
   isLoading: false,
@@ -27,9 +48,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     try {
       set({ isLoading: true });
-      const accessToken = await SecureStore.getItemAsync('accessToken');
-      if (accessToken) {
-        const { data: user } = await authApi.me();
+      const [accessToken, userJson] = await Promise.all([
+        SecureStore.getItemAsync('accessToken'),
+        SecureStore.getItemAsync('user'),
+      ]);
+
+      if (accessToken && userJson) {
+        const user: UserDto = JSON.parse(userJson);
         set({ user, accessToken, isLoading: false, isInitialized: true });
       } else {
         set({ isLoading: false, isInitialized: true });
@@ -37,6 +62,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       await SecureStore.deleteItemAsync('accessToken');
       await SecureStore.deleteItemAsync('refreshToken');
+      await SecureStore.deleteItemAsync('user');
       set({ isLoading: false, isInitialized: true, user: null, accessToken: null });
     }
   },
@@ -44,14 +70,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email: string, password: string) => {
     try {
       set({ isLoading: true, error: null });
-      const { data } = await authApi.login({ email, password });
-      await SecureStore.setItemAsync('accessToken', data.accessToken);
-      await SecureStore.setItemAsync('refreshToken', data.refreshToken);
-      set({
-        user: data.user,
-        accessToken: data.accessToken,
-        isLoading: false,
-      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (authApi.login({ email, password }) as Promise<{ data: any }>);
+
+      const flat = data as FlatAuthResponse;
+      const user = mapToUserDto(flat, email);
+
+      await Promise.all([
+        SecureStore.setItemAsync('accessToken', flat.accessToken),
+        SecureStore.setItemAsync('refreshToken', flat.refreshToken),
+        SecureStore.setItemAsync('user', JSON.stringify(user)),
+      ]);
+
+      set({ user, accessToken: flat.accessToken, isLoading: false });
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -67,8 +99,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // ignore API error on logout
     } finally {
-      await SecureStore.deleteItemAsync('accessToken');
-      await SecureStore.deleteItemAsync('refreshToken');
+      await Promise.all([
+        SecureStore.deleteItemAsync('accessToken'),
+        SecureStore.deleteItemAsync('refreshToken'),
+        SecureStore.deleteItemAsync('user'),
+      ]);
       set({ user: null, accessToken: null });
     }
   },
