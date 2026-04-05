@@ -227,10 +227,6 @@ spec:
               value: Production
             - name: ASPNETCORE_URLS
               value: http://+:5000
-            - name: ConnectionStrings__DefaultConnection
-              value: "Host=edulink-postgres;Database=edulink;Username=$(POSTGRES_USER);Password=$(POSTGRES_PASSWORD)"
-            - name: ConnectionStrings__Redis
-              value: "redis://edulink-redis:6379"
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
@@ -241,6 +237,10 @@ spec:
                 secretKeyRef:
                   name: edulink-secrets
                   key: POSTGRES_PASSWORD
+            - name: ConnectionStrings__DefaultConnection
+              value: "Host=edulink-postgres;Database=edulink;Username=edulink_user;Password=edulink_pass_change_me"
+            - name: ConnectionStrings__Redis
+              value: "edulink-redis:6379"
             - name: Jwt__Secret
               valueFrom:
                 secretKeyRef:
@@ -285,7 +285,7 @@ spec:
                   key: FIREBASE_SERVER_KEY
           readinessProbe:
             httpGet:
-              path: /health
+              path: /swagger/index.html
               port: 5000
             initialDelaySeconds: 20
             periodSeconds: 10

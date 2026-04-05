@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using EduLink.Application.DTOs.Auth;
+using EduLink.Domain.Entities;
 using EduLink.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -14,11 +15,116 @@ public class AuthService
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
+    private readonly ISmsService _sms;
 
-    public AuthService(AppDbContext db, IConfiguration config)
+    public AuthService(AppDbContext db, IConfiguration config, ISmsService sms)
     {
         _db = db;
         _config = config;
+        _sms = sms;
+    }
+
+    public async Task<LookupResponse?> LookupAsync(string identifier)
+    {
+        var user = await _db.Users
+            .Include(u => u.School)
+            .FirstOrDefaultAsync(u =>
+                (u.Email == identifier || u.Phone == identifier) && u.IsActive);
+
+        if (user is null) return null;
+
+        var masked = MaskIdentifier(identifier);
+
+        return new LookupResponse(
+            SchoolName: user.School.Name,
+            SchoolLogoUrl: user.School.LogoUrl,
+            MaskedIdentifier: masked
+        );
+    }
+
+    public async Task<bool> SendOtpAsync(string identifier)
+    {
+        var user = await _db.Users
+            .FirstOrDefaultAsync(u =>
+                (u.Email == identifier || u.Phone == identifier) && u.IsActive);
+
+        if (user is null) return false;
+
+        // Expire existing unused OTPs for this identifier
+        var existing = await _db.OtpCodes
+            .Where(o => o.Identifier == identifier && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
+            .ToListAsync();
+        foreach (var o in existing) o.IsUsed = true;
+
+        var code = Random.Shared.Next(100000, 999999).ToString();
+        _db.OtpCodes.Add(new OtpCode
+        {
+            Identifier = identifier,
+            Code = code,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5)
+        });
+        await _db.SaveChangesAsync();
+
+        await _sms.SendOtpAsync(identifier, code);
+        return true;
+    }
+
+    public async Task<LoginResponse?> VerifyOtpAsync(string identifier, string code)
+    {
+        var otp = await _db.OtpCodes
+            .Where(o =>
+                o.Identifier == identifier &&
+                o.Code == code &&
+                !o.IsUsed &&
+                o.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(o => o.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (otp is null) return null;
+
+        otp.IsUsed = true;
+
+        var user = await _db.Users
+            .Include(u => u.School)
+            .FirstOrDefaultAsync(u =>
+                (u.Email == identifier || u.Phone == identifier) && u.IsActive);
+
+        if (user is null) return null;
+
+        var accessToken = GenerateAccessToken(user.Id, user.Email, user.Role.ToString(), user.SchoolId);
+        var refreshToken = GenerateRefreshToken();
+
+        var refreshExpiryDays = _config.GetValue<int>("Jwt:RefreshExpiryDays", 30);
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(refreshExpiryDays);
+        await _db.SaveChangesAsync();
+
+        return new LoginResponse(
+            AccessToken: accessToken,
+            RefreshToken: refreshToken,
+            Role: user.Role.ToString(),
+            UserId: user.Id,
+            FullName: user.FullName,
+            AvatarUrl: user.AvatarUrl,
+            SchoolId: user.SchoolId
+        );
+    }
+
+    private static string MaskIdentifier(string identifier)
+    {
+        if (identifier.Contains('@'))
+        {
+            var parts = identifier.Split('@');
+            var local = parts[0];
+            var masked = local.Length <= 2
+                ? new string('*', local.Length)
+                : local[..2] + new string('*', local.Length - 2);
+            return $"{masked}@{parts[1]}";
+        }
+        // Phone: show last 4 digits
+        return identifier.Length <= 4
+            ? new string('*', identifier.Length)
+            : new string('*', identifier.Length - 4) + identifier[^4..];
     }
 
     public async Task<LoginResponse?> LoginAsync(string email, string password)

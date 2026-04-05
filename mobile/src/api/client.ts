@@ -271,6 +271,12 @@ export interface AdminStatsDto {
 }
 
 // ─── API Functions ────────────────────────────────────────────────────────────
+export interface LookupResponse {
+  schoolName: string;
+  schoolLogoUrl?: string;
+  maskedIdentifier: string;
+}
+
 export const authApi = {
   login: (data: LoginRequest) =>
     apiClient.post<AuthResponse>('/auth/login', data),
@@ -278,6 +284,12 @@ export const authApi = {
     apiClient.post<AuthResponse>('/auth/refresh', { refreshToken }),
   logout: () => apiClient.post('/auth/logout'),
   me: () => apiClient.get<UserDto>('/auth/me'),
+  lookup: (identifier: string) =>
+    apiClient.post<LookupResponse>('/auth/lookup', { identifier }),
+  sendOtp: (identifier: string) =>
+    apiClient.post('/auth/send-otp', { identifier }),
+  verifyOtp: (identifier: string, code: string) =>
+    apiClient.post<AuthResponse>('/auth/verify-otp', { identifier, code }),
 };
 
 export const classApi = {

@@ -37,10 +37,12 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-worklets": "^0.8.1",
+    "shebang-regex": "^4.0.0",
     "zustand": "^4.5.4"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
+    "@expo/ngrok": "^4.1.3",
     "@react-native-community/cli": "^20.1.3",
     "@types/react": "~19.1.10",
     "@types/react-native": "~0.73.0",

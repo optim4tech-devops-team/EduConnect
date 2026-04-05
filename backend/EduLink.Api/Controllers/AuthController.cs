@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace EduLink.Api.Controllers;
 
 [ApiController]
@@ -18,6 +19,45 @@ public class AuthController : ControllerBase
     {
         _authService = authService;
         _db = db;
+    }
+
+    /// <summary>Looks up a user by phone/email and returns school branding info.</summary>
+    [HttpPost("lookup")]
+    [ProducesResponseType(typeof(LookupResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Lookup([FromBody] LookupRequest request)
+    {
+        var result = await _authService.LookupAsync(request.Identifier);
+        if (result is null)
+            return NotFound(new { message = "Kullanici bulunamadi." });
+
+        return Ok(result);
+    }
+
+    /// <summary>Sends an OTP SMS to the user's registered phone number.</summary>
+    [HttpPost("send-otp")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
+    {
+        var sent = await _authService.SendOtpAsync(request.Identifier);
+        if (!sent)
+            return NotFound(new { message = "Kullanici bulunamadi." });
+
+        return Ok(new { message = "OTP gonderildi." });
+    }
+
+    /// <summary>Verifies OTP and returns JWT tokens on success.</summary>
+    [HttpPost("verify-otp")]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+    {
+        var result = await _authService.VerifyOtpAsync(request.Identifier, request.Code);
+        if (result is null)
+            return Unauthorized(new { message = "Gecersiz veya suresi dolmus OTP." });
+
+        return Ok(result);
     }
 
     /// <summary>Authenticates a user and returns JWT tokens.</summary>

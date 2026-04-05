@@ -81,6 +81,7 @@ var cloudinaryAccount = new Account(
 builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 
 // ─── Application Services ────────────────────────────────────────────────
+builder.Services.AddSingleton<ISmsService, MockSmsService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CloudinaryService>();
 builder.Services.AddScoped<AiService>();

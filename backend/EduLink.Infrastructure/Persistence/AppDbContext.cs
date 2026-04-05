@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
     public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
 
     // ── Model configuration ──────────────────────────────────────────────────
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -313,6 +314,15 @@ public class AppDbContext : DbContext
                   .WithMany(u => u.SentMessages)
                   .HasForeignKey(m => m.SenderId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── OtpCode ──────────────────────────────────────────────────────────
+        modelBuilder.Entity<OtpCode>(entity =>
+        {
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.Identifier).IsRequired().HasMaxLength(256);
+            entity.Property(o => o.Code).IsRequired().HasMaxLength(6);
+            entity.HasIndex(o => new { o.Identifier, o.ExpiresAt });
         });
 
         // ── Announcement ─────────────────────────────────────────────────────

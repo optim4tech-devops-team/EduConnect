@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import { authApi, UserDto } from '@/api/client';
+import { authApi, UserDto, LookupResponse } from '@/api/client';
 
-// Shape returned by the backend login/refresh endpoints (flat, not nested)
 interface FlatAuthResponse {
   accessToken: string;
   refreshToken: string;
@@ -13,34 +12,38 @@ interface FlatAuthResponse {
   schoolId: string;
 }
 
-function mapToUserDto(flat: FlatAuthResponse, email: string): UserDto {
+function mapToUserDto(flat: FlatAuthResponse, identifier: string): UserDto {
   return {
     id: flat.userId,
     name: flat.fullName,
     role: flat.role as UserDto['role'],
     avatarUrl: flat.avatarUrl,
     schoolId: flat.schoolId,
-    email,
+    email: identifier,
   };
 }
 
 interface AuthState {
   user: UserDto | null;
   accessToken: string | null;
+  schoolInfo: LookupResponse | null;
   isLoading: boolean;
   isInitialized: boolean;
   error: string | null;
 
-  login: (email: string, password: string) => Promise<void>;
+  initialize: () => Promise<void>;
+  lookup: (identifier: string) => Promise<LookupResponse>;
+  sendOtp: (identifier: string) => Promise<void>;
+  verifyOtp: (identifier: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   setTokens: (access: string, refresh: string) => Promise<void>;
-  initialize: () => Promise<void>;
   clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   accessToken: null,
+  schoolInfo: null,
   isLoading: false,
   isInitialized: false,
   error: null,
@@ -67,15 +70,36 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  login: async (email: string, password: string) => {
+  lookup: async (identifier: string) => {
+    set({ isLoading: true, error: null });
     try {
-      set({ isLoading: true, error: null });
+      const { data } = await authApi.lookup(identifier);
+      set({ schoolInfo: data, isLoading: false });
+      return data;
+    } catch {
+      set({ isLoading: false, error: 'Kullanıcı bulunamadı.' });
+      throw new Error('Kullanıcı bulunamadı.');
+    }
+  },
 
+  sendOtp: async (identifier: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await authApi.sendOtp(identifier);
+      set({ isLoading: false });
+    } catch {
+      set({ isLoading: false, error: 'OTP gönderilemedi.' });
+      throw new Error('OTP gönderilemedi.');
+    }
+  },
+
+  verifyOtp: async (identifier: string, code: string) => {
+    set({ isLoading: true, error: null });
+    try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (authApi.login({ email, password }) as Promise<{ data: any }>);
-
+      const { data } = await authApi.verifyOtp(identifier, code) as { data: any };
       const flat = data as FlatAuthResponse;
-      const user = mapToUserDto(flat, email);
+      const user = mapToUserDto(flat, identifier);
 
       await Promise.all([
         SecureStore.setItemAsync('accessToken', flat.accessToken),
@@ -84,12 +108,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       ]);
 
       set({ user, accessToken: flat.accessToken, isLoading: false });
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
-      set({ isLoading: false, error: message });
-      throw new Error(message);
+    } catch {
+      set({ isLoading: false, error: 'Geçersiz veya süresi dolmuş kod.' });
+      throw new Error('Geçersiz veya süresi dolmuş kod.');
     }
   },
 
@@ -97,14 +118,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authApi.logout();
     } catch {
-      // ignore API error on logout
+      // ignore
     } finally {
       await Promise.all([
         SecureStore.deleteItemAsync('accessToken'),
         SecureStore.deleteItemAsync('refreshToken'),
         SecureStore.deleteItemAsync('user'),
       ]);
-      set({ user: null, accessToken: null });
+      set({ user: null, accessToken: null, schoolInfo: null });
     }
   },
 

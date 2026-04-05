@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,209 +6,232 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  StatusBar,
-  TextInput as TextInputType,
+  Image,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../../store/authStore';
-import Colors from '../../theme/colors';
+import { useAuthStore } from '@/store/authStore';
+
+type Step = 'identifier' | 'otp';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('admin@edulink.com');
-  const [password, setPassword] = useState('Admin123!');
-  const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading } = useAuthStore();
-  const passwordRef = useRef<TextInputType>(null);
+  const { lookup, sendOtp, verifyOtp, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Hata', 'Lütfen e-posta ve şifrenizi girin.');
-      return;
-    }
+  const [step, setStep] = useState<Step>('identifier');
+  const [identifier, setIdentifier] = useState('');
+  const [otp, setOtp] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const otpRef = useRef<TextInput>(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  const animateStep = (fn: () => void) => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+    setTimeout(fn, 150);
+  };
+
+  const handleLookup = async () => {
+    if (!identifier.trim()) return;
+    clearError();
     try {
-      await login(email.trim(), password);
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Giriş başarısız. Lütfen tekrar deneyin.';
-      Alert.alert('Giriş Hatası', message);
+      await lookup(identifier.trim());
+      animateStep(() => setStep('otp'));
+      await sendOtp(identifier.trim());
+      setCountdown(60);
+      setTimeout(() => otpRef.current?.focus(), 400);
+    } catch {
+      // error set by store
+    }
+  };
+
+  const handleResend = async () => {
+    if (countdown > 0) return;
+    try {
+      await sendOtp(identifier.trim());
+      setCountdown(60);
+      setOtp('');
+    } catch {
+      // error set by store
+    }
+  };
+
+  const handleVerify = async () => {
+    if (otp.length !== 6) return;
+    clearError();
+    try {
+      await verifyOtp(identifier.trim(), otp.trim());
+    } catch {
+      // error set by store
     }
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
+    <LinearGradient colors={['#FF6B35', '#FF8C42', '#FFB347']} style={styles.container}>
+      <View style={[styles.circle, styles.circleTopRight]} />
+      <View style={[styles.circle, styles.circleBottomLeft]} />
 
-      {/* Top gradient header */}
-      <LinearGradient
-        colors={['#FF6B35', '#FF8C42', '#FFB347']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        {/* Decorative circles */}
-        <View style={styles.circle1} />
-        <View style={styles.circle2} />
-        <View style={styles.circle3} />
-
-        {/* Logo */}
-        <View style={styles.logoArea}>
-          <View style={styles.logoIconContainer}>
-            <Ionicons name="school" size={44} color="#FFFFFF" />
-          </View>
-          <Text style={styles.logoTitle}>EduLink</Text>
-          <Text style={styles.logoSubtitle}>Anaokulu Takip Sistemi</Text>
-        </View>
-      </LinearGradient>
-
-      {/* Form card */}
       <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Hoş Geldiniz</Text>
-            <Text style={styles.cardSubtitle}>Hesabınıza giriş yapın</Text>
+        {/* Header / Logo */}
+        <View style={styles.header}>
+          {schoolInfo?.schoolLogoUrl ? (
+            <Image source={{ uri: schoolInfo.schoolLogoUrl }} style={styles.schoolLogo} />
+          ) : (
+            <View style={styles.logoCircle}>
+              <Ionicons name="school" size={40} color="#FF8C42" />
+            </View>
+          )}
+          <Text style={styles.appName}>
+            {schoolInfo?.schoolName ?? 'EduLink'}
+          </Text>
+          <Text style={styles.tagline}>
+            {step === 'identifier' ? 'Hoş geldiniz' : 'SMS kodunuzu girin'}
+          </Text>
+        </View>
 
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>E-posta</Text>
+        {/* Card */}
+        <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
+          {step === 'identifier' ? (
+            <>
+              <Text style={styles.cardTitle}>Giriş Yap</Text>
+              <Text style={styles.cardSubtitle}>
+                Telefon numaranızı veya e-posta adresinizi girin
+              </Text>
+
               <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#8896AB" style={styles.inputIcon} />
+                <Ionicons name="person-outline" size={20} color="#FF8C42" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="ornek@okul.com"
-                  placeholderTextColor="#B8C0CC"
-                  keyboardType="email-address"
+                  placeholder="05XXXXXXXXX veya ad@okul.com"
+                  placeholderTextColor="#bbb"
+                  value={identifier}
+                  onChangeText={setIdentifier}
                   autoCapitalize="none"
-                  autoCorrect={false}
-                  value={email}
-                  onChangeText={setEmail}
-                  editable={!isLoading}
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                />
-              </View>
-            </View>
-
-            {/* Password */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Şifre</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#8896AB" style={styles.inputIcon} />
-                <TextInput
-                  ref={passwordRef}
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor="#B8C0CC"
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={setPassword}
-                  editable={!isLoading}
-                  onSubmitEditing={handleLogin}
+                  keyboardType="default"
                   returnKeyType="done"
+                  onSubmitEditing={handleLookup}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(v => !v)}
-                  style={styles.eyeButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#8896AB"
-                  />
-                </TouchableOpacity>
               </View>
-            </View>
 
-            {/* Login button */}
-            <TouchableOpacity
-              onPress={handleLogin}
-              disabled={isLoading}
-              activeOpacity={0.85}
-              style={styles.buttonOuter}
-            >
-              <LinearGradient
-                colors={isLoading ? ['#FFB380', '#FFB380'] : ['#FF6B35', '#FF8C42']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.loginButton}
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color="#e53e3e" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.button, isLoading && styles.buttonDisabled]}
+                onPress={handleLookup}
+                disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.loginButtonText}>GİRİŞ YAP</Text>
+                  <>
+                    <Text style={styles.buttonText}>Devam Et</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  </>
                 )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.cardTitle}>Doğrulama Kodu</Text>
+              <Text style={styles.cardSubtitle}>
+                <Text style={styles.maskedId}>{schoolInfo?.maskedIdentifier ?? identifier}</Text>
+                {'\n'}adresine gönderilen 6 haneli kodu girin
+              </Text>
 
-          {/* Footer */}
-          <Text style={styles.footerNote}>
-            Hesabınız yok mu? Okul yöneticinize başvurun.
-          </Text>
-        </ScrollView>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="keypad-outline" size={20} color="#FF8C42" style={styles.inputIcon} />
+                <TextInput
+                  ref={otpRef}
+                  style={[styles.input, styles.otpInput]}
+                  placeholder="• • • • • •"
+                  placeholderTextColor="#bbb"
+                  value={otp}
+                  onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 6))}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  returnKeyType="done"
+                  onSubmitEditing={handleVerify}
+                />
+              </View>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color="#e53e3e" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.button, (isLoading || otp.length !== 6) && styles.buttonDisabled]}
+                onPress={handleVerify}
+                disabled={isLoading || otp.length !== 6}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Giriş Yap</Text>
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.resendRow}>
+                <TouchableOpacity onPress={handleResend} disabled={countdown > 0}>
+                  <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
+                    {countdown > 0 ? `Tekrar gönder (${countdown}s)` : 'Tekrar gönder'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { setStep('identifier'); clearError(); setOtp(''); }}>
+                  <Text style={styles.backText}>Değiştir</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </Animated.View>
       </KeyboardAvoidingView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  container: { flex: 1 },
+  circle: {
+    position: 'absolute',
+    borderRadius: 9999,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  circleTopRight: { width: 200, height: 200, top: -60, right: -60 },
+  circleBottomLeft: { width: 150, height: 150, bottom: 80, left: -50 },
+  keyboardView: {
     flex: 1,
-    backgroundColor: '#F4F6FA',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
-  header: {
-    height: 280,
-    justifyContent: 'flex-end',
-    paddingBottom: 32,
-    overflow: 'hidden',
-  },
-  circle1: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -60,
-    right: -50,
-  },
-  circle2: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    top: 40,
-    left: -30,
-  },
-  circle3: {
-    position: 'absolute',
+  header: { alignItems: 'center', marginBottom: 28 },
+  logoCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    bottom: 20,
-    right: 60,
-  },
-  logoArea: {
-    alignItems: 'center',
-  },
-  logoIconContainer: {
-    width: 84,
-    height: 84,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -218,109 +241,78 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  logoTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1.5,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+  schoolLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 12,
+    backgroundColor: '#fff',
   },
-  logoSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 4,
-    letterSpacing: 0.5,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 32,
-  },
+  appName: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  tagline: { fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
     borderRadius: 24,
     padding: 28,
-    shadowColor: '#1A2138',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.10,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A2138',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#8896AB',
-    marginBottom: 28,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4A5568',
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
+  cardTitle: { fontSize: 22, fontWeight: '700', color: '#1a1a2e', marginBottom: 6 },
+  cardSubtitle: { fontSize: 14, color: '#666', marginBottom: 24, lineHeight: 20 },
+  maskedId: { fontWeight: '700', color: '#FF8C42' },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7F9FC',
-    borderRadius: 14,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#E8EDF5',
+    borderColor: '#e9ecef',
+    marginBottom: 16,
     paddingHorizontal: 14,
-    minHeight: 52,
   },
-  inputIcon: {
-    marginRight: 10,
-  },
+  inputIcon: { marginRight: 10 },
   input: {
     flex: 1,
-    fontSize: 15,
-    color: '#1A2138',
-    paddingVertical: 14,
+    height: 50,
+    fontSize: 16,
+    color: '#1a1a2e',
   },
-  eyeButton: {
-    paddingLeft: 8,
+  otpInput: { letterSpacing: 6, fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff5f5',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 14,
+    gap: 6,
   },
-  buttonOuter: {
-    marginTop: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: Colors.PRIMARY,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.40,
-    shadowRadius: 12,
+  errorText: { color: '#e53e3e', fontSize: 13, flex: 1 },
+  button: {
+    backgroundColor: '#FF8C42',
+    borderRadius: 12,
+    height: 52,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#FF8C42',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
     elevation: 6,
   },
-  loginButton: {
-    paddingVertical: 17,
-    alignItems: 'center',
-    borderRadius: 16,
+  buttonDisabled: { opacity: 0.6 },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
   },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-  footerNote: {
-    textAlign: 'center',
-    marginTop: 24,
-    fontSize: 13,
-    color: '#8896AB',
-    lineHeight: 20,
-  },
+  resendText: { color: '#FF8C42', fontSize: 14, fontWeight: '600' },
+  resendDisabled: { color: '#aaa' },
+  backText: { color: '#666', fontSize: 14 },
 });
