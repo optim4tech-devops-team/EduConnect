@@ -106,10 +106,12 @@ export interface LoginRequest {
   password: string;
 }
 
+export type UserRole = 'Teacher' | 'Parent' | 'SchoolAdmin' | 'PlatformAdmin' | 'Admin';
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
-  role: 'Teacher' | 'Parent' | 'SchoolAdmin' | 'PlatformAdmin';
+  role: UserRole;
   userId: string;
   fullName: string;
   avatarUrl?: string;
@@ -121,7 +123,7 @@ export interface AuthResponse {
 export interface UserDto {
   id: string;
   name: string;
-  role: 'Teacher' | 'Parent' | 'SchoolAdmin' | 'PlatformAdmin';
+  role: UserRole;
   avatarUrl?: string;
   schoolId: string;
   email: string;
