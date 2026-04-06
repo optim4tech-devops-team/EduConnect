@@ -34,7 +34,7 @@ const AVATAR_COLORS = [
   Colors.PRIMARY,
   Colors.INFO,
   Colors.ACCENT,
-  '#FF85A1',
+  Colors.TEAL_400,
   Colors.SECONDARY,
 ];
 

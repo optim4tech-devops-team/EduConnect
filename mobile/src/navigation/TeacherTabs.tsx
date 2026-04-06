@@ -24,7 +24,7 @@ export default function TeacherTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: Colors.PRIMARY,
-        tabBarInactiveTintColor: '#A0A0A0',
+        tabBarInactiveTintColor: Colors.SLATE_500,
         tabBarStyle: {
           backgroundColor: Colors.WHITE,
           borderTopColor: Colors.BORDER,

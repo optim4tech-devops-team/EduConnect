@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-start',
     paddingHorizontal: 22, paddingVertical: 16,
   },
-  itemRead:   { backgroundColor: '#F5F5F5' },
+  itemRead:   { backgroundColor: Colors.SLATE_100 },
   itemUnread: { backgroundColor: Colors.WHITE },
 
   iconCircle: {

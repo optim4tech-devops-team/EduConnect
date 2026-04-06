@@ -32,9 +32,11 @@ const ROLE_CONFIG: Record<
   UserDto['role'],
   { label: string; bg: string; text: string }
 > = {
-  Admin:   { label: 'Yönetici',  bg: Colors.INFO + '30',     text: Colors.INFO    },
-  Teacher: { label: 'Öğretmen', bg: Colors.PRIMARY + '25',  text: Colors.PRIMARY },
-  Parent:  { label: 'Veli',      bg: '#FF85A1' + '30',       text: '#FF85A1'      },
+  Admin:         { label: 'Yönetici',       bg: Colors.INFO + '30',       text: Colors.INFO       },
+  SchoolAdmin:   { label: 'Okul Yöneticisi', bg: Colors.INFO + '30',      text: Colors.INFO       },
+  PlatformAdmin: { label: 'Platform Admin', bg: Colors.TEAL_800 + '40',   text: Colors.TEAL_700   },
+  Teacher:       { label: 'Öğretmen',       bg: Colors.PRIMARY + '25',    text: Colors.PRIMARY    },
+  Parent:        { label: 'Veli',           bg: Colors.AMBER_400 + '30',  text: Colors.AMBER_600  },
 };
 
 // ─── Info row component ───────────────────────────────────────────────────────

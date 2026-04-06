@@ -144,7 +144,7 @@ export default function AdminDashboard() {
         {/* ── Banner Card ─────────────────────────────────────────── */}
         <View style={styles.bannerCard}>
           <View style={styles.bannerTextBlock}>
-            <Text style={styles.bannerTitle}>EduLink Yönetimi</Text>
+            <Text style={styles.bannerTitle}>notio Yönetimi</Text>
             <Text style={styles.bannerSub}>
               Okul genelinde {stats.classCount} sınıf, {stats.studentCount} öğrenci kayıtlı.
             </Text>
@@ -346,10 +346,10 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 12,
     alignItems: 'center',
-    backgroundColor: Colors.SECONDARY,
-    shadowColor: '#000',
+    backgroundColor: Colors.TEAL_100,
+    shadowColor: Colors.PRIMARY,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 2,
   },
@@ -360,13 +360,13 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 26,
     fontWeight: '800',
-    color: Colors.TEXT,
+    color: Colors.PRIMARY,
   },
   statLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.TEXT,
-    opacity: 0.65,
+    color: Colors.SLATE_700,
+    opacity: 0.85,
     marginTop: 3,
   },
 

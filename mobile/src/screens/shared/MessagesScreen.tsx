@@ -44,15 +44,19 @@ function relativeTime(isoOrLabel: string | undefined): string {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  Teacher: Colors.PRIMARY,
-  Parent:  '#FF85A1',
-  Admin:   Colors.INFO,
+  Teacher:       Colors.PRIMARY,
+  Parent:        Colors.AMBER_400,
+  Admin:         Colors.INFO,
+  SchoolAdmin:   Colors.INFO,
+  PlatformAdmin: Colors.TEAL_700,
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  Teacher: 'Öğretmen',
-  Parent:  'Veli',
-  Admin:   'Yönetici',
+  Teacher:       'Öğretmen',
+  Parent:        'Veli',
+  Admin:         'Yönetici',
+  SchoolAdmin:   'Okul Yöneticisi',
+  PlatformAdmin: 'Platform Admin',
 };
 
 type NavProp = NativeStackNavigationProp<Record<string, object | undefined>>;
@@ -346,7 +350,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 22,
     backgroundColor: Colors.WHITE,
   },
-  itemUnread: { backgroundColor: '#FFF3EC' },
+  itemUnread: { backgroundColor: Colors.AMBER_100 },
   avatar: {
     width: 52, height: 52, borderRadius: 26,
     alignItems: 'center', justifyContent: 'center', marginRight: 14,

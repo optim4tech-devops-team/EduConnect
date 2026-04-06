@@ -80,7 +80,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <LinearGradient colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, '#40916C']} style={styles.container}>
+    <LinearGradient colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, Colors.TEAL_600]} style={styles.container}>
       <View style={[styles.circle, styles.circleTopRight]} />
       <View style={[styles.circle, styles.circleBottomLeft]} />
 
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff5f5',
+    backgroundColor: Colors.ERROR + '12',
     borderRadius: 8,
     padding: 10,
     marginBottom: 14,
@@ -290,6 +290,6 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   resendRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
   resendText: { color: Colors.PRIMARY, fontSize: 14, fontWeight: '600' },
-  resendDisabled: { color: '#aaa' },
+  resendDisabled: { color: Colors.SLATE_300 },
   backText: { color: Colors.TEXT_MUTED, fontSize: 14 },
 });

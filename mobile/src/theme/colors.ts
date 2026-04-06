@@ -1,51 +1,86 @@
-export const PRIMARY = '#2D6A4F';       // Koyu Yeşil - ana aksiyon, butonlar
-export const SECONDARY = '#52B788';     // Açık Yeşil - secondary, kart border
-export const ACCENT = '#F4A261';        // Amber/Kehribar - bildirim badge, CTA
-export const INFO = '#40916C';          // Orta Yeşil - info, success states
-export const PARENT_MINT = '#52B788';   // Parent role accent (yeşil)
-export const BACKGROUND = '#F8FAF9';    // Çok açık yeşil-gri - sayfa arka planı
-export const TEXT = '#1B2D27';          // Koyu metin
-export const WHITE = '#FFFFFF';
-export const LIGHT_GRAY = '#F0F4F2';
-export const BORDER = '#D8E8E0';
-export const TEXT_MUTED = '#6B7C74';    // İkincil metin, placeholder
+// ─── notio Brand Color System ─────────────────────────────────────────────────
+// Source: notio Brand Guidelines v1.0 · 2026
 
-// Semantic aliases
-export const SUCCESS = '#40916C';
-export const WARNING = '#F4A261';
-export const ERROR = '#E07A5F';
-export const DANGER = '#E07A5F';
+// ── Birincil Renk — Turkuaz Skalası ──────────────────────────────────────────
+export const TEAL_900 = '#0a2e26';
+export const TEAL_800 = '#0d3d31';
+export const TEAL_700 = '#0F6E56';   // Birincil — buton, link, aktif öğe
+export const TEAL_600 = '#1D9E75';
+export const TEAL_500 = '#2DBF8A';
+export const TEAL_400 = '#5DCAA5';
+export const TEAL_300 = '#9FE1CB';
+export const TEAL_200 = '#C8F0E4';
+export const TEAL_100 = '#E1F5EE';
+export const TEAL_50  = '#F4FBF9';
 
-// Opacity / light variants
-export const PRIMARY_LIGHT = '#95D5B2'; // Açık yeşil - badge bg, chip
-export const ACCENT_LIGHT = '#FDDCB5';  // Açık amber
-export const INFO_LIGHT = '#B7E4C7';    // Çok açık yeşil
+// ── Vurgu Rengi — Kehribar ────────────────────────────────────────────────────
+export const AMBER_600 = '#854F0B';
+export const AMBER_400 = '#EF9F27';  // Bildirim, yeni içerik
+export const AMBER_100 = '#FAEEDA';
 
-// Gradient (login ekranı)
-export const GRADIENT_START = '#1B4332';
-export const GRADIENT_END = '#2D6A4F';
+// ── Nötr Skala — Slate ───────────────────────────────────────────────────────
+export const SLATE_900 = '#0F172A';
+export const SLATE_700 = '#334155';
+export const SLATE_500 = '#64748B';
+export const SLATE_300 = '#CBD5E1';
+export const SLATE_100 = '#F1F5F9';
+export const SLATE_50  = '#F8FAFC';
+
+// ── Semantik Renkler ──────────────────────────────────────────────────────────
+export const PRIMARY    = TEAL_700;   // '#0F6E56'
+export const SECONDARY  = TEAL_500;   // '#2DBF8A'
+export const ACCENT     = AMBER_400;  // '#EF9F27'
+export const INFO       = TEAL_600;   // '#1D9E75'
+export const SUCCESS    = '#22C55E';  // Teslim, onay, tamam
+export const WARNING    = '#F97316';  // Devamsızlık, gecikme
+export const ERROR      = '#EF4444';
+export const DANGER     = '#EF4444';
+
+// ── Yüzey ve Arka Plan ────────────────────────────────────────────────────────
+export const BACKGROUND = SLATE_50;   // '#F8FAFC'
+export const WHITE      = '#FFFFFF';
+export const LIGHT_GRAY = SLATE_100;  // '#F1F5F9'
+export const BORDER     = SLATE_300;  // '#CBD5E1'
+
+// ── Metin ─────────────────────────────────────────────────────────────────────
+export const TEXT       = SLATE_900;  // '#0F172A'
+export const TEXT_MUTED = SLATE_500;  // '#64748B'
+
+// ── Açık Varyantlar ───────────────────────────────────────────────────────────
+export const PRIMARY_LIGHT = TEAL_300;   // '#9FE1CB' — badge bg, chip
+export const ACCENT_LIGHT  = AMBER_100;  // '#FAEEDA' — açık kehribar
+export const INFO_LIGHT    = TEAL_100;   // '#E1F5EE' — çok açık yeşil
+
+// ── Özel: Parent rolü ─────────────────────────────────────────────────────────
+export const PARENT_MINT = TEAL_500;  // '#2DBF8A'
+
+// ── Gradient (Login ekranı) ───────────────────────────────────────────────────
+export const GRADIENT_START = TEAL_900;  // '#0a2e26'
+export const GRADIENT_END   = TEAL_700;  // '#0F6E56'
 
 const Colors = {
-  PRIMARY,
-  SECONDARY,
-  ACCENT,
-  INFO,
+  // Scale
+  TEAL_900, TEAL_800, TEAL_700, TEAL_600, TEAL_500,
+  TEAL_400, TEAL_300, TEAL_200, TEAL_100, TEAL_50,
+  AMBER_600, AMBER_400, AMBER_100,
+  SLATE_900, SLATE_700, SLATE_500, SLATE_300, SLATE_100, SLATE_50,
+
+  // Semantic
+  PRIMARY, SECONDARY, ACCENT, INFO,
+  SUCCESS, WARNING, ERROR, DANGER,
   PARENT_MINT,
-  BACKGROUND,
-  TEXT,
-  TEXT_MUTED,
-  WHITE,
-  LIGHT_GRAY,
-  BORDER,
-  SUCCESS,
-  WARNING,
-  ERROR,
-  DANGER,
-  PRIMARY_LIGHT,
-  ACCENT_LIGHT,
-  INFO_LIGHT,
-  GRADIENT_START,
-  GRADIENT_END,
+
+  // Surface
+  BACKGROUND, WHITE, LIGHT_GRAY, BORDER,
+
+  // Text
+  TEXT, TEXT_MUTED,
+
+  // Light variants
+  PRIMARY_LIGHT, ACCENT_LIGHT, INFO_LIGHT,
+
+  // Gradient
+  GRADIENT_START, GRADIENT_END,
 };
 
 export default Colors;
