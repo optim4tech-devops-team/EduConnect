@@ -109,7 +109,7 @@ export interface LoginRequest {
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
-  role: 'Teacher' | 'Parent' | 'Admin';
+  role: 'Teacher' | 'Parent' | 'SchoolAdmin' | 'PlatformAdmin';
   userId: string;
   fullName: string;
   avatarUrl?: string;
@@ -121,7 +121,7 @@ export interface AuthResponse {
 export interface UserDto {
   id: string;
   name: string;
-  role: 'Teacher' | 'Parent' | 'Admin';
+  role: 'Teacher' | 'Parent' | 'SchoolAdmin' | 'PlatformAdmin';
   avatarUrl?: string;
   schoolId: string;
   email: string;

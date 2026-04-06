@@ -36,7 +36,8 @@ export default function AppNavigator() {
   const getRoleNavigator = () => {
     if (!user) return null;
     switch (user.role) {
-      case 'Admin':
+      case 'SchoolAdmin':
+      case 'PlatformAdmin':
         return <Stack.Screen name="AdminTabs" component={AdminTabs} />;
       case 'Teacher':
         return <Stack.Screen name="TeacherTabs" component={TeacherTabs} />;
