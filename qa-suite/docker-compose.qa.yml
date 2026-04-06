@@ -1,0 +1,59 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: edulink_qa_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: edulink_qa
+      POSTGRES_USER: edulink_user
+      POSTGRES_PASSWORD: edulink_pass_change_me
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edulink_user -d edulink_qa"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: edulink_qa_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: EduLink.Api/Dockerfile
+    container_name: edulink_qa_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=edulink_qa;Username=edulink_user;Password=edulink_pass_change_me
+      ConnectionStrings__Redis: redis:6379
+      Jwt__Secret: qa-super-secret-jwt-key-change-me-min-32
+      Jwt__ExpiryMinutes: 60
+      Jwt__RefreshExpiryDays: 30
+      Cloudinary__CloudName: dev
+      Cloudinary__ApiKey: dev
+      Cloudinary__ApiSecret: dev
+      AiService__BaseUrl: http://127.0.0.1:65535
+      AiService__ApiKey: dev
+      Firebase__ServerKey: dev
+      Sms__Mode: Mock
+      Sms__Sender: NOTIO
+      Sms__MessageTemplate: Notio dogrulama kodunuz: {code}
+    ports:
+      - "5000:5000"

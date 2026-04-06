@@ -14,14 +14,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
+import { isValidTurkishPhoneNumber, normalizePhoneNumber } from '@/utils/phone';
 
-type Step = 'identifier' | 'otp';
+type Step = 'phone' | 'otp';
 
 export default function LoginScreen() {
   const { lookup, sendOtp, verifyOtp, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
-  const [step, setStep] = useState<Step>('identifier');
-  const [identifier, setIdentifier] = useState('');
+  const [step, setStep] = useState<Step>('phone');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
   const otpRef = useRef<TextInput>(null);
@@ -42,12 +43,14 @@ export default function LoginScreen() {
   };
 
   const handleLookup = async () => {
-    if (!identifier.trim()) return;
+    if (!isValidTurkishPhoneNumber(phoneNumber)) return;
+
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
     clearError();
     try {
-      await lookup(identifier.trim());
+      await lookup(normalizedPhone);
       animateStep(() => setStep('otp'));
-      await sendOtp(identifier.trim());
+      await sendOtp(normalizedPhone);
       setCountdown(60);
       setTimeout(() => otpRef.current?.focus(), 400);
     } catch {
@@ -58,7 +61,7 @@ export default function LoginScreen() {
   const handleResend = async () => {
     if (countdown > 0) return;
     try {
-      await sendOtp(identifier.trim());
+      await sendOtp(normalizePhoneNumber(phoneNumber));
       setCountdown(60);
       setOtp('');
     } catch {
@@ -70,7 +73,7 @@ export default function LoginScreen() {
     if (otp.length !== 6) return;
     clearError();
     try {
-      await verifyOtp(identifier.trim(), otp.trim());
+      await verifyOtp(normalizePhoneNumber(phoneNumber), otp.trim());
     } catch {
       // error set by store
     }
@@ -98,29 +101,28 @@ export default function LoginScreen() {
             {schoolInfo?.schoolName ?? 'EduLink'}
           </Text>
           <Text style={styles.tagline}>
-            {step === 'identifier' ? 'Hoş geldiniz' : 'SMS kodunuzu girin'}
+            {step === 'phone' ? 'Hos geldiniz' : 'SMS kodunuzu girin'}
           </Text>
         </View>
 
         {/* Card */}
         <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          {step === 'identifier' ? (
+          {step === 'phone' ? (
             <>
               <Text style={styles.cardTitle}>Giriş Yap</Text>
               <Text style={styles.cardSubtitle}>
-                Telefon numaranızı veya e-posta adresinizi girin
+                Kayitli telefon numaranizi girin
               </Text>
 
               <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={20} color="#FF8C42" style={styles.inputIcon} />
+                <Ionicons name="call-outline" size={20} color="#FF8C42" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="05XXXXXXXXX veya ad@okul.com"
+                  placeholder="0532 000 00 00"
                   placeholderTextColor="#bbb"
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  autoCapitalize="none"
-                  keyboardType="default"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
                   returnKeyType="done"
                   onSubmitEditing={handleLookup}
                 />
@@ -134,9 +136,9 @@ export default function LoginScreen() {
               ) : null}
 
               <TouchableOpacity
-                style={[styles.button, isLoading && styles.buttonDisabled]}
+                style={[styles.button, (!isValidTurkishPhoneNumber(phoneNumber) || isLoading) && styles.buttonDisabled]}
                 onPress={handleLookup}
-                disabled={isLoading}
+                disabled={isLoading || !isValidTurkishPhoneNumber(phoneNumber)}
               >
                 {isLoading ? (
                   <ActivityIndicator color="#fff" />
@@ -152,8 +154,8 @@ export default function LoginScreen() {
             <>
               <Text style={styles.cardTitle}>Doğrulama Kodu</Text>
               <Text style={styles.cardSubtitle}>
-                <Text style={styles.maskedId}>{schoolInfo?.maskedIdentifier ?? identifier}</Text>
-                {'\n'}adresine gönderilen 6 haneli kodu girin
+                <Text style={styles.maskedId}>{schoolInfo?.maskedIdentifier ?? normalizePhoneNumber(phoneNumber)}</Text>
+                {'\n'}numarasina gonderilen 6 haneli kodu girin
               </Text>
 
               <View style={styles.inputWrapper}>
@@ -200,7 +202,7 @@ export default function LoginScreen() {
                     {countdown > 0 ? `Tekrar gönder (${countdown}s)` : 'Tekrar gönder'}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => { setStep('identifier'); clearError(); setOtp(''); }}>
+                <TouchableOpacity onPress={() => { setStep('phone'); clearError(); setOtp(''); }}>
                   <Text style={styles.backText}>Değiştir</Text>
                 </TouchableOpacity>
               </View>

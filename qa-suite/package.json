@@ -1,0 +1,24 @@
+{
+  "name": "edulink-qa-suite",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "services:up": "docker compose -f docker-compose.qa.yml up -d --build db redis backend",
+    "services:down": "docker compose -f docker-compose.qa.yml down -v --remove-orphans",
+    "seed": "node ./scripts/seed-fixtures.mjs",
+    "api": "node ./scripts/run-api-smoke.mjs",
+    "mobile:build": "node ./scripts/build-mobile-web.mjs",
+    "mobile:test": "playwright test",
+    "mobile": "node ./scripts/run-mobile-smoke.mjs",
+    "all": "node ./scripts/run-all.mjs"
+  },
+  "dependencies": {
+    "newman": "^6.1.3",
+    "pg": "^8.13.1",
+    "wait-on": "^8.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "http-server": "^14.1.1"
+  }
+}

@@ -6,5 +6,7 @@ public record LoginResponse(
     Guid UserId,
     string FullName,
     string? AvatarUrl,
-    Guid SchoolId
+    Guid SchoolId,
+    string Email,
+    string? Phone
 );

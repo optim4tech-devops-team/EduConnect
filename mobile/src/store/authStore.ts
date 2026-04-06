@@ -1,25 +1,17 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import { authApi, UserDto, LookupResponse } from '@/api/client';
+import { authApi, AuthResponse, UserDto, LookupResponse } from '@/api/client';
+import { normalizePhoneNumber } from '@/utils/phone';
 
-interface FlatAuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  role: string;
-  userId: string;
-  fullName: string;
-  avatarUrl?: string;
-  schoolId: string;
-}
-
-function mapToUserDto(flat: FlatAuthResponse, identifier: string): UserDto {
+function mapToUserDto(flat: AuthResponse, phoneNumber: string): UserDto {
   return {
     id: flat.userId,
     name: flat.fullName,
     role: flat.role as UserDto['role'],
     avatarUrl: flat.avatarUrl,
     schoolId: flat.schoolId,
-    email: identifier,
+    email: flat.email,
+    phone: flat.phone ?? phoneNumber,
   };
 }
 
@@ -70,47 +62,48 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  lookup: async (identifier: string) => {
+  lookup: async (phoneNumber: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await authApi.lookup(identifier);
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const { data } = await authApi.lookup(normalizedPhone);
       set({ schoolInfo: data, isLoading: false });
       return data;
     } catch {
-      set({ isLoading: false, error: 'Kullanıcı bulunamadı.' });
-      throw new Error('Kullanıcı bulunamadı.');
+      set({ isLoading: false, error: 'Telefon numarasi bulunamadi.' });
+      throw new Error('Telefon numarasi bulunamadi.');
     }
   },
 
-  sendOtp: async (identifier: string) => {
+  sendOtp: async (phoneNumber: string) => {
     set({ isLoading: true, error: null });
     try {
-      await authApi.sendOtp(identifier);
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      await authApi.sendOtp(normalizedPhone);
       set({ isLoading: false });
     } catch {
-      set({ isLoading: false, error: 'OTP gönderilemedi.' });
-      throw new Error('OTP gönderilemedi.');
+      set({ isLoading: false, error: 'SMS dogrulama kodu gonderilemedi.' });
+      throw new Error('SMS dogrulama kodu gonderilemedi.');
     }
   },
 
-  verifyOtp: async (identifier: string, code: string) => {
+  verifyOtp: async (phoneNumber: string, code: string) => {
     set({ isLoading: true, error: null });
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await authApi.verifyOtp(identifier, code) as { data: any };
-      const flat = data as FlatAuthResponse;
-      const user = mapToUserDto(flat, identifier);
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      const { data } = await authApi.verifyOtp(normalizedPhone, code);
+      const user = mapToUserDto(data, normalizedPhone);
 
       await Promise.all([
-        SecureStore.setItemAsync('accessToken', flat.accessToken),
-        SecureStore.setItemAsync('refreshToken', flat.refreshToken),
+        SecureStore.setItemAsync('accessToken', data.accessToken),
+        SecureStore.setItemAsync('refreshToken', data.refreshToken),
         SecureStore.setItemAsync('user', JSON.stringify(user)),
       ]);
 
-      set({ user, accessToken: flat.accessToken, isLoading: false });
+      set({ user, accessToken: data.accessToken, isLoading: false });
     } catch {
-      set({ isLoading: false, error: 'Geçersiz veya süresi dolmuş kod.' });
-      throw new Error('Geçersiz veya süresi dolmuş kod.');
+      set({ isLoading: false, error: 'Gecersiz veya suresi dolmus kod.' });
+      throw new Error('Gecersiz veya suresi dolmus kod.');
     }
   },
 

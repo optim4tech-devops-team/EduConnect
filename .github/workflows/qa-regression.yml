@@ -1,0 +1,70 @@
+name: QA Regression Suite
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - 'mobile/**'
+      - 'qa-suite/**'
+      - '.github/workflows/qa-regression.yml'
+  workflow_dispatch:
+
+jobs:
+  qa-regression:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            mobile/package-lock.json
+            qa-suite/package-lock.json
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install mobile dependencies
+        run: npm ci --legacy-peer-deps
+        working-directory: mobile
+
+      - name: Install QA suite dependencies
+        run: npm ci
+        working-directory: qa-suite
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: qa-suite
+
+      - name: Start QA stack
+        run: npm run services:up
+        working-directory: qa-suite
+
+      - name: Run API smoke
+        run: npm run api
+        working-directory: qa-suite
+
+      - name: Run mobile smoke
+        run: npm run mobile
+        working-directory: qa-suite
+
+      - name: Stop QA stack
+        if: always()
+        run: npm run services:down
+        working-directory: qa-suite
+
+      - name: Upload QA reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-suite-reports
+          path: |
+            qa-suite/reports
+            qa-suite/.tmp

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using System.Text;
 using Hangfire;
@@ -81,7 +82,18 @@ var cloudinaryAccount = new Account(
 builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 
 // ─── Application Services ────────────────────────────────────────────────
-builder.Services.AddSingleton<ISmsService, MockSmsService>();
+builder.Services.Configure<SmsOptions>(builder.Configuration.GetSection("Sms"));
+builder.Services.AddSingleton<MockSmsService>();
+builder.Services.AddHttpClient<ProviderSmsService>();
+builder.Services.AddScoped<ISmsService>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<SmsOptions>>().Value;
+    var mode = options.Mode?.Trim();
+    if (string.Equals(mode, "Provider", StringComparison.OrdinalIgnoreCase))
+        return sp.GetRequiredService<ProviderSmsService>();
+
+    return sp.GetRequiredService<MockSmsService>();
+});
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CloudinaryService>();
 builder.Services.AddScoped<AiService>();

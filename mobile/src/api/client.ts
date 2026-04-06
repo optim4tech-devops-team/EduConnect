@@ -109,7 +109,13 @@ export interface LoginRequest {
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
-  user: UserDto;
+  role: 'Teacher' | 'Parent' | 'Admin';
+  userId: string;
+  fullName: string;
+  avatarUrl?: string;
+  schoolId: string;
+  email: string;
+  phone?: string;
 }
 
 export interface UserDto {
@@ -284,12 +290,12 @@ export const authApi = {
     apiClient.post<AuthResponse>('/auth/refresh', { refreshToken }),
   logout: () => apiClient.post('/auth/logout'),
   me: () => apiClient.get<UserDto>('/auth/me'),
-  lookup: (identifier: string) =>
-    apiClient.post<LookupResponse>('/auth/lookup', { identifier }),
-  sendOtp: (identifier: string) =>
-    apiClient.post('/auth/send-otp', { identifier }),
-  verifyOtp: (identifier: string, code: string) =>
-    apiClient.post<AuthResponse>('/auth/verify-otp', { identifier, code }),
+  lookup: (phoneNumber: string) =>
+    apiClient.post<LookupResponse>('/auth/lookup', { identifier: phoneNumber }),
+  sendOtp: (phoneNumber: string) =>
+    apiClient.post('/auth/send-otp', { identifier: phoneNumber }),
+  verifyOtp: (phoneNumber: string, code: string) =>
+    apiClient.post<AuthResponse>('/auth/verify-otp', { identifier: phoneNumber, code }),
 };
 
 export const classApi = {

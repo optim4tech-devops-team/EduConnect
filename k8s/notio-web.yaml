@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notio-web
+  namespace: vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notio-web
+  template:
+    metadata:
+      labels:
+        app: notio-web
+    spec:
+      imagePullSecrets:
+        - name: reg-hub-secret
+      containers:
+        - name: notio-web
+          image: registry.bibanka.com/test/notio-web:1.0.0
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notio-web
+  namespace: vault
+spec:
+  selector:
+    app: notio-web
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: notio-web
+  namespace: vault
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - notio.bidynod.com
+      secretName: wildcard-bidynod-tls
+  rules:
+    - host: notio.bidynod.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: edulink-api
+                port:
+                  number: 80
+          - path: /hubs
+            pathType: Prefix
+            backend:
+              service:
+                name: edulink-api
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: notio-web
+                port:
+                  number: 80

@@ -24,16 +24,17 @@ public class AuthService
         _sms = sms;
     }
 
-    public async Task<LookupResponse?> LookupAsync(string identifier)
+    public async Task<LookupResponse?> LookupAsync(string phoneNumber)
     {
-        var user = await _db.Users
-            .Include(u => u.School)
-            .FirstOrDefaultAsync(u =>
-                (u.Email == identifier || u.Phone == identifier) && u.IsActive);
+        var normalizedPhone = NormalizePhoneNumber(phoneNumber);
+        if (string.IsNullOrWhiteSpace(normalizedPhone))
+            return null;
+
+        var user = await FindActiveUserByPhoneAsync(normalizedPhone, includeSchool: true);
 
         if (user is null) return null;
 
-        var masked = MaskIdentifier(identifier);
+        var masked = MaskPhoneNumber(user.Phone ?? normalizedPhone);
 
         return new LookupResponse(
             SchoolName: user.School.Name,
@@ -42,38 +43,44 @@ public class AuthService
         );
     }
 
-    public async Task<bool> SendOtpAsync(string identifier)
+    public async Task<bool> SendOtpAsync(string phoneNumber)
     {
-        var user = await _db.Users
-            .FirstOrDefaultAsync(u =>
-                (u.Email == identifier || u.Phone == identifier) && u.IsActive);
+        var normalizedPhone = NormalizePhoneNumber(phoneNumber);
+        if (string.IsNullOrWhiteSpace(normalizedPhone))
+            return false;
+
+        var user = await FindActiveUserByPhoneAsync(normalizedPhone);
 
         if (user is null) return false;
 
         // Expire existing unused OTPs for this identifier
         var existing = await _db.OtpCodes
-            .Where(o => o.Identifier == identifier && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
+            .Where(o => o.Identifier == normalizedPhone && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
             .ToListAsync();
         foreach (var o in existing) o.IsUsed = true;
 
         var code = Random.Shared.Next(100000, 999999).ToString();
         _db.OtpCodes.Add(new OtpCode
         {
-            Identifier = identifier,
+            Identifier = normalizedPhone,
             Code = code,
             ExpiresAt = DateTime.UtcNow.AddMinutes(5)
         });
         await _db.SaveChangesAsync();
 
-        await _sms.SendOtpAsync(identifier, code);
+        await _sms.SendOtpAsync(normalizedPhone, code);
         return true;
     }
 
-    public async Task<LoginResponse?> VerifyOtpAsync(string identifier, string code)
+    public async Task<LoginResponse?> VerifyOtpAsync(string phoneNumber, string code)
     {
+        var normalizedPhone = NormalizePhoneNumber(phoneNumber);
+        if (string.IsNullOrWhiteSpace(normalizedPhone))
+            return null;
+
         var otp = await _db.OtpCodes
             .Where(o =>
-                o.Identifier == identifier &&
+                o.Identifier == normalizedPhone &&
                 o.Code == code &&
                 !o.IsUsed &&
                 o.ExpiresAt > DateTime.UtcNow)
@@ -84,10 +91,7 @@ public class AuthService
 
         otp.IsUsed = true;
 
-        var user = await _db.Users
-            .Include(u => u.School)
-            .FirstOrDefaultAsync(u =>
-                (u.Email == identifier || u.Phone == identifier) && u.IsActive);
+        var user = await FindActiveUserByPhoneAsync(normalizedPhone, includeSchool: true);
 
         if (user is null) return null;
 
@@ -106,25 +110,79 @@ public class AuthService
             UserId: user.Id,
             FullName: user.FullName,
             AvatarUrl: user.AvatarUrl,
-            SchoolId: user.SchoolId
+            SchoolId: user.SchoolId,
+            Email: user.Email,
+            Phone: user.Phone
         );
     }
 
-    private static string MaskIdentifier(string identifier)
+    private async Task<User?> FindActiveUserByPhoneAsync(string phoneNumber, bool includeSchool = false)
     {
-        if (identifier.Contains('@'))
+        var candidates = BuildPhoneLookupCandidates(phoneNumber);
+        if (candidates.Count == 0)
+            return null;
+
+        IQueryable<User> query = _db.Users;
+        if (includeSchool)
+            query = query.Include(u => u.School);
+
+        return await query.FirstOrDefaultAsync(u =>
+            u.IsActive &&
+            u.Phone != null &&
+            candidates.Contains(
+                u.Phone
+                    .Replace(" ", "")
+                    .Replace("-", "")
+                    .Replace("(", "")
+                    .Replace(")", "")
+                    .Replace("+", "")));
+    }
+
+    private static string NormalizePhoneNumber(string phoneNumber)
+    {
+        var digits = new string(phoneNumber.Where(char.IsDigit).ToArray());
+        if (string.IsNullOrWhiteSpace(digits))
+            return string.Empty;
+
+        if (digits.StartsWith("0090"))
+            digits = digits[4..];
+        else if (digits.StartsWith("90") && digits.Length == 12)
+            digits = digits[2..];
+
+        if (digits.Length == 10)
+            digits = $"0{digits}";
+
+        return digits;
+    }
+
+    private static List<string> BuildPhoneLookupCandidates(string phoneNumber)
+    {
+        var normalized = NormalizePhoneNumber(phoneNumber);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return [];
+
+        var candidates = new HashSet<string>(StringComparer.Ordinal)
         {
-            var parts = identifier.Split('@');
-            var local = parts[0];
-            var masked = local.Length <= 2
-                ? new string('*', local.Length)
-                : local[..2] + new string('*', local.Length - 2);
-            return $"{masked}@{parts[1]}";
+            normalized
+        };
+
+        if (normalized.Length == 11 && normalized.StartsWith('0'))
+        {
+            var local = normalized[1..];
+            candidates.Add(local);
+            candidates.Add($"90{local}");
         }
-        // Phone: show last 4 digits
-        return identifier.Length <= 4
-            ? new string('*', identifier.Length)
-            : new string('*', identifier.Length - 4) + identifier[^4..];
+
+        return [.. candidates];
+    }
+
+    private static string MaskPhoneNumber(string phoneNumber)
+    {
+        var normalized = NormalizePhoneNumber(phoneNumber);
+        if (normalized.Length <= 4)
+            return new string('*', normalized.Length);
+
+        return new string('*', normalized.Length - 4) + normalized[^4..];
     }
 
     public async Task<LoginResponse?> LoginAsync(string email, string password)
@@ -154,7 +212,9 @@ public class AuthService
             UserId: user.Id,
             FullName: user.FullName,
             AvatarUrl: user.AvatarUrl,
-            SchoolId: user.SchoolId
+            SchoolId: user.SchoolId,
+            Email: user.Email,
+            Phone: user.Phone
         );
     }
 
@@ -185,7 +245,9 @@ public class AuthService
             UserId: user.Id,
             FullName: user.FullName,
             AvatarUrl: user.AvatarUrl,
-            SchoolId: user.SchoolId
+            SchoolId: user.SchoolId,
+            Email: user.Email,
+            Phone: user.Phone
         );
     }
 

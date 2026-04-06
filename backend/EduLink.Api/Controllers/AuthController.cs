@@ -21,7 +21,7 @@ public class AuthController : ControllerBase
         _db = db;
     }
 
-    /// <summary>Looks up a user by phone/email and returns school branding info.</summary>
+    /// <summary>Looks up a user by phone number and returns school branding info.</summary>
     [HttpPost("lookup")]
     [ProducesResponseType(typeof(LookupResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -29,7 +29,7 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.LookupAsync(request.Identifier);
         if (result is null)
-            return NotFound(new { message = "Kullanici bulunamadi." });
+            return NotFound(new { message = "Telefon numarasi bulunamadi." });
 
         return Ok(result);
     }
@@ -42,7 +42,7 @@ public class AuthController : ControllerBase
     {
         var sent = await _authService.SendOtpAsync(request.Identifier);
         if (!sent)
-            return NotFound(new { message = "Kullanici bulunamadi." });
+            return NotFound(new { message = "Telefon numarasi bulunamadi." });
 
         return Ok(new { message = "OTP gonderildi." });
     }
