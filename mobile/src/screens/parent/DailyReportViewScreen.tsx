@@ -109,7 +109,7 @@ export default function DailyReportViewScreen() {
       />
 
       {isLoading ? (
-        <ActivityIndicator color={Colors.PARENT_PINK} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={Colors.PRIMARY} style={{ marginTop: 40 }} />
       ) : !report ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>📋</Text>
@@ -122,7 +122,7 @@ export default function DailyReportViewScreen() {
           <View style={styles.reportCard}>
             <View style={styles.reportRow}>
               <View style={styles.reportIconBox}>
-                <Ionicons name="happy-outline" size={22} color={Colors.PARENT_PINK} />
+                <Ionicons name="happy-outline" size={22} color={Colors.PRIMARY} />
               </View>
               <View style={styles.reportContent}>
                 <Text style={styles.reportLabel}>Ruh Hali</Text>
@@ -230,14 +230,14 @@ const styles = StyleSheet.create({
     minWidth: 52,
   },
   datePillActive: {
-    backgroundColor: Colors.PARENT_PINK,
-    borderColor: Colors.PARENT_PINK,
+    backgroundColor: Colors.PRIMARY,
+    borderColor: Colors.PRIMARY,
   },
   dateDay: { fontSize: 10, fontWeight: '600', color: Colors.TEXT, opacity: 0.5, marginBottom: 2 },
   dateDayActive: { color: Colors.WHITE, opacity: 0.8 },
   dateNum: { fontSize: 16, fontWeight: '700', color: Colors.TEXT },
   dateNumActive: { color: Colors.WHITE },
-  todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.PARENT_PINK, marginTop: 3 },
+  todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.PRIMARY, marginTop: 3 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   emptyEmoji: { fontSize: 52 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.TEXT, opacity: 0.6 },

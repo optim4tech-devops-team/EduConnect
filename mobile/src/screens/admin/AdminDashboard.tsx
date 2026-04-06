@@ -35,8 +35,9 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'addClass',    label: 'Sınıf Ekle',     icon: 'add-circle-outline',  route: 'Siniflar'    },
+  { key: 'addStudent',  label: 'Öğrenci Ekle',   icon: 'people-outline',      route: 'Ogrenciler'  },
   { key: 'addTeacher',  label: 'Öğretmen Ekle',  icon: 'person-add-outline',  route: 'Ogretmenler' },
-  { key: 'announce',    label: 'Duyuru Gönder',  icon: 'megaphone-outline',   route: 'Duyurular'   },
+  { key: 'parents',     label: 'Veliler',         icon: 'heart-outline',       route: 'Veliler'     },
 ];
 
 const MOCK_STATS: AdminStatsDto = {

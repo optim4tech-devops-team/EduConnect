@@ -108,7 +108,7 @@ export default function BadgeViewScreen() {
       )}
 
       {isLoading ? (
-        <ActivityIndicator color={Colors.PARENT_PINK} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={Colors.PRIMARY} style={{ marginTop: 40 }} />
       ) : badges.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🏆</Text>
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   statItem: { alignItems: 'center' },
-  statNumber: { fontSize: 28, fontWeight: '800', color: Colors.PARENT_PINK },
+  statNumber: { fontSize: 28, fontWeight: '800', color: Colors.PRIMARY },
   statLabel: { fontSize: 12, color: Colors.TEXT, opacity: 0.55, marginTop: 2 },
   statDivider: { width: 1, height: 40, backgroundColor: Colors.BORDER },
   list: { paddingHorizontal: 14, paddingBottom: 40 },

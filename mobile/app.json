@@ -1,31 +1,31 @@
 {
   "expo": {
-    "name": "EduLink",
-    "slug": "edulink",
+    "name": "notio",
+    "slug": "notio",
     "version": "1.0.0",
     "newArchEnabled": true,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "primaryColor": "#FF8C42",
+    "primaryColor": "#2D6A4F",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFF8F0"
+      "backgroundColor": "#1B4332"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.edulink.app"
+      "bundleIdentifier": "com.notio.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFF8F0"
+        "backgroundColor": "#1B4332"
       },
-      "package": "com.edulink.app",
+      "package": "com.notio.app",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -43,14 +43,14 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#FF8C42"
+          "color": "#2D6A4F"
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "EduLink fotoğraflarınıza erişmek istiyor.",
-          "cameraPermission": "EduLink kameranızı kullanmak istiyor."
+          "photosPermission": "notio fotoğraflarınıza erişmek istiyor.",
+          "cameraPermission": "notio kameranızı kullanmak istiyor."
         }
       ],
       "expo-secure-store",

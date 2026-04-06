@@ -78,7 +78,7 @@ export default function ChildGalleryScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color={Colors.PARENT_PINK} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={Colors.PRIMARY} style={{ marginTop: 40 }} />
       ) : sections.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="images-outline" size={64} color={Colors.BORDER} />
