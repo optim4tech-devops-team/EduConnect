@@ -276,6 +276,49 @@ export interface AdminStatsDto {
   parentCount: number;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface FormField {
+  name: string;
+  label: string;
+  type: 'text' | 'date' | 'checkbox' | 'select';
+  options?: string[];
+  required: boolean;
+}
+
+export interface FormTemplateDto {
+  id: string;
+  title: string;
+  description?: string;
+  fields: FormField[];
+  createdAt: string;
+}
+
+export interface FormSubmissionDto {
+  id: string;
+  templateId: string;
+  templateTitle: string;
+  studentId?: string;
+  answers: Record<string, unknown>;
+  submittedAt: string;
+  status: 'pending' | 'submitted';
+  createdAt: string;
+}
+
+export interface ObservationDto {
+  id: string;
+  studentId: string;
+  studentName: string;
+  teacherName: string;
+  note: string;
+  createdAt: string;
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 export interface LookupResponse {
   schoolName: string;
@@ -410,6 +453,30 @@ export const adminApi = {
     apiClient.post<UserDto>('/admin/teachers', data),
   updateTeacher: (id: string, data: Partial<UserDto>) =>
     apiClient.put<UserDto>(`/admin/teachers/${id}`, data),
+};
+
+export const formApi = {
+  getTemplates: () => apiClient.get<FormTemplateDto[]>('/forms/templates'),
+  getTemplate: (id: string) => apiClient.get<FormTemplateDto>(`/forms/templates/${id}`),
+  getSubmissions: () => apiClient.get<FormSubmissionDto[]>('/forms/submissions'),
+  getSubmission: (id: string) => apiClient.get<FormSubmissionDto>(`/forms/submissions/${id}`),
+  submit: (templateId: string, answers: Record<string, unknown>, studentId?: string) =>
+    apiClient.post<FormSubmissionDto>('/forms/submissions', { templateId, answers, studentId }),
+};
+
+export const observationApi = {
+  getStudentObservations: (studentId: string) =>
+    apiClient.get<ObservationDto[]>(`/students/${studentId}/observations`),
+  addObservation: (studentId: string, data: { note: string }) =>
+    apiClient.post<ObservationDto>(`/students/${studentId}/observations`, data),
+};
+
+export const parentApi = {
+  list: (params?: { page?: number; pageSize?: number }) =>
+    apiClient.get<UserDto[]>('/parents', { params }),
+  get: (id: string) => apiClient.get<UserDto>(`/parents/${id}`),
+  assignToStudent: (studentId: string, parentId: string) =>
+    apiClient.post(`/students/${studentId}/assign-parent`, { parentId }),
 };
 
 export default apiClient;

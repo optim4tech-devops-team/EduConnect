@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
 import { isValidTurkishPhoneNumber, normalizePhoneNumber } from '@/utils/phone';
+import Colors from '@/theme/colors';
 
 type Step = 'phone' | 'otp';
 
@@ -44,7 +45,6 @@ export default function LoginScreen() {
 
   const handleLookup = async () => {
     if (!isValidTurkishPhoneNumber(phoneNumber)) return;
-
     const normalizedPhone = normalizePhoneNumber(phoneNumber);
     clearError();
     try {
@@ -80,7 +80,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <LinearGradient colors={['#FF6B35', '#FF8C42', '#FFB347']} style={styles.container}>
+    <LinearGradient colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, '#40916C']} style={styles.container}>
       <View style={[styles.circle, styles.circleTopRight]} />
       <View style={[styles.circle, styles.circleBottomLeft]} />
 
@@ -88,38 +88,32 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        {/* Header / Logo */}
         <View style={styles.header}>
           {schoolInfo?.schoolLogoUrl ? (
             <Image source={{ uri: schoolInfo.schoolLogoUrl }} style={styles.schoolLogo} />
           ) : (
             <View style={styles.logoCircle}>
-              <Ionicons name="school" size={40} color="#FF8C42" />
+              <Ionicons name="book" size={40} color={Colors.PRIMARY} />
             </View>
           )}
-          <Text style={styles.appName}>
-            {schoolInfo?.schoolName ?? 'EduLink'}
-          </Text>
+          <Text style={styles.appName}>notio</Text>
           <Text style={styles.tagline}>
-            {step === 'phone' ? 'Hos geldiniz' : 'SMS kodunuzu girin'}
+            {step === 'phone' ? 'kaybolmayan notlar' : 'SMS kodunuzu girin'}
           </Text>
         </View>
 
-        {/* Card */}
         <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
           {step === 'phone' ? (
             <>
               <Text style={styles.cardTitle}>Giriş Yap</Text>
-              <Text style={styles.cardSubtitle}>
-                Kayitli telefon numaranizi girin
-              </Text>
+              <Text style={styles.cardSubtitle}>Kayıtlı telefon numaranızı girin</Text>
 
               <View style={styles.inputWrapper}>
-                <Ionicons name="call-outline" size={20} color="#FF8C42" style={styles.inputIcon} />
+                <Ionicons name="call-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="0532 000 00 00"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={Colors.TEXT_MUTED}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
                   keyboardType="phone-pad"
@@ -130,7 +124,7 @@ export default function LoginScreen() {
 
               {error ? (
                 <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle-outline" size={16} color="#e53e3e" />
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.ERROR} />
                   <Text style={styles.errorText}>{error}</Text>
                 </View>
               ) : null}
@@ -155,16 +149,16 @@ export default function LoginScreen() {
               <Text style={styles.cardTitle}>Doğrulama Kodu</Text>
               <Text style={styles.cardSubtitle}>
                 <Text style={styles.maskedId}>{schoolInfo?.maskedIdentifier ?? normalizePhoneNumber(phoneNumber)}</Text>
-                {'\n'}numarasina gonderilen 6 haneli kodu girin
+                {'\n'}numarasına gönderilen 6 haneli kodu girin
               </Text>
 
               <View style={styles.inputWrapper}>
-                <Ionicons name="keypad-outline" size={20} color="#FF8C42" style={styles.inputIcon} />
+                <Ionicons name="keypad-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
                 <TextInput
                   ref={otpRef}
                   style={[styles.input, styles.otpInput]}
                   placeholder="• • • • • •"
-                  placeholderTextColor="#bbb"
+                  placeholderTextColor={Colors.TEXT_MUTED}
                   value={otp}
                   onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 6))}
                   keyboardType="number-pad"
@@ -176,7 +170,7 @@ export default function LoginScreen() {
 
               {error ? (
                 <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle-outline" size={16} color="#e53e3e" />
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.ERROR} />
                   <Text style={styles.errorText}>{error}</Text>
                 </View>
               ) : null}
@@ -219,15 +213,11 @@ const styles = StyleSheet.create({
   circle: {
     position: 'absolute',
     borderRadius: 9999,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
-  circleTopRight: { width: 200, height: 200, top: -60, right: -60 },
-  circleBottomLeft: { width: 150, height: 150, bottom: 80, left: -50 },
-  keyboardView: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
+  circleTopRight: { width: 220, height: 220, top: -70, right: -70 },
+  circleBottomLeft: { width: 160, height: 160, bottom: 80, left: -55 },
+  keyboardView: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
   header: { alignItems: 'center', marginBottom: 28 },
   logoCircle: {
     width: 80,
@@ -239,19 +229,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
   },
-  schoolLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 12,
-    backgroundColor: '#fff',
-  },
-  appName: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
-  tagline: { fontSize: 15, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+  schoolLogo: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, backgroundColor: '#fff' },
+  appName: { fontSize: 36, fontWeight: '800', color: '#fff', letterSpacing: 1.5 },
+  tagline: { fontSize: 15, color: 'rgba(255,255,255,0.80)', marginTop: 6 },
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -262,26 +246,21 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
   },
-  cardTitle: { fontSize: 22, fontWeight: '700', color: '#1a1a2e', marginBottom: 6 },
-  cardSubtitle: { fontSize: 14, color: '#666', marginBottom: 24, lineHeight: 20 },
-  maskedId: { fontWeight: '700', color: '#FF8C42' },
+  cardTitle: { fontSize: 22, fontWeight: '700', color: Colors.TEXT, marginBottom: 6 },
+  cardSubtitle: { fontSize: 14, color: Colors.TEXT_MUTED, marginBottom: 24, lineHeight: 20 },
+  maskedId: { fontWeight: '700', color: Colors.PRIMARY },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.BACKGROUND,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#e9ecef',
+    borderColor: Colors.SECONDARY,
     marginBottom: 16,
     paddingHorizontal: 14,
   },
   inputIcon: { marginRight: 10 },
-  input: {
-    flex: 1,
-    height: 50,
-    fontSize: 16,
-    color: '#1a1a2e',
-  },
+  input: { flex: 1, height: 50, fontSize: 16, color: Colors.TEXT },
   otpInput: { letterSpacing: 6, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   errorBox: {
     flexDirection: 'row',
@@ -292,29 +271,25 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     gap: 6,
   },
-  errorText: { color: '#e53e3e', fontSize: 13, flex: 1 },
+  errorText: { color: Colors.ERROR, fontSize: 13, flex: 1 },
   button: {
-    backgroundColor: '#FF8C42',
+    backgroundColor: Colors.PRIMARY,
     borderRadius: 12,
     height: 52,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    shadowColor: '#FF8C42',
+    shadowColor: Colors.PRIMARY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 6,
   },
-  buttonDisabled: { opacity: 0.6 },
+  buttonDisabled: { opacity: 0.55 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  resendRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  resendText: { color: '#FF8C42', fontSize: 14, fontWeight: '600' },
+  resendRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
+  resendText: { color: Colors.PRIMARY, fontSize: 14, fontWeight: '600' },
   resendDisabled: { color: '#aaa' },
-  backText: { color: '#666', fontSize: 14 },
+  backText: { color: Colors.TEXT_MUTED, fontSize: 14 },
 });
