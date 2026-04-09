@@ -5,9 +5,14 @@
 *.suo
 .vs/
 
+# EF Core Migrations (Designer files are generated artifacts)
+**/*.Designer.cs
+**/Migrations/*Designer.cs
+
 # Node/Mobile
 mobile/node_modules/
 mobile/.expo/
+mobile/.metro-cache/
 mobile/dist/
 mobile/.env
 
