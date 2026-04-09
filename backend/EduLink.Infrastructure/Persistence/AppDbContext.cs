@@ -25,11 +25,21 @@ public class AppDbContext : DbContext
     public DbSet<Attendance> Attendances => Set<Attendance>();
     public DbSet<Badge> Badges => Set<Badge>();
     public DbSet<StudentBadge> StudentBadges => Set<StudentBadge>();
+    public DbSet<StudentObservation> StudentObservations => Set<StudentObservation>();
+    public DbSet<SchoolCalendarEvent> SchoolCalendarEvents => Set<SchoolCalendarEvent>();
+    public DbSet<ClassRoutineRule> ClassRoutineRules => Set<ClassRoutineRule>();
+    public DbSet<MealPlanEntry> MealPlanEntries => Set<MealPlanEntry>();
+    public DbSet<ComplianceDocument> ComplianceDocuments => Set<ComplianceDocument>();
+    public DbSet<ComplianceAcceptance> ComplianceAcceptances => Set<ComplianceAcceptance>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
+    public DbSet<FormTemplate> FormTemplates => Set<FormTemplate>();
+    public DbSet<FormField> FormFields => Set<FormField>();
+    public DbSet<FormSubmission> FormSubmissions => Set<FormSubmission>();
+    public DbSet<FormSubmissionValue> FormSubmissionValues => Set<FormSubmissionValue>();
 
     // ── Model configuration ──────────────────────────────────────────────────
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -44,6 +54,14 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(s => s.Id);
             entity.Property(s => s.Name).IsRequired().HasMaxLength(200);
+            entity.Property(s => s.Plan).HasMaxLength(50);
+            entity.Property(s => s.FamilyMessagingMode).HasMaxLength(40).HasDefaultValue("separate_parents");
+
+            entity.HasOne(s => s.PrimaryAdmin)
+                  .WithMany()
+                  .HasForeignKey(s => s.PrimaryAdminUserId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ── User ────────────────────────────────────────────────────────────
@@ -90,10 +108,119 @@ public class AppDbContext : DbContext
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
+        // ── StudentObservation ──────────────────────────────────────────────
+        modelBuilder.Entity<StudentObservation>(entity =>
+        {
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.Title).IsRequired().HasMaxLength(180);
+            entity.Property(o => o.Note).IsRequired().HasMaxLength(1000);
+            entity.Property(o => o.Category).IsRequired().HasMaxLength(80);
+            entity.Property(o => o.Type).IsRequired().HasMaxLength(40);
+            entity.Property(o => o.Status).IsRequired().HasMaxLength(40);
+            entity.Property(o => o.TeacherObservation).HasMaxLength(1000);
+            entity.Property(o => o.SchoolAction).HasMaxLength(1000);
+            entity.Property(o => o.HomeSuggestion).HasMaxLength(1000);
+            entity.Property(o => o.ParentResponse).HasMaxLength(1000);
+            entity.Property(o => o.TeacherClosureNote).HasMaxLength(1000);
+
+            entity.HasOne(o => o.Student)
+                  .WithMany(s => s.StudentObservations)
+                  .HasForeignKey(o => o.StudentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(o => o.Teacher)
+                  .WithMany()
+                  .HasForeignKey(o => o.TeacherId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(o => o.School)
+                  .WithMany()
+                  .HasForeignKey(o => o.SchoolId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── SchoolCalendarEvent ─────────────────────────────────────────────
+        modelBuilder.Entity<SchoolCalendarEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(180);
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Category).HasMaxLength(80);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+
+            entity.HasOne(e => e.School)
+                  .WithMany(s => s.CalendarEvents)
+                  .HasForeignKey(e => e.SchoolId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Class)
+                  .WithMany(c => c.CalendarEvents)
+                  .HasForeignKey(e => e.ClassId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.CreatedBy)
+                  .WithMany()
+                  .HasForeignKey(e => e.CreatedById)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── ClassRoutineRule ────────────────────────────────────────────────
+        modelBuilder.Entity<ClassRoutineRule>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Title).IsRequired().HasMaxLength(160);
+            entity.Property(r => r.ItemName).HasMaxLength(160);
+            entity.Property(r => r.MessageTemplate).HasMaxLength(800);
+
+            entity.HasOne(r => r.School)
+                  .WithMany(s => s.RoutineRules)
+                  .HasForeignKey(r => r.SchoolId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.Class)
+                  .WithMany(c => c.RoutineRules)
+                  .HasForeignKey(r => r.ClassId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(r => r.CreatedBy)
+                  .WithMany()
+                  .HasForeignKey(r => r.CreatedById)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── MealPlanEntry ───────────────────────────────────────────────────
+        modelBuilder.Entity<MealPlanEntry>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Breakfast).HasMaxLength(300);
+            entity.Property(m => m.Lunch).HasMaxLength(300);
+            entity.Property(m => m.Snack).HasMaxLength(300);
+            entity.Property(m => m.Notes).HasMaxLength(1000);
+            entity.Property(m => m.Allergens).HasMaxLength(300);
+
+            entity.HasOne(m => m.School)
+                  .WithMany(s => s.MealPlanEntries)
+                  .HasForeignKey(m => m.SchoolId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(m => m.Class)
+                  .WithMany(c => c.MealPlanEntries)
+                  .HasForeignKey(m => m.ClassId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(m => m.CreatedBy)
+                  .WithMany()
+                  .HasForeignKey(m => m.CreatedById)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // ── StudentParent — composite PK ────────────────────────────────────
         modelBuilder.Entity<StudentParent>(entity =>
         {
             entity.HasKey(sp => new { sp.StudentId, sp.ParentId });
+            entity.Property(sp => sp.Relationship).HasMaxLength(50);
 
             entity.HasOne(sp => sp.Student)
                   .WithMany(s => s.StudentParents)
@@ -103,6 +230,52 @@ public class AppDbContext : DbContext
             entity.HasOne(sp => sp.Parent)
                   .WithMany(u => u.StudentParents)
                   .HasForeignKey(sp => sp.ParentId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── ComplianceDocument ──────────────────────────────────────────────
+        modelBuilder.Entity<ComplianceDocument>(entity =>
+        {
+            entity.HasKey(cd => cd.Id);
+            entity.Property(cd => cd.Kind).IsRequired().HasMaxLength(50);
+            entity.Property(cd => cd.Audience).IsRequired().HasMaxLength(40);
+            entity.Property(cd => cd.Title).IsRequired().HasMaxLength(220);
+            entity.Property(cd => cd.Content).IsRequired();
+
+            entity.HasIndex(cd => new { cd.SchoolId, cd.Kind, cd.Audience, cd.Version }).IsUnique();
+
+            entity.HasOne(cd => cd.School)
+                  .WithMany(s => s.ComplianceDocuments)
+                  .HasForeignKey(cd => cd.SchoolId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(cd => cd.CreatedBy)
+                  .WithMany()
+                  .HasForeignKey(cd => cd.CreatedById)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── ComplianceAcceptance ────────────────────────────────────────────
+        modelBuilder.Entity<ComplianceAcceptance>(entity =>
+        {
+            entity.HasKey(ca => ca.Id);
+            entity.Property(ca => ca.IpAddress).HasMaxLength(80);
+            entity.Property(ca => ca.UserAgent).HasMaxLength(500);
+            entity.HasIndex(ca => new { ca.DocumentId, ca.UserId }).IsUnique();
+
+            entity.HasOne(ca => ca.School)
+                  .WithMany()
+                  .HasForeignKey(ca => ca.SchoolId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(ca => ca.Document)
+                  .WithMany(cd => cd.Acceptances)
+                  .HasForeignKey(ca => ca.DocumentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ca => ca.User)
+                  .WithMany()
+                  .HasForeignKey(ca => ca.UserId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 

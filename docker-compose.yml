@@ -47,13 +47,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./ai-service:/app
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 15s
       timeout: 10s
-      retries: 5
+      retries: 8
+      start_period: 30s
 
   backend:
     build:
@@ -63,9 +62,9 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ASPNETCORE_URLS: http://+:5000
+      ASPNETCORE_URLS: http://+:5001
       ConnectionStrings__DefaultConnection: "Host=db;Database=${POSTGRES_DB:-edulink};Username=${POSTGRES_USER:-edulink_user};Password=${POSTGRES_PASSWORD:-edulink_pass_change_me}"
-      ConnectionStrings__Redis: ${REDIS_URL:-redis://redis:6379}
+      ConnectionStrings__Redis: ${REDIS_URL:-redis:6379}
       Jwt__Secret: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production-min-32-chars}
       Jwt__ExpiryMinutes: ${JWT_EXPIRY_MINUTES:-60}
       Jwt__RefreshExpiryDays: ${JWT_REFRESH_EXPIRY_DAYS:-30}
@@ -76,7 +75,7 @@ services:
       AiService__ApiKey: ${AI_SERVICE_API_KEY:-ai-internal-key-change-me}
       Firebase__ServerKey: ${FIREBASE_SERVER_KEY}
     ports:
-      - "5000:5000"
+      - "5001:5001"
     depends_on:
       db:
         condition: service_healthy

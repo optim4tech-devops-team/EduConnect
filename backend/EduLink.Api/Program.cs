@@ -23,9 +23,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     ));
 
 // ─── Redis ────────────────────────────────────────────────────────────────
-var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+var redisConnStr = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+// Strip redis:// prefix if present (StackExchange.Redis does not accept URI format)
+redisConnStr = redisConnStr.Replace("redis://", "").Replace("rediss://", "");
+var redisConfig = ConfigurationOptions.Parse(redisConnStr);
+redisConfig.AbortOnConnectFail = false;
 builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(redisConn));
+    ConnectionMultiplexer.Connect(redisConfig));
 
 // ─── JWT Auth ─────────────────────────────────────────────────────────────
 var jwtSecret = builder.Configuration["Jwt:Secret"]
@@ -71,7 +75,7 @@ builder.Services.AddCors(options =>
 
 // ─── SignalR ──────────────────────────────────────────────────────────────
 builder.Services.AddSignalR()
-    .AddStackExchangeRedis(redisConn); // Redis backplane for scale-out
+    .AddStackExchangeRedis(redisConnStr); // Redis backplane for scale-out
 
 // ─── Cloudinary ───────────────────────────────────────────────────────────
 var cloudinaryAccount = new Account(
@@ -149,7 +153,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 
-    // Seed default school and admin user if they don't exist
+    // Seed default school and demo users if they don't exist
     if (!db.Schools.Any())
     {
         var school = new EduLink.Domain.Entities.School
@@ -159,6 +163,19 @@ using (var scope = app.Services.CreateScope())
             CreatedAt = DateTime.UtcNow
         };
         db.Schools.Add(school);
+        db.SaveChanges();
+    }
+
+    if (!db.Schools.Any(s => s.Name == "Küçük Sıralar Ana Okulları"))
+    {
+        db.Schools.Add(new EduLink.Domain.Entities.School
+        {
+            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            Name = "Küçük Sıralar Ana Okulları",
+            Address = "Küçük Sıralar Kampüsü",
+            Phone = "03920000000",
+            CreatedAt = DateTime.UtcNow
+        });
         db.SaveChanges();
     }
 
@@ -179,6 +196,58 @@ using (var scope = app.Services.CreateScope())
         db.Users.Add(admin);
         db.SaveChanges();
     }
+
+    var demoSchoolId = db.Schools.First(s => s.Name == "Küçük Sıralar Ana Okulları").Id;
+
+    if (!db.Users.Any(u => u.Email == "elif.toksoy@notio.test"))
+    {
+        db.Users.Add(new EduLink.Domain.Entities.User
+        {
+            Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            FullName = "Elif Toksoy",
+            Email = "elif.toksoy@notio.test",
+            Phone = "05442698494",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            Role = EduLink.Domain.Enums.UserRole.Teacher,
+            SchoolId = demoSchoolId,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    if (!db.Users.Any(u => u.Email == "sezer.darendeli@notio.test"))
+    {
+        db.Users.Add(new EduLink.Domain.Entities.User
+        {
+            Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            FullName = "Sezer Darendeli",
+            Email = "sezer.darendeli@notio.test",
+            Phone = "05337102007",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            Role = EduLink.Domain.Enums.UserRole.Parent,
+            SchoolId = demoSchoolId,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    if (!db.Users.Any(u => u.Email == "ogrenci.isleri@notio.test"))
+    {
+        db.Users.Add(new EduLink.Domain.Entities.User
+        {
+            Id = Guid.Parse("77777777-7777-7777-7777-777777777777"),
+            FullName = "Öğrenci İşleri",
+            Email = "ogrenci.isleri@notio.test",
+            Phone = "05330000002",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            Role = EduLink.Domain.Enums.UserRole.StudentAffairs,
+            SchoolId = demoSchoolId,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    db.SaveChanges();
 }
 
 // ─── Middleware Pipeline ─────────────────────────────────────────────────
