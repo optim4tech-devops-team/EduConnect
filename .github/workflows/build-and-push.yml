@@ -3,7 +3,7 @@ name: Build and Push EduLink Images
 on:
   push:
     branches:
-      - claude/preschool-tracking-app-hYF8S
+      - master
     paths:
       - 'backend/**'
       - 'ai-service/**'

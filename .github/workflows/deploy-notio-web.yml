@@ -3,7 +3,7 @@ name: Deploy Notio Web Admin
 on:
   push:
     branches:
-      - claude/preschool-tracking-app-hYF8S
+      - master
     paths:
       - 'mobile/**'
       - 'k8s/notio-web.yaml'
