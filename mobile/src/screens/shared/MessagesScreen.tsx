@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import Colors from '../../theme/colors';
 import { messageApi, adminApi, ConversationDto, UserDto } from '../../api/client';
 
@@ -59,8 +58,6 @@ const ROLE_LABELS: Record<string, string> = {
   PlatformAdmin: 'Platform Admin',
 };
 
-type NavProp = NativeStackNavigationProp<Record<string, object | undefined>>;
-
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const MOCK_CONVERSATIONS: ConversationDto[] = [
   {
@@ -95,7 +92,7 @@ const MOCK_CONVERSATIONS: ConversationDto[] = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function MessagesScreen() {
-  const navigation = useNavigation<NavProp>();
+  const router = useRouter();
 
   const [conversations, setConversations] = useState<ConversationDto[]>(MOCK_CONVERSATIONS);
   const [loadingConvs,  setLoadingConvs]  = useState(true);
@@ -146,18 +143,12 @@ export default function MessagesScreen() {
         return [conv, ...prev];
       });
       setModalOpen(false);
-      navigation.navigate('Chat' as never, {
-        conversationId: conv.id,
-        otherUserName:  user.name,
-      } as never);
+      router.push({ pathname: '/chat', params: { conversationId: conv.id, otherUserName: user.name } });
     } catch {
       // Optimistic: navigate with generated id
       const fakeId = `new-${user.id}`;
       setModalOpen(false);
-      navigation.navigate('Chat' as never, {
-        conversationId: fakeId,
-        otherUserName:  user.name,
-      } as never);
+      router.push({ pathname: '/chat', params: { conversationId: fakeId, otherUserName: user.name } });
     } finally {
       setStarting(null);
     }
@@ -177,10 +168,7 @@ export default function MessagesScreen() {
         style={[styles.item, item.unreadCount > 0 && styles.itemUnread]}
         activeOpacity={0.75}
         onPress={() =>
-          navigation.navigate('Chat' as never, {
-            conversationId: item.id,
-            otherUserName:  item.participantName,
-          } as never)
+          router.push({ pathname: '/chat', params: { conversationId: item.id, otherUserName: item.participantName } })
         }
       >
         {/* Avatar */}

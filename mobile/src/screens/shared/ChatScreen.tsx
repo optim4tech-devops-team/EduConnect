@@ -13,20 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import Colors from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { useMessageStore } from '../../store/messageStore';
 import { useSignalR } from '../../hooks/useSignalR';
 import { MessageDto } from '../../api/client';
-
-// ─── Route params ─────────────────────────────────────────────────────────────
-type ChatRouteParams = {
-  Chat: {
-    conversationId: string;
-    otherUserName: string;
-  };
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatTime(isoDate: string): string {
@@ -70,9 +62,8 @@ function buildMockMessages(conversationId: string, myId: string): MessageDto[] {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<ChatRouteParams, 'Chat'>>();
-  const { conversationId, otherUserName } = route.params;
+  const router = useRouter();
+  const { conversationId = '', otherUserName = '' } = useLocalSearchParams<{ conversationId: string; otherUserName: string }>();
 
   const { user }           = useAuthStore();
   const { messages: allMessages, fetchMessages, addIncomingMessage, markRead } = useMessageStore();
@@ -173,7 +164,7 @@ export default function ChatScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
           activeOpacity={0.7}
         >
           <Ionicons name="chevron-back" size={26} color={Colors.TEXT} />

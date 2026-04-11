@@ -11,13 +11,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import Colors from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { adminApi, classApi, ClassDto, AdminStatsDto } from '../../api/client';
-
-type AdminNavProp = NativeStackNavigationProp<Record<string, undefined>>;
 
 interface StatCard {
   key: string;
@@ -34,10 +31,10 @@ interface QuickAction {
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'addClass',    label: 'Sınıf Ekle',     icon: 'add-circle-outline',  route: 'Siniflar'    },
-  { key: 'addStudent',  label: 'Öğrenci Ekle',   icon: 'people-outline',      route: 'Ogrenciler'  },
-  { key: 'addTeacher',  label: 'Öğretmen Ekle',  icon: 'person-add-outline',  route: 'Ogretmenler' },
-  { key: 'parents',     label: 'Veliler',         icon: 'heart-outline',       route: 'Veliler'     },
+  { key: 'addClass',    label: 'Sınıf Ekle',     icon: 'add-circle-outline',  route: '/(admin)/classes'   },
+  { key: 'addStudent',  label: 'Öğrenci Ekle',   icon: 'people-outline',      route: '/(admin)/classes'   },
+  { key: 'addTeacher',  label: 'Öğretmen Ekle',  icon: 'person-add-outline',  route: '/(admin)/teachers'  },
+  { key: 'parents',     label: 'Veliler',         icon: 'heart-outline',       route: '/(admin)/classes'   },
 ];
 
 const MOCK_STATS: AdminStatsDto = {
@@ -55,7 +52,7 @@ const MOCK_CLASSES: ClassDto[] = [
 ];
 
 export default function AdminDashboard() {
-  const navigation = useNavigation<AdminNavProp>();
+  const router = useRouter();
   const { user } = useAuthStore();
 
   const [stats,   setStats]   = useState<AdminStatsDto>(MOCK_STATS);
@@ -99,7 +96,7 @@ export default function AdminDashboard() {
     <TouchableOpacity
       style={styles.classItem}
       activeOpacity={0.75}
-      onPress={() => navigation.navigate('Siniflar' as never)}
+      onPress={() => router.push('/(admin)/classes' as any)}
     >
       <View style={styles.classIconCircle}>
         <Text style={styles.classIconText}>{item.name.charAt(0)}</Text>
@@ -131,7 +128,6 @@ export default function AdminDashboard() {
         <TouchableOpacity
           style={styles.bellButton}
           activeOpacity={0.7}
-          onPress={() => navigation.navigate('Notifications' as never)}
         >
           <Ionicons name="bell-outline" size={22} color={Colors.TEXT} />
         </TouchableOpacity>
@@ -178,7 +174,7 @@ export default function AdminDashboard() {
               key={action.key}
               style={styles.actionButton}
               activeOpacity={0.75}
-              onPress={() => navigation.navigate(action.route as never)}
+              onPress={() => router.push(action.route as any)}
             >
               <Ionicons name={action.icon} size={20} color={Colors.PRIMARY} />
               <Text style={styles.actionLabel}>{action.label}</Text>

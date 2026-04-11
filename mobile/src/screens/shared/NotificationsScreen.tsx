@@ -10,7 +10,6 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import Colors from '../../theme/colors';
 import { notificationApi, NotificationDto } from '../../api/client';
 
@@ -86,8 +85,6 @@ const MOCK_NOTIFICATIONS: NotificationDto[] = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function NotificationsScreen() {
-  const navigation = useNavigation();
-
   const [notifications, setNotifications] = useState<NotificationDto[]>(MOCK_NOTIFICATIONS);
   const [loading,       setLoading]       = useState(true);
   const [markingAll,    setMarkingAll]    = useState(false);

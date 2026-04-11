@@ -11,14 +11,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import Colors from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import { usePostStore } from '../../store/postStore';
 import { notificationApi, classApi, ClassDto, PostDto } from '../../api/client';
-
-type TeacherNavProp = NativeStackNavigationProp<Record<string, undefined>>;
 
 interface QuickAction {
   key: string;
@@ -34,28 +31,28 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'Fotoğraf Paylaş',
     emoji: '📷',
     bgColor: Colors.PRIMARY + '1A',
-    route: 'PostCreate',
+    route: '/(teacher)',
   },
   {
     key: 'observation',
     label: 'Olumlu Gözlem',
     emoji: '⭐',
     bgColor: Colors.ACCENT + '22',
-    route: 'ObservationAdd',
+    route: '/(teacher)',
   },
   {
     key: 'badge',
     label: 'Rozet Ver',
     emoji: '🏅',
     bgColor: Colors.SECONDARY + '33',
-    route: 'ObservationAdd',
+    route: '/(teacher)',
   },
   {
     key: 'message',
     label: 'Mesaj Gönder',
     emoji: '💬',
     bgColor: Colors.INFO_LIGHT,
-    route: 'Mesajlar',
+    route: '/(teacher)/messages',
   },
 ];
 
@@ -138,7 +135,7 @@ function timeAgo(isoDate: string): string {
 }
 
 export default function TeacherDashboard() {
-  const navigation = useNavigation<TeacherNavProp>();
+  const router = useRouter();
   const { user } = useAuthStore();
   const { posts, fetchPosts, isLoading } = usePostStore();
 
@@ -277,7 +274,7 @@ export default function TeacherDashboard() {
               key={action.key}
               style={styles.quickAction}
               activeOpacity={0.75}
-              onPress={() => navigation.navigate(action.route as never)}
+              onPress={() => router.push(action.route as any)}
             >
               <View
                 style={[styles.quickIconCircle, { backgroundColor: action.bgColor }]}
