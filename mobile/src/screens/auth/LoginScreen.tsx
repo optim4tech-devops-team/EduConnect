@@ -20,12 +20,14 @@ import Colors from '@/theme/colors';
 type Step = 'phone' | 'otp';
 
 export default function LoginScreen() {
-  const { lookup, sendOtp, verifyOtp, schoolInfo, isLoading, error, clearError } = useAuthStore();
+  const { lookup, sendOtp, verifyOtp, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const otpRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -79,6 +81,16 @@ export default function LoginScreen() {
     }
   };
 
+  const handlePasswordLogin = async () => {
+    if (!email || !password) return;
+    clearError();
+    try {
+      await loginWithPassword(email.trim(), password);
+    } catch {
+      // error set by store
+    }
+  };
+
   return (
     <LinearGradient
       colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, Colors.TEAL_600]}
@@ -98,9 +110,11 @@ export default function LoginScreen() {
           {schoolInfo?.schoolLogoUrl ? (
             <Image source={{ uri: schoolInfo.schoolLogoUrl }} style={styles.schoolLogo} />
           ) : (
-            <View style={styles.logoCircle}>
-              <Ionicons name="book" size={40} color={Colors.PRIMARY} />
-            </View>
+            <Image
+              source={require('../../../assets/notio-mark.png')}
+              style={styles.logoMark}
+              resizeMode="contain"
+            />
           )}
           <Text style={styles.appName}>notio</Text>
           <Text style={styles.tagline}>
@@ -109,7 +123,62 @@ export default function LoginScreen() {
         </View>
 
         <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          {step === 'phone' ? (
+          {Platform.OS === 'web' ? (
+            <>
+              <Text style={styles.cardTitle}>Yönetici Girişi</Text>
+              <Text style={styles.cardSubtitle}>E-posta ve şifrenizi girin</Text>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="ornek@okul.com"
+                  placeholderTextColor={Colors.TEXT_MUTED}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor={Colors.TEXT_MUTED}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={handlePasswordLogin}
+                />
+              </View>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.ERROR} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.button, (!email || !password || isLoading) && styles.buttonDisabled]}
+                onPress={handlePasswordLogin}
+                disabled={isLoading || !email || !password}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Giriş Yap</Text>
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                  </>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : step === 'phone' ? (
             <>
               <Text style={styles.cardTitle}>Giriş Yap</Text>
               <Text style={styles.cardSubtitle}>Kayıtlı telefon numaranızı girin</Text>
@@ -240,6 +309,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   schoolLogo: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, backgroundColor: '#fff' },
+  logoMark: { width: 100, height: 100, marginBottom: 12 },
   appName: { fontSize: 36, fontWeight: '800', color: '#fff', letterSpacing: 1.5 },
   tagline: { fontSize: 15, color: 'rgba(255,255,255,0.80)', marginTop: 6 },
   card: {

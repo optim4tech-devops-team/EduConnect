@@ -27,6 +27,7 @@ interface AuthState {
   lookup: (identifier: string) => Promise<LookupResponse>;
   sendOtp: (identifier: string) => Promise<void>;
   verifyOtp: (identifier: string, code: string) => Promise<void>;
+  loginWithPassword: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setTokens: (access: string, refresh: string) => Promise<void>;
   clearError: () => void;
@@ -104,6 +105,25 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       set({ isLoading: false, error: 'Gecersiz veya suresi dolmus kod.' });
       throw new Error('Gecersiz veya suresi dolmus kod.');
+    }
+  },
+
+  loginWithPassword: async (email: string, password: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await authApi.login({ email, password });
+      const user = mapToUserDto(data, '');
+
+      await Promise.all([
+        storage.setItem('accessToken', data.accessToken),
+        storage.setItem('refreshToken', data.refreshToken),
+        storage.setItem('user', JSON.stringify(user)),
+      ]);
+
+      set({ user, accessToken: data.accessToken, isLoading: false });
+    } catch {
+      set({ isLoading: false, error: 'E-posta veya şifre hatalı.' });
+      throw new Error('E-posta veya şifre hatalı.');
     }
   },
 
