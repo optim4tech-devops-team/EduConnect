@@ -11,6 +11,7 @@ import {
   TextInput,
   ScrollView,
   StatusBar,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ export default function AssignmentScreen() {
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentDto | null>(null);
   const [submissionNote, setSubmissionNote] = useState('');
   const [attachedUri, setAttachedUri] = useState<string | null>(null);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -56,7 +58,11 @@ export default function AssignmentScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
-      setAttachedUri(result.assets[0].uri);
+      const asset = result.assets[0];
+      setAttachedUri(asset.uri);
+      if (Platform.OS === 'web') {
+        setAttachedFile((asset as ImagePicker.ImagePickerAsset & { file?: File }).file ?? null);
+      }
     }
   };
 
@@ -66,7 +72,9 @@ export default function AssignmentScreen() {
       setIsSubmitting(true);
       const formData = new FormData();
       if (submissionNote) formData.append('note', submissionNote);
-      if (attachedUri) {
+      if (Platform.OS === 'web') {
+        if (attachedFile) formData.append('file', attachedFile, 'submission.jpg');
+      } else if (attachedUri) {
         formData.append('file', {
           uri: attachedUri,
           name: 'submission.jpg',

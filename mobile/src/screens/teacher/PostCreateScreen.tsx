@@ -11,6 +11,7 @@ import {
   Alert,
   StatusBar,
   Switch,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,11 +92,16 @@ export default function PostCreateScreen() {
       const formData = new FormData();
       photos.forEach((photo, index) => {
         const filename = photo.fileName ?? `photo_${index}.jpg`;
-        formData.append('files', {
-          uri: photo.uri,
-          name: filename,
-          type: photo.mimeType ?? 'image/jpeg',
-        } as unknown as Blob);
+        if (Platform.OS === 'web') {
+          const file = (photo as ImagePicker.ImagePickerAsset & { file?: File }).file;
+          if (file) formData.append('files', file, filename);
+        } else {
+          formData.append('files', {
+            uri: photo.uri,
+            name: filename,
+            type: photo.mimeType ?? 'image/jpeg',
+          } as unknown as Blob);
+        }
       });
       if (caption) formData.append('caption', caption);
       if (!allClass) {
