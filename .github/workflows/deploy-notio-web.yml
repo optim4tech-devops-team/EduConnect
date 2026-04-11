@@ -14,7 +14,7 @@ env:
   REGISTRY: registry.bibanka.com
   WEB_IMAGE: registry.bibanka.com/test/notio-web
   IMAGE_TAG: 1.0.0
-  WEB_API_URL: https://notio.bidynod.com/api
+  WEB_API_URL: https://notio.bidyno.com/api
 
 jobs:
   build-web:

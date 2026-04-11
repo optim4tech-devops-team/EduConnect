@@ -51,10 +51,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - notio.bidynod.com
-      secretName: wildcard-bidynod-tls
+        - notio.bidyno.com
+      secretName: wildcard-bidyno-tls
   rules:
-    - host: notio.bidynod.com
+    - host: notio.bidyno.com
       http:
         paths:
           - path: /api
