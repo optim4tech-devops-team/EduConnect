@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRouter } from 'expo-router';
 import Colors from '../../theme/colors';
 import { useAuthStore } from '../../store/authStore';
 import type { UserDto } from '../../api/client';
@@ -78,7 +77,7 @@ const rowStyles = StyleSheet.create({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<Record<string, undefined>>>();
+  const router = useRouter();
   const { user, logout } = useAuthStore();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -95,17 +94,11 @@ export default function ProfileScreen() {
             setLoggingOut(true);
             try {
               await logout();
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
             } catch {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
+              // ignore
             } finally {
               setLoggingOut(false);
+              router.replace('/login');
             }
           },
         },
