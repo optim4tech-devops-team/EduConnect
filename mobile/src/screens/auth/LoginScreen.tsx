@@ -80,13 +80,19 @@ export default function LoginScreen() {
   };
 
   return (
-    <LinearGradient colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, Colors.TEAL_600]} style={styles.container}>
+    <LinearGradient
+      colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, Colors.TEAL_600]}
+      style={[styles.container, Platform.OS === 'web' && { minHeight: '100vh' as any }]}
+    >
       <View style={[styles.circle, styles.circleTopRight]} />
       <View style={[styles.circle, styles.circleBottomLeft]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        style={[
+          styles.keyboardView,
+          Platform.OS === 'web' && { height: '100%' as any, maxWidth: 480, alignSelf: 'center' as any, width: '100%' },
+        ]}
       >
         <View style={styles.header}>
           {schoolInfo?.schoolLogoUrl ? (
