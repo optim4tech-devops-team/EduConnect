@@ -42,13 +42,15 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and Push API
-        run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            --file ./backend/EduLink.Api/Dockerfile \
-            --tag ${{ env.API_IMAGE }}:${{ env.IMAGE_TAG }} \
-            --push \
-            ./backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/EduLink.Api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.API_IMAGE }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
 
   build-ai:
     name: Build & Push AI Service
@@ -67,13 +69,15 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and Push AI Service
-        run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            --file ./ai-service/Dockerfile \
-            --tag ${{ env.AI_IMAGE }}:${{ env.IMAGE_TAG }} \
-            --push \
-            ./ai-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ai-service
+          file: ./ai-service/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.AI_IMAGE }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha,scope=ai
+          cache-to: type=gha,mode=max,scope=ai
 
   deploy:
     name: Rollout Restart

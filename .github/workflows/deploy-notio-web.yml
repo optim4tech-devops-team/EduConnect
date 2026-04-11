@@ -80,5 +80,10 @@ jobs:
             --atomic \
             --timeout 3m
 
+      - name: Rollout restart to pick up new image
+        run: |
+          kubectl rollout restart deployment/notio-web -n vault
+          kubectl rollout status deployment/notio-web -n vault --timeout=120s
+
       - name: Show ingress
         run: kubectl get ingress notio-web -n vault -o wide

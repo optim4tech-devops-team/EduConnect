@@ -12,7 +12,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install dlib separately first using pre-built wheel where possible
+RUN pip install --no-cache-dir --prefer-binary dlib==19.24.2
+
+# Install remaining packages
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 COPY . .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
