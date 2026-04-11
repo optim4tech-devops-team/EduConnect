@@ -9,7 +9,7 @@ namespace EduLink.Api.Controllers;
 
 [ApiController]
 [Route("api/platform/schools")]
-[Authorize(Roles = "PlatformAdmin")]
+[Authorize(Roles = "Admin")]
 public class PlatformSchoolsController : ControllerBase
 {
     private readonly AppDbContext _db;
