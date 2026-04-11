@@ -1,23 +1,7 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { storage } from '@/utils/storage';
 import { authApi, AuthResponse, UserDto, LookupResponse } from '@/api/client';
 import { normalizePhoneNumber } from '@/utils/phone';
-
-const storage = {
-  getItem: async (key: string) => {
-    if (Platform.OS === 'web') return localStorage.getItem(key);
-    return storage.getItem(key);
-  },
-  setItem: async (key: string, value: string) => {
-    if (Platform.OS === 'web') { localStorage.setItem(key, value); return; }
-    return storage.setItem(key, value);
-  },
-  deleteItem: async (key: string) => {
-    if (Platform.OS === 'web') { localStorage.removeItem(key); return; }
-    return storage.deleteItem(key);
-  },
-};
 
 function mapToUserDto(flat: AuthResponse, phoneNumber: string): UserDto {
   return {

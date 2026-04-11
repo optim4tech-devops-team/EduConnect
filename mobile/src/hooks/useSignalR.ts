@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '@/utils/storage';
 import { MessageDto, NotificationDto } from '../api/client';
 
 const HUB_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace(
@@ -29,12 +29,12 @@ export function useSignalR(options: UseSignalROptions = {}): UseSignalRReturn {
 
     const connect = async () => {
       try {
-        const token = await SecureStore.getItemAsync('accessToken');
+        const token = await storage.getItem('accessToken');
 
         const connection = new signalR.HubConnectionBuilder()
           .withUrl(HUB_URL, {
             accessTokenFactory: async () => {
-              const t = await SecureStore.getItemAsync('accessToken');
+              const t = await storage.getItem('accessToken');
               return t ?? '';
             },
             transport: signalR.HttpTransportType.WebSockets,

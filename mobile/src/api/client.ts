@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '@/utils/storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000/api';
 
@@ -14,7 +14,7 @@ const apiClient: AxiosInstance = axios.create({
 // ─── Request interceptor: attach access token ───────────────────────────────
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const token = await SecureStore.getItemAsync('accessToken');
+    const token = await storage.getItem('accessToken');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -66,7 +66,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await SecureStore.getItemAsync('refreshToken');
+        const refreshToken = await storage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
 
         const { data } = await axios.post(`${API_URL}/auth/refresh`, {
@@ -76,8 +76,8 @@ apiClient.interceptors.response.use(
         const newAccessToken: string = data.accessToken;
         const newRefreshToken: string = data.refreshToken;
 
-        await SecureStore.setItemAsync('accessToken', newAccessToken);
-        await SecureStore.setItemAsync('refreshToken', newRefreshToken);
+        await storage.setItem('accessToken', newAccessToken);
+        await storage.setItem('refreshToken', newRefreshToken);
 
         processQueue(null, newAccessToken);
 
@@ -88,8 +88,8 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        await SecureStore.deleteItemAsync('accessToken');
-        await SecureStore.deleteItemAsync('refreshToken');
+        await storage.deleteItem('accessToken');
+        await storage.deleteItem('refreshToken');
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
