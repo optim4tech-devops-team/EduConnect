@@ -67,6 +67,21 @@ async function ensurePatched() {
   for (const fix of fixes) {
     await ensureFile(fix);
   }
+
+  const expoRouterNodeModulesPath = path.resolve(
+    process.cwd(),
+    'node_modules/expo-router/node_modules/@expo',
+  );
+  const metroRuntimeAliasPath = path.join(expoRouterNodeModulesPath, 'metro-runtime');
+  const metroRuntimeSourcePath = path.resolve(process.cwd(), 'node_modules/@expo/metro-runtime');
+
+  try {
+    await fs.access(metroRuntimeAliasPath);
+  } catch {
+    await fs.mkdir(expoRouterNodeModulesPath, { recursive: true });
+    await fs.symlink(metroRuntimeSourcePath, metroRuntimeAliasPath, 'dir');
+    console.log('Patched expo-router metro-runtime alias');
+  }
 }
 
 ensurePatched().catch((error) => {

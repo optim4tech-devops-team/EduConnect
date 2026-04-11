@@ -13,29 +13,52 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/authStore';
 import { isValidTurkishPhoneNumber, normalizePhoneNumber } from '@/utils/phone';
+import { getHomeRouteForRole } from '@/utils/roleRoutes';
 import Colors from '@/theme/colors';
+import { getFixtureOtpCode } from '@/mocks/authFixtures';
 
 type Step = 'phone' | 'otp';
 
 export default function LoginScreen() {
-  const { lookup, sendOtp, verifyOtp, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
+  const router = useRouter();
+  const params = useLocalSearchParams<{ fixtureRole?: string | string[]; redirect?: string | string[] }>();
+  const { lookup, sendOtp, verifyOtp, loginWithTestFixtureKey, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const otpRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const didAutoLoginRef = useRef(false);
+  const fixtureOtpCode = getFixtureOtpCode(phoneNumber);
 
   useEffect(() => {
     if (countdown <= 0) return;
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [countdown]);
+
+  useEffect(() => {
+    const fixtureRole = Array.isArray(params.fixtureRole)
+      ? params.fixtureRole[0]
+      : params.fixtureRole;
+
+    if (didAutoLoginRef.current || !fixtureRole) {
+      return;
+    }
+
+    if (fixtureRole !== 'parent' && fixtureRole !== 'teacher') {
+      return;
+    }
+
+    didAutoLoginRef.current = true;
+    handleFixtureLogin(fixtureRole);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.fixtureRole]);
 
   const animateStep = (fn: () => void) => {
     Animated.sequence([
@@ -81,104 +104,53 @@ export default function LoginScreen() {
     }
   };
 
-  const handlePasswordLogin = async () => {
-    if (!email || !password) return;
+  const handleFixtureLogin = async (role: 'parent' | 'teacher') => {
     clearError();
+    const redirectTarget = Array.isArray(params.redirect) ? params.redirect[0] : params.redirect;
     try {
-      await loginWithPassword(email.trim(), password);
+      if (role === 'parent') {
+        await loginWithTestFixtureKey('parent');
+        router.replace((redirectTarget as any) || getHomeRouteForRole('Parent'));
+        return;
+      }
+
+      await loginWithTestFixtureKey('teacher');
+      router.replace((redirectTarget as any) || getHomeRouteForRole('Teacher'));
     } catch {
       // error set by store
     }
   };
 
   return (
-    <LinearGradient
-      colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, Colors.TEAL_600]}
-      style={[styles.container, Platform.OS === 'web' && { minHeight: '100vh' as any }]}
-    >
+    <LinearGradient colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, Colors.TEAL_600]} style={styles.container}>
       <View style={[styles.circle, styles.circleTopRight]} />
       <View style={[styles.circle, styles.circleBottomLeft]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={[
-          styles.keyboardView,
-          Platform.OS === 'web' && { height: '100%' as any, maxWidth: 480, alignSelf: 'center' as any, width: '100%' },
-        ]}
+        style={styles.keyboardView}
       >
         <View style={styles.header}>
-          {schoolInfo?.schoolLogoUrl ? (
-            <Image source={{ uri: schoolInfo.schoolLogoUrl }} style={styles.schoolLogo} />
-          ) : (
+          <View style={styles.logoFrame}>
             <Image
-              source={require('../../../assets/notio-mark.png')}
-              style={styles.logoMark}
-              resizeMode="contain"
+              source={require('../../../assets/icon.png')}
+              style={styles.appLogo}
             />
-          )}
-          <Text style={styles.appName}>notio</Text>
+          </View>
+          <Text style={styles.appName}>Notio</Text>
           <Text style={styles.tagline}>
-            {step === 'phone' ? 'kaybolmayan notlar' : 'SMS kodunuzu girin'}
+            {step === 'phone' ? 'Onun dünyasına bir pencere.' : 'SMS kodunuzu girin'}
           </Text>
+          {schoolInfo?.schoolLogoUrl ? (
+            <View style={styles.schoolBadge}>
+              <Image source={{ uri: schoolInfo.schoolLogoUrl }} style={styles.schoolLogo} />
+              <Text style={styles.schoolBadgeText}>{schoolInfo.schoolName}</Text>
+            </View>
+          ) : null}
         </View>
 
         <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          {Platform.OS === 'web' ? (
-            <>
-              <Text style={styles.cardTitle}>Yönetici Girişi</Text>
-              <Text style={styles.cardSubtitle}>E-posta ve şifrenizi girin</Text>
-
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="ornek@okul.com"
-                  placeholderTextColor={Colors.TEXT_MUTED}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  returnKeyType="next"
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor={Colors.TEXT_MUTED}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  returnKeyType="done"
-                  onSubmitEditing={handlePasswordLogin}
-                />
-              </View>
-
-              {error ? (
-                <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle-outline" size={16} color={Colors.ERROR} />
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              ) : null}
-
-              <TouchableOpacity
-                style={[styles.button, (!email || !password || isLoading) && styles.buttonDisabled]}
-                onPress={handlePasswordLogin}
-                disabled={isLoading || !email || !password}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Text style={styles.buttonText}>Giriş Yap</Text>
-                    <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-                  </>
-                )}
-              </TouchableOpacity>
-            </>
-          ) : step === 'phone' ? (
+          {step === 'phone' ? (
             <>
               <Text style={styles.cardTitle}>Giriş Yap</Text>
               <Text style={styles.cardSubtitle}>Kayıtlı telefon numaranızı girin</Text>
@@ -218,6 +190,28 @@ export default function LoginScreen() {
                   </>
                 )}
               </TouchableOpacity>
+
+              <View style={styles.quickAccessSection}>
+                <Text style={styles.quickAccessTitle}>Geçici test girişleri</Text>
+                <View style={styles.quickAccessRow}>
+                  <TouchableOpacity
+                    style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
+                    onPress={() => handleFixtureLogin('parent')}
+                    disabled={isLoading}
+                  >
+                    <Ionicons name="people-outline" size={18} color={Colors.PRIMARY} />
+                    <Text style={styles.quickAccessButtonText}>Veli</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
+                    onPress={() => handleFixtureLogin('teacher')}
+                    disabled={isLoading}
+                  >
+                    <Ionicons name="school-outline" size={18} color={Colors.PRIMARY} />
+                    <Text style={styles.quickAccessButtonText}>Öğretmen</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </>
           ) : (
             <>
@@ -242,6 +236,10 @@ export default function LoginScreen() {
                   onSubmitEditing={handleVerify}
                 />
               </View>
+
+              {fixtureOtpCode ? (
+                <Text style={styles.fixtureHint}>Test kodu: {fixtureOtpCode}</Text>
+              ) : null}
 
               {error ? (
                 <View style={styles.errorBox}>
@@ -294,11 +292,11 @@ const styles = StyleSheet.create({
   circleBottomLeft: { width: 160, height: 160, bottom: 80, left: -55 },
   keyboardView: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
   header: { alignItems: 'center', marginBottom: 28 },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#fff',
+  logoFrame: {
+    width: 108,
+    height: 108,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -308,10 +306,27 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  schoolLogo: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, backgroundColor: '#fff' },
-  logoMark: { width: 100, height: 100, marginBottom: 12 },
-  appName: { fontSize: 36, fontWeight: '800', color: '#fff', letterSpacing: 1.5 },
+  schoolLogo: { width: 28, height: 28, borderRadius: 10, backgroundColor: '#fff' },
+  appLogo: { width: 88, height: 88, borderRadius: 28 },
+  appName: { fontSize: 36, fontWeight: '800', color: '#fff', letterSpacing: 1.2 },
   tagline: { fontSize: 15, color: 'rgba(255,255,255,0.80)', marginTop: 6 },
+  schoolBadge: {
+    marginTop: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  schoolBadgeText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -325,6 +340,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 22, fontWeight: '700', color: Colors.TEXT, marginBottom: 6 },
   cardSubtitle: { fontSize: 14, color: Colors.TEXT_MUTED, marginBottom: 24, lineHeight: 20 },
   maskedId: { fontWeight: '700', color: Colors.PRIMARY },
+  fixtureHint: { fontSize: 13, color: Colors.PRIMARY, fontWeight: '700', marginTop: -6, marginBottom: 12 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -368,4 +384,41 @@ const styles = StyleSheet.create({
   resendText: { color: Colors.PRIMARY, fontSize: 14, fontWeight: '600' },
   resendDisabled: { color: Colors.SLATE_300 },
   backText: { color: Colors.TEXT_MUTED, fontSize: 14 },
+  quickAccessSection: {
+    marginTop: 18,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: Colors.SECONDARY,
+  },
+  quickAccessTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.TEXT_MUTED,
+    marginBottom: 12,
+  },
+  quickAccessRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  quickAccessButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.SECONDARY,
+    backgroundColor: Colors.BACKGROUND,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+  },
+  quickAccessButtonDisabled: {
+    opacity: 0.55,
+  },
+  quickAccessButtonText: {
+    color: Colors.PRIMARY,
+    fontSize: 15,
+    fontWeight: '700',
+  },
 });

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "notio",
+    "name": "Notio",
     "slug": "notio",
     "version": "1.0.0",
     "newArchEnabled": true,
@@ -39,6 +39,15 @@
       "bundler": "metro"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0a2e26",
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "imageWidth": 152
+        }
+      ],
       [
         "expo-notifications",
         {
