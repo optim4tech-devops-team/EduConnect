@@ -25,12 +25,14 @@ type Step = 'phone' | 'otp';
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ fixtureRole?: string | string[]; redirect?: string | string[] }>();
-  const { lookup, sendOtp, verifyOtp, loginWithTestFixtureKey, schoolInfo, isLoading, error, clearError } = useAuthStore();
+  const { lookup, sendOtp, verifyOtp, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const otpRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const didAutoLoginRef = useRef(false);
@@ -104,6 +106,16 @@ export default function LoginScreen() {
     }
   };
 
+  const handlePasswordLogin = async () => {
+    if (!email || !password) return;
+    clearError();
+    try {
+      await loginWithPassword(email.trim(), password);
+    } catch {
+      // error set by store
+    }
+  };
+
   const handleFixtureLogin = async (role: 'parent' | 'teacher') => {
     clearError();
     const redirectTarget = Array.isArray(params.redirect) ? params.redirect[0] : params.redirect;
@@ -122,13 +134,19 @@ export default function LoginScreen() {
   };
 
   return (
-    <LinearGradient colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, Colors.TEAL_600]} style={styles.container}>
+    <LinearGradient
+      colors={[Colors.GRADIENT_START, Colors.GRADIENT_END, Colors.TEAL_600]}
+      style={[styles.container, Platform.OS === 'web' && { minHeight: '100vh' as any }]}
+    >
       <View style={[styles.circle, styles.circleTopRight]} />
       <View style={[styles.circle, styles.circleBottomLeft]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        style={[
+          styles.keyboardView,
+          Platform.OS === 'web' && { height: '100%' as any, maxWidth: 480, alignSelf: 'center' as any, width: '100%' },
+        ]}
       >
         <View style={styles.header}>
           <View style={styles.logoFrame}>
@@ -150,7 +168,62 @@ export default function LoginScreen() {
         </View>
 
         <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          {step === 'phone' ? (
+          {Platform.OS === 'web' ? (
+            <>
+              <Text style={styles.cardTitle}>Yönetici Girişi</Text>
+              <Text style={styles.cardSubtitle}>E-posta ve şifrenizi girin</Text>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="ornek@okul.com"
+                  placeholderTextColor={Colors.TEXT_MUTED}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor={Colors.TEXT_MUTED}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={handlePasswordLogin}
+                />
+              </View>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.ERROR} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.button, (!email || !password || isLoading) && styles.buttonDisabled]}
+                onPress={handlePasswordLogin}
+                disabled={isLoading || !email || !password}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Giriş Yap</Text>
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                  </>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : step === 'phone' ? (
             <>
               <Text style={styles.cardTitle}>Giriş Yap</Text>
               <Text style={styles.cardSubtitle}>Kayıtlı telefon numaranızı girin</Text>

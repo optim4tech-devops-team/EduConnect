@@ -28,6 +28,7 @@ interface AuthState {
   sendOtp: (identifier: string) => Promise<void>;
   verifyOtp: (identifier: string, code: string) => Promise<void>;
   loginWithPassword: (email: string, password: string) => Promise<void>;
+  loginWithTestFixtureKey: (role: 'parent' | 'teacher') => Promise<void>;
   logout: () => Promise<void>;
   setTokens: (access: string, refresh: string) => Promise<void>;
   clearError: () => void;
@@ -105,6 +106,24 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       set({ isLoading: false, error: 'Gecersiz veya suresi dolmus kod.' });
       throw new Error('Gecersiz veya suresi dolmus kod.');
+    }
+  },
+
+  loginWithTestFixtureKey: async (role: 'parent' | 'teacher') => {
+    const email = role === 'parent' ? 'veli.test@notio.test' : 'ogretmen.test@notio.test';
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await authApi.login({ email, password: 'Admin123!' });
+      const user = mapToUserDto(data, '');
+      await Promise.all([
+        storage.setItem('accessToken', data.accessToken),
+        storage.setItem('refreshToken', data.refreshToken),
+        storage.setItem('user', JSON.stringify(user)),
+      ]);
+      set({ user, accessToken: data.accessToken, isLoading: false });
+    } catch {
+      set({ isLoading: false, error: 'Test girişi başarısız.' });
+      throw new Error('Test girişi başarısız.');
     }
   },
 
