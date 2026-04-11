@@ -14,7 +14,8 @@ service:
   port: 80
 
 ingress:
-  host: notio.bidyno.com
+  host: platform-notio.bidyno.com
+  additionalHost: school.bidyno.com
   tlsSecret: wildcard-bidyno-tls
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "20m"

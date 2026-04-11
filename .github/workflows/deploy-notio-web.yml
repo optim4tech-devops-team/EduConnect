@@ -14,7 +14,7 @@ env:
   REGISTRY: registry.bibanka.com
   WEB_IMAGE: registry.bibanka.com/test/notio-web
   IMAGE_TAG: 1.0.0
-  WEB_API_URL: https://notio.bidyno.com/api
+  WEB_API_URL: https://platform-notio.bidyno.com/api
 
 jobs:
   build-web:
@@ -65,6 +65,12 @@ jobs:
 
       - name: Ensure vault namespace exists
         run: kubectl create namespace vault --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Remove old kubectl-managed resources
+        run: |
+          kubectl delete deployment notio-web -n vault --ignore-not-found
+          kubectl delete service notio-web -n vault --ignore-not-found
+          kubectl delete ingress notio-web -n vault --ignore-not-found
 
       - name: Helm upgrade --install
         run: |

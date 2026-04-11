@@ -12,9 +12,34 @@ spec:
   tls:
     - hosts:
         - {{ .Values.ingress.host }}
+        - {{ .Values.ingress.additionalHost }}
       secretName: {{ .Values.ingress.tlsSecret }}
   rules:
     - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.ingress.apiBackend.service }}
+                port:
+                  number: {{ .Values.ingress.apiBackend.port }}
+          - path: /hubs
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.ingress.apiBackend.service }}
+                port:
+                  number: {{ .Values.ingress.apiBackend.port }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port:
+                  number: {{ .Values.service.port }}
+    - host: {{ .Values.ingress.additionalHost }}
       http:
         paths:
           - path: /api

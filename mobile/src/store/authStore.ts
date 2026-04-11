@@ -1,7 +1,23 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { authApi, AuthResponse, UserDto, LookupResponse } from '@/api/client';
 import { normalizePhoneNumber } from '@/utils/phone';
+
+const storage = {
+  getItem: async (key: string) => {
+    if (Platform.OS === 'web') return localStorage.getItem(key);
+    return storage.getItem(key);
+  },
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === 'web') { localStorage.setItem(key, value); return; }
+    return storage.setItem(key, value);
+  },
+  deleteItem: async (key: string) => {
+    if (Platform.OS === 'web') { localStorage.removeItem(key); return; }
+    return storage.deleteItem(key);
+  },
+};
 
 function mapToUserDto(flat: AuthResponse, phoneNumber: string): UserDto {
   return {
@@ -44,8 +60,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       set({ isLoading: true });
       const [accessToken, userJson] = await Promise.all([
-        SecureStore.getItemAsync('accessToken'),
-        SecureStore.getItemAsync('user'),
+        storage.getItem('accessToken'),
+        storage.getItem('user'),
       ]);
 
       if (accessToken && userJson) {
@@ -55,9 +71,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ isLoading: false, isInitialized: true });
       }
     } catch {
-      await SecureStore.deleteItemAsync('accessToken');
-      await SecureStore.deleteItemAsync('refreshToken');
-      await SecureStore.deleteItemAsync('user');
+      await storage.deleteItem('accessToken');
+      await storage.deleteItem('refreshToken');
+      await storage.deleteItem('user');
       set({ isLoading: false, isInitialized: true, user: null, accessToken: null });
     }
   },
@@ -95,9 +111,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = mapToUserDto(data, normalizedPhone);
 
       await Promise.all([
-        SecureStore.setItemAsync('accessToken', data.accessToken),
-        SecureStore.setItemAsync('refreshToken', data.refreshToken),
-        SecureStore.setItemAsync('user', JSON.stringify(user)),
+        storage.setItem('accessToken', data.accessToken),
+        storage.setItem('refreshToken', data.refreshToken),
+        storage.setItem('user', JSON.stringify(user)),
       ]);
 
       set({ user, accessToken: data.accessToken, isLoading: false });
@@ -114,17 +130,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       // ignore
     } finally {
       await Promise.all([
-        SecureStore.deleteItemAsync('accessToken'),
-        SecureStore.deleteItemAsync('refreshToken'),
-        SecureStore.deleteItemAsync('user'),
+        storage.deleteItem('accessToken'),
+        storage.deleteItem('refreshToken'),
+        storage.deleteItem('user'),
       ]);
       set({ user: null, accessToken: null, schoolInfo: null });
     }
   },
 
   setTokens: async (access: string, refresh: string) => {
-    await SecureStore.setItemAsync('accessToken', access);
-    await SecureStore.setItemAsync('refreshToken', refresh);
+    await storage.setItem('accessToken', access);
+    await storage.setItem('refreshToken', refresh);
     set({ accessToken: access });
   },
 
