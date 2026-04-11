@@ -16,6 +16,24 @@ mobile/.metro-cache/
 mobile/dist/
 mobile/.env
 
+# Android build artifacts
+mobile/android/.gradle/
+mobile/android/.kotlin/
+mobile/android/app/.cxx/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/app/debug.keystore
+
+# Admin panel build artifacts
+admin-panel/dist/
+admin-panel/tsconfig.tsbuildinfo
+
+# QA test results
+qa-suite/test-results/
+
+# IDE
+.idea/
+
 # Python
 ai-service/__pycache__/
 ai-service/*.pyc

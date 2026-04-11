@@ -187,7 +187,9 @@
       "Bash(echo \"npm install PID: $!\")",
       "Bash(npm run:*)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(git merge:*)",
+      "Bash(git checkout:*)"
     ],
     "additionalDirectories": [
       "/Users/sezerdarendeli/Documents/GitHub/EduConnect/mobile/node_modules",
