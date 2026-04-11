@@ -1,0 +1,29 @@
+image:
+  repository: registry.bibanka.com/test/notio-web
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: reg-hub-secret
+
+namespace: vault
+
+replicaCount: 1
+
+service:
+  port: 80
+
+ingress:
+  host: notio.bidyno.com
+  tlsSecret: wildcard-bidyno-tls
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+  apiBackend:
+    service: edulink-api
+    port: 80
+
+readinessProbe:
+  path: /healthz
+  initialDelaySeconds: 10
+  periodSeconds: 10

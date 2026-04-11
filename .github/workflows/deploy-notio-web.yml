@@ -60,16 +60,19 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
       - name: Ensure vault namespace exists
         run: kubectl create namespace vault --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Apply web admin manifest
-        run: kubectl apply -f k8s/notio-web.yaml
-
-      - name: Rollout restart deployment
+      - name: Helm upgrade --install
         run: |
-          kubectl rollout restart deployment/notio-web -n vault
-          kubectl rollout status deployment/notio-web -n vault --timeout=180s
+          helm upgrade --install notio-web ./helm/notio-web \
+            --namespace vault \
+            --set image.tag=${{ env.IMAGE_TAG }} \
+            --atomic \
+            --timeout 3m
 
       - name: Show ingress
         run: kubectl get ingress notio-web -n vault -o wide
