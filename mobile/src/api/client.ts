@@ -457,6 +457,64 @@ export const adminApi = {
     apiClient.put<UserDto>(`/admin/teachers/${id}`, data),
 };
 
+// ─── Platform types ───────────────────────────────────────────────────────────
+export interface PlatformSchoolDto {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  logoUrl?: string;
+  isActive: boolean;
+  plan: string;
+  maxStudents: number;
+  maxTeachers: number;
+  subscriptionEndsAt?: string;
+  primaryAdminUserId?: string;
+  primaryAdminName?: string;
+  primaryAdminPhone?: string;
+  teacherCount: number;
+  parentCount: number;
+  studentCount: number;
+  classCount: number;
+  createdAt: string;
+}
+
+export interface CreatePlatformSchoolDto {
+  name: string;
+  address?: string;
+  phone?: string;
+  logoUrl?: string;
+  isActive: boolean;
+  plan: string;
+  maxStudents: number;
+  maxTeachers: number;
+  subscriptionEndsAt?: string;
+  primaryAdmin?: {
+    fullName: string;
+    phone: string;
+    email?: string;
+    avatarUrl?: string;
+  };
+}
+
+export const platformApi = {
+  listSchools: (search?: string, isActive?: boolean) =>
+    apiClient.get<PlatformSchoolDto[]>('/platform/schools', {
+      params: { search, isActive },
+    }),
+  getSchool: (id: string) =>
+    apiClient.get<PlatformSchoolDto>(`/platform/schools/${id}`),
+  createSchool: (data: CreatePlatformSchoolDto) =>
+    apiClient.post<{ id: string; name: string; plan: string; isActive: boolean }>(
+      '/platform/schools',
+      data,
+    ),
+  updateSchool: (id: string, data: Partial<CreatePlatformSchoolDto>) =>
+    apiClient.put(`/platform/schools/${id}`, data),
+  assignAdmin: (id: string, data: { fullName: string; phone: string; email?: string; avatarUrl?: string }) =>
+    apiClient.post(`/platform/schools/${id}/assign-admin`, data),
+};
+
 export const formApi = {
   getTemplates: () => apiClient.get<FormTemplateDto[]>('/forms/templates'),
   getTemplate: (id: string) => apiClient.get<FormTemplateDto>(`/forms/templates/${id}`),
