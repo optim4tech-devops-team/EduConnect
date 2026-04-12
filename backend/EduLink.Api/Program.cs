@@ -153,101 +153,160 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 
-    // Seed default school and demo users if they don't exist
-    if (!db.Schools.Any())
-    {
-        var school = new EduLink.Domain.Entities.School
-        {
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Name = "EduLink Demo Okul",
-            CreatedAt = DateTime.UtcNow
-        };
-        db.Schools.Add(school);
-        db.SaveChanges();
-    }
-
-    if (!db.Schools.Any(s => s.Name == "Küçük Sıralar Ana Okulları"))
+    // ── Platform school: single anchor for platform admin ────────────────
+    var platformSchoolId = Guid.Parse("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
+    if (!db.Schools.Any(s => s.Id == platformSchoolId))
     {
         db.Schools.Add(new EduLink.Domain.Entities.School
         {
-            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Name = "Küçük Sıralar Ana Okulları",
-            Address = "Küçük Sıralar Kampüsü",
-            Phone = "03920000000",
+            Id = platformSchoolId,
+            Name = "Notio Platform",
+            IsActive = true,
             CreatedAt = DateTime.UtcNow
         });
         db.SaveChanges();
     }
 
+    // ── Platform admin user ──────────────────────────────────────────────
     if (!db.Users.Any(u => u.Email == "admin@edulink.com"))
     {
-        var schoolId = db.Schools.First().Id;
-        var admin = new EduLink.Domain.Entities.User
+        db.Users.Add(new EduLink.Domain.Entities.User
         {
             Id = Guid.NewGuid(),
             FullName = "Admin Kullanıcı",
             Email = "admin@edulink.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
             Role = EduLink.Domain.Enums.UserRole.Admin,
-            SchoolId = schoolId,
+            SchoolId = platformSchoolId,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
-        };
-        db.Users.Add(admin);
+        });
         db.SaveChanges();
     }
-
-    var demoSchoolId = db.Schools.First(s => s.Name == "Küçük Sıralar Ana Okulları").Id;
-
-    if (!db.Users.Any(u => u.Email == "elif.toksoy@notio.test"))
+    else
     {
-        db.Users.Add(new EduLink.Domain.Entities.User
+        // Ensure admin is on platform school (not a demo school)
+        var adminUser = db.Users.First(u => u.Email == "admin@edulink.com");
+        if (adminUser.SchoolId != platformSchoolId)
         {
-            Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-            FullName = "Elif Toksoy",
-            Email = "elif.toksoy@notio.test",
-            Phone = "05442698494",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-            Role = EduLink.Domain.Enums.UserRole.Teacher,
-            SchoolId = demoSchoolId,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        });
+            adminUser.SchoolId = platformSchoolId;
+            db.SaveChanges();
+        }
     }
 
-    if (!db.Users.Any(u => u.Email == "sezer.darendeli@notio.test"))
+    // ── One-time cleanup: remove demo schools and test users ─────────────
+    var demoSchoolIds = new[]
     {
-        db.Users.Add(new EduLink.Domain.Entities.User
-        {
-            Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
-            FullName = "Sezer Darendeli",
-            Email = "sezer.darendeli@notio.test",
-            Phone = "05337102007",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-            Role = EduLink.Domain.Enums.UserRole.Parent,
-            SchoolId = demoSchoolId,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        });
-    }
-
-    if (!db.Users.Any(u => u.Email == "ogrenci.isleri@notio.test"))
+        Guid.Parse("00000000-0000-0000-0000-000000000001"),
+        Guid.Parse("11111111-1111-1111-1111-111111111111"),
+    };
+    var hasDemoSchools = db.Schools.Any(s => demoSchoolIds.Contains(s.Id));
+    if (hasDemoSchools)
     {
-        db.Users.Add(new EduLink.Domain.Entities.User
-        {
-            Id = Guid.Parse("77777777-7777-7777-7777-777777777777"),
-            FullName = "Öğrenci İşleri",
-            Email = "ogrenci.isleri@notio.test",
-            Phone = "05330000002",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-            Role = EduLink.Domain.Enums.UserRole.StudentAffairs,
-            SchoolId = demoSchoolId,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        });
-    }
+        // Delete in dependency order to satisfy FK Restrict constraints
+        db.Database.ExecuteSqlRaw(@"
+            DO $$
+            DECLARE demo_ids UUID[] := ARRAY[
+                '00000000-0000-0000-0000-000000000001'::UUID,
+                '11111111-1111-1111-1111-111111111111'::UUID
+            ];
+            BEGIN
+                -- Messages / Conversations (no school FK, but clean up via users)
+                DELETE FROM ""Messages"" WHERE ""SenderId"" IN (
+                    SELECT ""Id"" FROM ""Users"" WHERE ""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""ConversationParticipants"" WHERE ""UserId"" IN (
+                    SELECT ""Id"" FROM ""Users"" WHERE ""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""Conversations"" WHERE ""Id"" NOT IN (
+                    SELECT DISTINCT ""ConversationId"" FROM ""ConversationParticipants"");
 
-    db.SaveChanges();
+                -- Posts and related
+                DELETE FROM ""PostStudentTags"" WHERE ""PostId"" IN (
+                    SELECT p.""Id"" FROM ""Posts"" p
+                    JOIN ""Classes"" c ON c.""Id"" = p.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""PostMedias"" WHERE ""PostId"" IN (
+                    SELECT p.""Id"" FROM ""Posts"" p
+                    JOIN ""Classes"" c ON c.""Id"" = p.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""Posts"" WHERE ""ClassId"" IN (
+                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids));
+
+                -- Assignments / Submissions
+                DELETE FROM ""Submissions"" WHERE ""AssignmentId"" IN (
+                    SELECT a.""Id"" FROM ""Assignments"" a
+                    JOIN ""Classes"" c ON c.""Id"" = a.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""Assignments"" WHERE ""ClassId"" IN (
+                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids));
+
+                -- Attendances / DailyReports (via student)
+                DELETE FROM ""Attendances"" WHERE ""ClassId"" IN (
+                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""DailyReports"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+
+                -- StudentObservations, StudentBadges, StudentFaceEncodings, StudentParents
+                DELETE FROM ""StudentObservations"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""StudentBadges"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""StudentFaceEncodings"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""StudentParents"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+
+                -- FormSubmissions
+                DELETE FROM ""FormSubmissionValues"" WHERE ""FormSubmissionId"" IN (
+                    SELECT fs.""Id"" FROM ""FormSubmissions"" fs
+                    JOIN ""Students"" s ON s.""Id"" = fs.""StudentId""
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""FormSubmissions"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = ANY(demo_ids));
+
+                -- Students, ClassRoutineRules
+                DELETE FROM ""Students"" WHERE ""ClassId"" IN (
+                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids));
+                DELETE FROM ""ClassRoutineRules"" WHERE ""SchoolId"" = ANY(demo_ids);
+
+                -- Classes
+                UPDATE ""Classes"" SET ""TeacherId"" = NULL WHERE ""SchoolId"" = ANY(demo_ids);
+                DELETE FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids);
+
+                -- School-level records
+                DELETE FROM ""Badges"" WHERE ""SchoolId"" = ANY(demo_ids);
+                DELETE FROM ""Announcements"" WHERE ""SchoolId"" = ANY(demo_ids);
+                DELETE FROM ""SchoolCalendarEvents"" WHERE ""SchoolId"" = ANY(demo_ids);
+                DELETE FROM ""MealPlanEntries"" WHERE ""SchoolId"" = ANY(demo_ids);
+                DELETE FROM ""StudentObservations"" WHERE ""SchoolId"" = ANY(demo_ids);
+                DELETE FROM ""ComplianceAcceptances"" WHERE ""SchoolId"" = ANY(demo_ids);
+                DELETE FROM ""ComplianceDocuments"" WHERE ""SchoolId"" = ANY(demo_ids);
+                DELETE FROM ""OtpCodes"" WHERE TRUE;
+
+                -- Users in demo schools (except platform admin)
+                DELETE FROM ""Users""
+                WHERE ""SchoolId"" = ANY(demo_ids)
+                  AND ""Email"" != 'admin@edulink.com';
+
+                -- Schools
+                UPDATE ""Schools"" SET ""PrimaryAdminUserId"" = NULL
+                WHERE ""Id"" = ANY(demo_ids);
+                DELETE FROM ""Schools"" WHERE ""Id"" = ANY(demo_ids);
+            END $$;
+        ");
+    }
 }
 
 // ─── Middleware Pipeline ─────────────────────────────────────────────────
