@@ -62,10 +62,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly",   p => p.RequireRole("Admin"));
-    options.AddPolicy("TeacherOnly", p => p.RequireRole("Teacher"));
-    options.AddPolicy("ParentOnly",  p => p.RequireRole("Parent"));
-    options.AddPolicy("AdminOrTeacher", p => p.RequireRole("Admin", "Teacher"));
+    options.AddPolicy("AdminOnly",        p => p.RequireRole("Admin"));
+    options.AddPolicy("TeacherOnly",      p => p.RequireRole("Teacher"));
+    options.AddPolicy("ParentOnly",       p => p.RequireRole("Parent"));
+    options.AddPolicy("SchoolAdminOnly",  p => p.RequireRole("SchoolAdmin"));
+    options.AddPolicy("AdminOrTeacher",   p => p.RequireRole("Admin", "Teacher"));
+    options.AddPolicy("SchoolAdminOrTeacher", p => p.RequireRole("SchoolAdmin", "Teacher"));
 });
 
 // ─── CORS ─────────────────────────────────────────────────────────────────
