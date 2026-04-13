@@ -152,7 +152,8 @@ spec:
         - name: reg-hub-secret
       containers:
         - name: edulink-ai
-          image: registry.bibanka.com/test/edulink-ai:1.0.0
+          image: registry.bibanka.com/test/edulink-ai:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:
@@ -219,7 +220,8 @@ spec:
           command: ['sh', '-c', 'until nc -z edulink-redis 6379; do echo waiting for redis; sleep 2; done']
       containers:
         - name: edulink-api
-          image: registry.bibanka.com/test/edulink-api:1.0.0
+          image: registry.bibanka.com/test/edulink-api:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           env:

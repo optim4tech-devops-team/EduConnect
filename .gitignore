@@ -5,9 +5,8 @@
 *.suo
 .vs/
 
-# EF Core Migrations (Designer files are generated artifacts)
-**/*.Designer.cs
-**/Migrations/*Designer.cs
+# EF Core Migrations — Designer files are needed for migration discovery
+# **/*.Designer.cs  ← removed: EF cannot find migrations without these
 
 # Node/Mobile
 mobile/node_modules/

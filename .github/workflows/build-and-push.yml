@@ -60,6 +60,12 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply manifest
+        run: kubectl apply -f k8s/namespace-vault-edulink.yaml
+
       - name: Update image and rollout
         run: |
           kubectl set image deployment/edulink-api \
@@ -110,6 +116,12 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply manifest
+        run: kubectl apply -f k8s/namespace-vault-edulink.yaml
 
       - name: Update image and rollout
         run: |
