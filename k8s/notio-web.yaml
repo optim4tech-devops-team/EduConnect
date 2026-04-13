@@ -52,10 +52,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - notio.bidyno.com
+        - platform-notio.bidyno.com
       secretName: wildcard-bidyno-tls
   rules:
-    - host: notio.bidyno.com
+    - host: platform-notio.bidyno.com
       http:
         paths:
           - path: /api
