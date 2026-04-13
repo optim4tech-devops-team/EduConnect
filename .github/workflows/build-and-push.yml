@@ -14,7 +14,6 @@ env:
   REGISTRY: registry.bibanka.com
   API_IMAGE: registry.bibanka.com/test/edulink-api
   AI_IMAGE: registry.bibanka.com/test/edulink-ai
-  IMAGE_TAG: 1.0.0
 
 jobs:
   build-api:
@@ -23,14 +22,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Check secrets
-        run: |
-          echo "USERNAME length: ${#REGISTRY_USERNAME}"
-          echo "PASSWORD length: ${#REGISTRY_PASSWORD}"
-        env:
-          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Login to Registry
         run: echo "$REGISTRY_PASSWORD" | docker login registry.bibanka.com -u "$REGISTRY_USERNAME" --password-stdin
@@ -48,7 +39,9 @@ jobs:
           file: ./backend/EduLink.Api/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ env.API_IMAGE }}:${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ env.API_IMAGE }}:${{ github.sha }}
+            ${{ env.API_IMAGE }}:latest
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
@@ -75,12 +68,14 @@ jobs:
           file: ./ai-service/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ env.AI_IMAGE }}:${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ env.AI_IMAGE }}:${{ github.sha }}
+            ${{ env.AI_IMAGE }}:latest
           cache-from: type=gha,scope=ai
           cache-to: type=gha,mode=max,scope=ai
 
   deploy:
-    name: Rollout Restart
+    name: Deploy to Kubernetes
     runs-on: ubuntu-latest
     needs: [build-api, build-ai]
     steps:
@@ -93,9 +88,13 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Rollout restart deployments
+      - name: Update image and rollout
         run: |
-          kubectl rollout restart deployment/edulink-api -n vault
-          kubectl rollout restart deployment/edulink-ai -n vault
-          kubectl rollout status deployment/edulink-api -n vault --timeout=120s
-          kubectl rollout status deployment/edulink-ai -n vault --timeout=120s
+          kubectl set image deployment/edulink-api \
+            edulink-api=${{ env.API_IMAGE }}:${{ github.sha }} \
+            -n vault
+          kubectl set image deployment/edulink-ai \
+            edulink-ai=${{ env.AI_IMAGE }}:${{ github.sha }} \
+            -n vault
+          kubectl rollout status deployment/edulink-api -n vault --timeout=180s
+          kubectl rollout status deployment/edulink-ai -n vault --timeout=180s
