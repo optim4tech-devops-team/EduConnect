@@ -1,7 +1,8 @@
 FROM python:3.11-slim
 
-# Minimal system deps — no cmake/compilation needed when using pre-built wheels
+# Build tools needed to compile dlib from source
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     libglib2.0-0 \
     libgl1 \
     libgomp1 \
@@ -10,8 +11,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY requirements.txt .
 
-# dlib 19.24.4 ships pre-built manylinux wheels for Python 3.11 — no compilation
-RUN pip install --no-cache-dir --prefer-binary dlib==19.24.4
+# cmake pip package provides the cmake binary without a system install
+RUN pip install --no-cache-dir cmake
+
+# dlib compiles from source; GHA layer cache keeps subsequent builds fast
+RUN pip install --no-cache-dir dlib==19.24.4
+
 RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 COPY . .
