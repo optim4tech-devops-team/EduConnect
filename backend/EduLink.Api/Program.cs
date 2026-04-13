@@ -335,3 +335,4 @@ app.MapHub<ChatHub>("/hubs/chat");
 app.UseHangfireDashboard("/hangfire");
 
 app.Run();
+
