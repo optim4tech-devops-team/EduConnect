@@ -17,7 +17,8 @@ spec:
         - name: reg-hub-secret
       containers:
         - name: notio-web
-          image: registry.bibanka.com/test/notio-web:1.0.0
+          image: registry.bibanka.com/test/notio-web:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           readinessProbe:

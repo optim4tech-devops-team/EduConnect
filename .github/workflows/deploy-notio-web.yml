@@ -11,9 +11,8 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY: registry.bibanka.com
+  REGISTRY:  registry.bibanka.com
   WEB_IMAGE: registry.bibanka.com/test/notio-web
-  IMAGE_TAG: 1.0.0
   WEB_API_URL: https://platform-notio.bidyno.com/api
 
 jobs:
@@ -34,19 +33,24 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and Push Web Admin
-        run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            --file ./mobile/Dockerfile.web \
-            --build-arg EXPO_PUBLIC_API_URL=${{ env.WEB_API_URL }} \
-            --tag ${{ env.WEB_IMAGE }}:${{ env.IMAGE_TAG }} \
-            --push \
-            ./mobile
+        uses: docker/build-push-action@v5
+        with:
+          context: ./mobile
+          file: ./mobile/Dockerfile.web
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            EXPO_PUBLIC_API_URL=${{ env.WEB_API_URL }}
+          tags: |
+            ${{ env.WEB_IMAGE }}:${{ github.sha }}
+            ${{ env.WEB_IMAGE }}:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
 
   deploy-web:
     name: Deploy Web Admin To Vault
     runs-on: ubuntu-latest
-    needs: [build-web]
+    needs: build-web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,30 +64,13 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-
-      - name: Ensure vault namespace exists
-        run: kubectl create namespace vault --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Remove old kubectl-managed resources
+      - name: Apply manifest
         run: |
-          kubectl delete deployment notio-web -n vault --ignore-not-found
-          kubectl delete service notio-web -n vault --ignore-not-found
-          kubectl delete ingress notio-web -n vault --ignore-not-found
+          kubectl apply -f k8s/notio-web.yaml
 
-      - name: Helm upgrade --install
+      - name: Update image and rollout
         run: |
-          helm upgrade --install notio-web ./helm/notio-web \
-            --namespace vault \
-            --set image.tag=${{ env.IMAGE_TAG }} \
-            --atomic \
-            --timeout 3m
-
-      - name: Rollout restart to pick up new image
-        run: |
-          kubectl rollout restart deployment/notio-web -n vault
+          kubectl set image deployment/notio-web \
+            notio-web=${{ env.WEB_IMAGE }}:${{ github.sha }} \
+            -n vault
           kubectl rollout status deployment/notio-web -n vault --timeout=120s
-
-      - name: Show ingress
-        run: kubectl get ingress notio-web -n vault -o wide
