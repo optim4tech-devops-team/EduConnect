@@ -17,4 +17,5 @@ public class Student
     public ICollection<DailyReport> DailyReports { get; set; } = new List<DailyReport>();
     public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
     public ICollection<StudentBadge> StudentBadges { get; set; } = new List<StudentBadge>();
+    public ICollection<StudentObservation> StudentObservations { get; set; } = new List<StudentObservation>();
 }

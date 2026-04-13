@@ -12,5 +12,15 @@ public class StudentObservation
     public string Title { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
     public string Category { get; set; } = "positive_observation";
+    public string Type { get; set; } = string.Empty;
+    public string Status { get; set; } = "open";
+    public string? TeacherObservation { get; set; }
+    public string? SchoolAction { get; set; }
+    public string? HomeSuggestion { get; set; }
+    public string? ParentResponse { get; set; }
+    public string? TeacherClosureNote { get; set; }
+    public DateTime? FollowUpDate { get; set; }
+    public DateTime? ParentRespondedAt { get; set; }
+    public DateTime? ResolvedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

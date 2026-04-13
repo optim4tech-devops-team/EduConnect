@@ -93,6 +93,7 @@ public class AppDbContext : DbContext
             entity.HasOne(c => c.Teacher)
                   .WithMany()
                   .HasForeignKey(c => c.TeacherId)
+                  .IsRequired(false)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
