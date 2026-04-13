@@ -90,6 +90,10 @@ var cloudinaryAccount = new Account(
 );
 builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 
+// ─── Email ────────────────────────────────────────────────────────────────
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+
 // ─── Application Services ────────────────────────────────────────────────
 builder.Services.Configure<SmsOptions>(builder.Configuration.GetSection("Sms"));
 builder.Services.AddSingleton<MockSmsService>();

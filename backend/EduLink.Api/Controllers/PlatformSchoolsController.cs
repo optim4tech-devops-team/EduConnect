@@ -1,9 +1,12 @@
+using EduLink.Application.Services;
 using EduLink.Domain.Entities;
 using EduLink.Domain.Enums;
 using EduLink.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace EduLink.Api.Controllers;
 
@@ -13,10 +16,12 @@ namespace EduLink.Api.Controllers;
 public class PlatformSchoolsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IEmailService _email;
 
-    public PlatformSchoolsController(AppDbContext db)
+    public PlatformSchoolsController(AppDbContext db, IEmailService email)
     {
         _db = db;
+        _email = email;
     }
 
     [HttpGet]
@@ -51,12 +56,12 @@ public class PlatformSchoolsController : ControllerBase
                 s.MaxTeachers,
                 s.SubscriptionEndsAt,
                 s.PrimaryAdminUserId,
-                PrimaryAdminName = s.PrimaryAdmin != null ? s.PrimaryAdmin.FullName : null,
+                PrimaryAdminName  = s.PrimaryAdmin != null ? s.PrimaryAdmin.FullName : null,
                 PrimaryAdminPhone = s.PrimaryAdmin != null ? s.PrimaryAdmin.Phone : null,
-                TeacherCount = s.Users.Count(u => u.Role == UserRole.Teacher && u.IsActive),
-                ParentCount = s.Users.Count(u => u.Role == UserRole.Parent && u.IsActive),
-                StudentCount = s.Classes.SelectMany(c => c.Students).Count(st => st.IsActive),
-                ClassCount = s.Classes.Count,
+                TeacherCount  = s.Users.Count(u => u.Role == UserRole.Teacher  && u.IsActive),
+                ParentCount   = s.Users.Count(u => u.Role == UserRole.Parent   && u.IsActive),
+                StudentCount  = s.Classes.SelectMany(c => c.Students).Count(st => st.IsActive),
+                ClassCount    = s.Classes.Count,
                 s.CreatedAt
             })
             .ToListAsync();
@@ -90,11 +95,11 @@ public class PlatformSchoolsController : ControllerBase
                     s.PrimaryAdmin.Phone,
                     s.PrimaryAdmin.IsActive
                 },
-                TeacherCount = s.Users.Count(u => u.Role == UserRole.Teacher && u.IsActive),
-                ParentCount = s.Users.Count(u => u.Role == UserRole.Parent && u.IsActive),
+                TeacherCount    = s.Users.Count(u => u.Role == UserRole.Teacher    && u.IsActive),
+                ParentCount     = s.Users.Count(u => u.Role == UserRole.Parent     && u.IsActive),
                 SchoolAdminCount = s.Users.Count(u => u.Role == UserRole.SchoolAdmin && u.IsActive),
-                StudentCount = s.Classes.SelectMany(c => c.Students).Count(st => st.IsActive),
-                ClassCount = s.Classes.Count,
+                StudentCount    = s.Classes.SelectMany(c => c.Students).Count(st => st.IsActive),
+                ClassCount      = s.Classes.Count,
                 s.CreatedAt
             })
             .FirstOrDefaultAsync();
@@ -105,30 +110,48 @@ public class PlatformSchoolsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateSchool([FromBody] CreatePlatformSchoolRequest request)
     {
+        // Primary admin is now required
+        if (request.PrimaryAdmin is null)
+            return BadRequest(new { message = "Okul yöneticisi bilgileri zorunludur." });
+
+        if (string.IsNullOrWhiteSpace(request.PrimaryAdmin.FullName))
+            return BadRequest(new { message = "Yönetici adı soyadı zorunludur." });
+
+        if (string.IsNullOrWhiteSpace(request.PrimaryAdmin.Email))
+            return BadRequest(new { message = "Yönetici e-posta adresi zorunludur." });
+
+        if (string.IsNullOrWhiteSpace(request.PrimaryAdmin.Phone))
+            return BadRequest(new { message = "Yönetici telefon numarası zorunludur." });
+
         var school = new School
         {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Address = request.Address?.Trim(),
-            Phone = NormalizePhoneNumber(request.Phone),
-            LogoUrl = request.LogoUrl,
-            IsActive = request.IsActive,
-            Plan = string.IsNullOrWhiteSpace(request.Plan) ? "starter" : request.Plan.Trim().ToLowerInvariant(),
-            MaxStudents = request.MaxStudents,
-            MaxTeachers = request.MaxTeachers,
+            Id               = Guid.NewGuid(),
+            Name             = request.Name.Trim(),
+            Address          = request.Address?.Trim(),
+            Phone            = NormalizePhoneNumber(request.Phone),
+            LogoUrl          = request.LogoUrl,
+            IsActive         = request.IsActive,
+            Plan             = string.IsNullOrWhiteSpace(request.Plan) ? "starter" : request.Plan.Trim().ToLowerInvariant(),
+            MaxStudents      = request.MaxStudents,
+            MaxTeachers      = request.MaxTeachers,
             SubscriptionEndsAt = request.SubscriptionEndsAt,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt        = DateTime.UtcNow
         };
 
         _db.Schools.Add(school);
         await _db.SaveChangesAsync();
 
-        if (request.PrimaryAdmin is not null)
-        {
-            var assignResult = await UpsertPrimarySchoolAdminAsync(school, request.PrimaryAdmin);
-            if (assignResult is not null)
-                return assignResult;
-        }
+        var tempPassword = GenerateTemporaryPassword();
+        var assignResult = await UpsertPrimarySchoolAdminAsync(school, request.PrimaryAdmin, tempPassword);
+        if (assignResult is not null)
+            return assignResult;
+
+        // Send welcome email with credentials
+        _ = SendWelcomeEmailAsync(
+            toEmail:    request.PrimaryAdmin.Email.Trim(),
+            toName:     request.PrimaryAdmin.FullName.Trim(),
+            schoolName: school.Name,
+            tempPassword: tempPassword);
 
         return CreatedAtAction(nameof(GetSchool), new { id = school.Id }, new
         {
@@ -146,27 +169,18 @@ public class PlatformSchoolsController : ControllerBase
         if (school is null)
             return NotFound();
 
-        if (request.Name is not null)
-            school.Name = request.Name.Trim();
-        if (request.Address is not null)
-            school.Address = request.Address.Trim();
-        if (request.Phone is not null)
-            school.Phone = NormalizePhoneNumber(request.Phone);
-        if (request.LogoUrl is not null)
-            school.LogoUrl = request.LogoUrl;
-        if (request.IsActive.HasValue)
-            school.IsActive = request.IsActive.Value;
-        if (request.Plan is not null)
-            school.Plan = request.Plan.Trim().ToLowerInvariant();
-        if (request.MaxStudents.HasValue)
-            school.MaxStudents = request.MaxStudents.Value;
-        if (request.MaxTeachers.HasValue)
-            school.MaxTeachers = request.MaxTeachers.Value;
-        if (request.SubscriptionEndsAt.HasValue)
-            school.SubscriptionEndsAt = request.SubscriptionEndsAt;
+        if (request.Name        is not null) school.Name        = request.Name.Trim();
+        if (request.Address     is not null) school.Address     = request.Address.Trim();
+        if (request.Phone       is not null) school.Phone       = NormalizePhoneNumber(request.Phone);
+        if (request.LogoUrl     is not null) school.LogoUrl     = request.LogoUrl;
+        if (request.IsActive.HasValue)       school.IsActive    = request.IsActive.Value;
+        if (request.Plan        is not null) school.Plan        = request.Plan.Trim().ToLowerInvariant();
+        if (request.MaxStudents.HasValue)    school.MaxStudents = request.MaxStudents.Value;
+        if (request.MaxTeachers.HasValue)    school.MaxTeachers = request.MaxTeachers.Value;
+        if (request.SubscriptionEndsAt.HasValue) school.SubscriptionEndsAt = request.SubscriptionEndsAt;
 
         await _db.SaveChangesAsync();
-        return Ok(new { message = "Okul guncellendi." });
+        return Ok(new { message = "Okul güncellendi." });
     }
 
     [HttpPost("{id:guid}/assign-admin")]
@@ -176,56 +190,73 @@ public class PlatformSchoolsController : ControllerBase
         if (school is null)
             return NotFound();
 
+        var tempPassword = GenerateTemporaryPassword();
         var result = await UpsertPrimarySchoolAdminAsync(
             school,
-            new SchoolAdminSeedRequest(request.FullName, request.Phone, request.Email, request.AvatarUrl));
+            new SchoolAdminSeedRequest(request.FullName, request.Phone, request.Email, request.AvatarUrl),
+            tempPassword);
 
-        return result ?? Ok(new
+        if (result is not null)
+            return result;
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
         {
-            school.Id,
-            school.PrimaryAdminUserId
-        });
+            _ = SendWelcomeEmailAsync(
+                toEmail:     request.Email,
+                toName:      request.FullName,
+                schoolName:  school.Name,
+                tempPassword: tempPassword);
+        }
+
+        return Ok(new { school.Id, school.PrimaryAdminUserId });
     }
 
-    private async Task<IActionResult?> UpsertPrimarySchoolAdminAsync(School school, SchoolAdminSeedRequest request)
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private async Task<IActionResult?> UpsertPrimarySchoolAdminAsync(
+        School school,
+        SchoolAdminSeedRequest request,
+        string tempPassword)
     {
         var normalizedPhone = NormalizePhoneNumber(request.Phone);
         if (string.IsNullOrWhiteSpace(normalizedPhone))
-            return BadRequest(new { message = "Gecerli bir okul yoneticisi telefonu zorunludur." });
+            return BadRequest(new { message = "Geçerli bir okul yöneticisi telefonu zorunludur." });
 
         var email = ResolveEmail(request.Email, normalizedPhone, "schooladmin");
+
+        if (await _db.Users.AnyAsync(u => u.SchoolId != school.Id && (u.Email == email || u.Phone == normalizedPhone)))
+            return Conflict(new { message = "Verilen e-posta veya telefon başka bir okulda kullanılıyor." });
+
         var existingUser = await _db.Users.FirstOrDefaultAsync(u =>
             (u.Email == email || u.Phone == normalizedPhone) &&
             u.SchoolId == school.Id);
-
-        if (await _db.Users.AnyAsync(u => u.SchoolId != school.Id && (u.Email == email || u.Phone == normalizedPhone)))
-            return Conflict(new { message = "Okul yoneticisi icin verilen e-posta veya telefon baska bir okulda kullaniliyor." });
 
         if (existingUser is null)
         {
             existingUser = new User
             {
-                Id = Guid.NewGuid(),
-                FullName = request.FullName.Trim(),
-                Email = email,
-                Phone = normalizedPhone,
-                AvatarUrl = request.AvatarUrl,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
-                Role = UserRole.SchoolAdmin,
-                SchoolId = school.Id,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                Id           = Guid.NewGuid(),
+                FullName     = request.FullName.Trim(),
+                Email        = email,
+                Phone        = normalizedPhone,
+                AvatarUrl    = request.AvatarUrl,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword),
+                Role         = UserRole.SchoolAdmin,
+                SchoolId     = school.Id,
+                IsActive     = true,
+                CreatedAt    = DateTime.UtcNow
             };
             _db.Users.Add(existingUser);
         }
         else
         {
-            existingUser.FullName = request.FullName.Trim();
-            existingUser.Email = email;
-            existingUser.Phone = normalizedPhone;
-            existingUser.AvatarUrl = request.AvatarUrl;
-            existingUser.Role = UserRole.SchoolAdmin;
-            existingUser.IsActive = true;
+            existingUser.FullName     = request.FullName.Trim();
+            existingUser.Email        = email;
+            existingUser.Phone        = normalizedPhone;
+            existingUser.AvatarUrl    = request.AvatarUrl;
+            existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+            existingUser.Role         = UserRole.SchoolAdmin;
+            existingUser.IsActive     = true;
         }
 
         school.PrimaryAdminUserId = existingUser.Id;
@@ -233,20 +264,108 @@ public class PlatformSchoolsController : ControllerBase
         return null;
     }
 
+    private async Task SendWelcomeEmailAsync(
+        string toEmail, string toName, string schoolName, string tempPassword)
+    {
+        try
+        {
+            var subject = $"Notio – {schoolName} Okul Yönetici Hesabınız";
+            var html = $"""
+                <!DOCTYPE html>
+                <html lang="tr">
+                <head><meta charset="utf-8"/></head>
+                <body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr><td align="center" style="padding:40px 20px;">
+                      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                        <!-- Header -->
+                        <tr>
+                          <td style="background:linear-gradient(135deg,#FF8C42,#FF6B1A);padding:32px 40px;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;letter-spacing:-0.5px;">Notio</h1>
+                            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Platform Yönetimi</p>
+                          </td>
+                        </tr>
+                        <!-- Body -->
+                        <tr>
+                          <td style="padding:36px 40px;">
+                            <p style="margin:0 0 16px;font-size:16px;color:#1a1a2e;">Merhaba <strong>{toName}</strong>,</p>
+                            <p style="margin:0 0 24px;font-size:15px;color:#4a5568;line-height:1.6;">
+                              <strong>{schoolName}</strong> okulu için yönetici hesabınız oluşturulmuştur.
+                              Aşağıdaki bilgilerle sisteme giriş yapabilirsiniz.
+                            </p>
+
+                            <!-- Credentials Box -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;margin-bottom:24px;">
+                              <tr>
+                                <td style="padding:20px 24px;">
+                                  <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Giriş Bilgileri</p>
+                                  <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                      <td style="padding:6px 0;font-size:13px;color:#64748b;width:120px;">E-posta</td>
+                                      <td style="padding:6px 0;font-size:14px;color:#1a1a2e;font-weight:600;">{toEmail}</td>
+                                    </tr>
+                                    <tr>
+                                      <td style="padding:6px 0;font-size:13px;color:#64748b;">Geçici Şifre</td>
+                                      <td style="padding:6px 0;">
+                                        <span style="font-size:15px;font-weight:700;color:#FF8C42;background:#fff4ed;padding:3px 10px;border-radius:6px;letter-spacing:1px;">{tempPassword}</span>
+                                      </td>
+                                    </tr>
+                                  </table>
+                                </td>
+                              </tr>
+                            </table>
+
+                            <p style="margin:0 0 24px;font-size:13px;color:#94a3b8;line-height:1.6;">
+                              ⚠️ İlk girişinizde şifrenizi değiştirmenizi öneririz.
+                            </p>
+
+                            <p style="margin:0;font-size:14px;color:#4a5568;">
+                              Herhangi bir sorunuz için platform yöneticisiyle iletişime geçebilirsiniz.
+                            </p>
+                          </td>
+                        </tr>
+                        <!-- Footer -->
+                        <tr>
+                          <td style="padding:20px 40px;border-top:1px solid #f0f0f0;text-align:center;">
+                            <p style="margin:0;font-size:12px;color:#cbd5e1;">© {DateTime.UtcNow.Year} Notio Platform. Tüm hakları saklıdır.</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td></tr>
+                  </table>
+                </body>
+                </html>
+                """;
+
+            await _email.SendAsync(toEmail, toName, subject, html);
+        }
+        catch (Exception ex)
+        {
+            // Email failure must not break school creation — log and continue
+            Console.Error.WriteLine($"[EMAIL] Welcome email failed for {toEmail}: {ex.Message}");
+        }
+    }
+
+    private static string GenerateTemporaryPassword()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+        var bytes = RandomNumberGenerator.GetBytes(10);
+        var sb = new StringBuilder();
+        foreach (var b in bytes)
+            sb.Append(chars[b % chars.Length]);
+        // Ensure at least one digit and one uppercase
+        return $"Nt{sb.ToString()[..8]}!";
+    }
+
     private static string NormalizePhoneNumber(string? phoneNumber)
     {
         var digits = new string((phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray());
-        if (string.IsNullOrWhiteSpace(digits))
-            return string.Empty;
+        if (string.IsNullOrWhiteSpace(digits)) return string.Empty;
 
-        if (digits.StartsWith("0090"))
-            digits = digits[4..];
-        else if (digits.StartsWith("90") && digits.Length == 12)
-            digits = digits[2..];
+        if (digits.StartsWith("0090"))       digits = digits[4..];
+        else if (digits.StartsWith("90") && digits.Length == 12) digits = digits[2..];
 
-        if (digits.Length == 10)
-            digits = $"0{digits}";
-
+        if (digits.Length == 10) digits = $"0{digits}";
         return digits;
     }
 
@@ -258,6 +377,8 @@ public class PlatformSchoolsController : ControllerBase
         return $"{prefix}.{normalizedPhone}@notio.local";
     }
 }
+
+// ─── Request / Response DTOs ──────────────────────────────────────────────────
 
 public record CreatePlatformSchoolRequest(
     string Name,

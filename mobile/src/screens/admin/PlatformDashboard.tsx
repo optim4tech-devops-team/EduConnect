@@ -68,7 +68,11 @@ function NewSchoolModal({ visible, onClose, onCreated }: NewSchoolModalProps) {
   const handleClose = () => { reset(); onClose(); };
 
   const handleSave = async () => {
-    if (!name.trim()) { setError('Okul adı zorunludur.'); return; }
+    if (!name.trim())       { setError('Okul adı zorunludur.'); return; }
+    if (!adminName.trim())  { setError('Yönetici adı soyadı zorunludur.'); return; }
+    if (!adminPhone.trim()) { setError('Yönetici telefon numarası zorunludur.'); return; }
+    if (!adminEmail.trim()) { setError('Yönetici e-posta adresi zorunludur.'); return; }
+
     setSaving(true);
     setError('');
     try {
@@ -80,9 +84,11 @@ function NewSchoolModal({ visible, onClose, onCreated }: NewSchoolModalProps) {
         maxStudents: Number(maxStudents) || 200,
         maxTeachers: Number(maxTeachers) || 20,
         isActive: true,
-        primaryAdmin: adminName.trim() && adminPhone.trim()
-          ? { fullName: adminName.trim(), phone: adminPhone.trim(), email: adminEmail.trim() || undefined }
-          : undefined,
+        primaryAdmin: {
+          fullName: adminName.trim(),
+          phone: adminPhone.trim(),
+          email: adminEmail.trim(),
+        },
       };
       await platformApi.createSchool(payload);
       reset();
@@ -183,13 +189,14 @@ function NewSchoolModal({ visible, onClose, onCreated }: NewSchoolModalProps) {
               </View>
             </View>
 
-            <Text style={modal.section}>Okul Yöneticisi (Opsiyonel)</Text>
+            <Text style={modal.section}>Okul Yöneticisi <Text style={modal.required}>*</Text></Text>
+            <Text style={modal.sectionHint}>Giriş bilgileri yöneticinin e-posta adresine gönderilecektir.</Text>
 
             <View style={modal.inputRow}>
               <Ionicons name="person-outline" size={18} color={Colors.PRIMARY} style={modal.icon} />
               <TextInput
                 style={modal.input}
-                placeholder="Ad Soyad"
+                placeholder="Ad Soyad *"
                 placeholderTextColor={Colors.TEXT_MUTED}
                 value={adminName}
                 onChangeText={setAdminName}
@@ -200,7 +207,7 @@ function NewSchoolModal({ visible, onClose, onCreated }: NewSchoolModalProps) {
               <Ionicons name="call-outline" size={18} color={Colors.PRIMARY} style={modal.icon} />
               <TextInput
                 style={modal.input}
-                placeholder="Telefon"
+                placeholder="Telefon *"
                 placeholderTextColor={Colors.TEXT_MUTED}
                 value={adminPhone}
                 onChangeText={setAdminPhone}
@@ -212,7 +219,7 @@ function NewSchoolModal({ visible, onClose, onCreated }: NewSchoolModalProps) {
               <Ionicons name="mail-outline" size={18} color={Colors.PRIMARY} style={modal.icon} />
               <TextInput
                 style={modal.input}
-                placeholder="E-posta"
+                placeholder="E-posta *"
                 placeholderTextColor={Colors.TEXT_MUTED}
                 value={adminEmail}
                 onChangeText={setAdminEmail}
@@ -486,7 +493,9 @@ const modal = StyleSheet.create({
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
   title: { fontSize: 20, fontWeight: '800', color: Colors.TEXT },
-  section: { fontSize: 12, fontWeight: '700', color: Colors.TEXT_MUTED, marginBottom: 10, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.6 },
+  section: { fontSize: 12, fontWeight: '700', color: Colors.TEXT_MUTED, marginBottom: 4, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.6 },
+  required: { color: Colors.ERROR },
+  sectionHint: { fontSize: 12, color: Colors.TEXT_MUTED, marginBottom: 10, fontStyle: 'italic' },
 
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
