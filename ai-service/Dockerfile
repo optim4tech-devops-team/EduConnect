@@ -1,22 +1,17 @@
 FROM python:3.11-slim
 
-# Install system deps for face_recognition (dlib)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    libopenblas-dev \
-    liblapack-dev \
-    libx11-dev \
-    libgtk-3-dev \
+# Minimal system deps — no cmake/compilation needed when using pre-built wheels
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 \
+    libgl1 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY requirements.txt .
 
-# Install dlib separately first using pre-built wheel where possible
-RUN pip install --no-cache-dir --prefer-binary dlib==19.24.2
-
-# Install remaining packages
+# dlib 19.24.4 ships pre-built manylinux wheels for Python 3.11 — no compilation
+RUN pip install --no-cache-dir --prefer-binary dlib==19.24.4
 RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 COPY . .
