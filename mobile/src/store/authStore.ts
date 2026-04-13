@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { storage } from '@/utils/storage';
 import { authApi, AuthResponse, UserDto, LookupResponse } from '@/api/client';
 import { normalizePhoneNumber } from '@/utils/phone';
+import { getHomeRouteForRole } from '@/utils/roleRoutes';
 
 function mapToUserDto(flat: AuthResponse, phoneNumber: string): UserDto {
   return {
@@ -12,7 +13,13 @@ function mapToUserDto(flat: AuthResponse, phoneNumber: string): UserDto {
     schoolId: flat.schoolId,
     email: flat.email,
     phone: flat.phone ?? phoneNumber,
+    mustChangePassword: flat.mustChangePassword ?? false,
   };
+}
+
+export function getLoginDestination(response: AuthResponse): string {
+  if (response.mustChangePassword) return '/change-password';
+  return getHomeRouteForRole(response.role as any);
 }
 
 interface AuthState {

@@ -118,6 +118,7 @@ export interface AuthResponse {
   schoolId: string;
   email: string;
   phone?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface UserDto {
@@ -128,6 +129,7 @@ export interface UserDto {
   schoolId: string;
   email: string;
   phone?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface ClassDto {
@@ -334,6 +336,8 @@ export const authApi = {
   refresh: (refreshToken: string) =>
     apiClient.post<AuthResponse>('/auth/refresh', { refreshToken }),
   logout: () => apiClient.post('/auth/logout'),
+  changePassword: (newPassword: string) =>
+    apiClient.post('/auth/change-password', { newPassword }),
   me: () => apiClient.get<UserDto>('/auth/me'),
   lookup: (phoneNumber: string) =>
     apiClient.post<LookupResponse>('/auth/lookup', { identifier: phoneNumber }),

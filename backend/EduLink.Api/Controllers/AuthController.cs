@@ -1,3 +1,4 @@
+using BCrypt.Net;
 using EduLink.Application.DTOs.Auth;
 using EduLink.Application.Services;
 using EduLink.Infrastructure.Persistence;
@@ -113,6 +114,32 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>Changes the password for the currently authenticated user.</summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var userIdStr = HttpContext.Items["UserId"]?.ToString();
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+            return BadRequest(new { message = "Şifre en az 6 karakter olmalıdır." });
+
+        var user = await _db.Users.FindAsync(userId);
+        if (user is null || !user.IsActive)
+            return Unauthorized();
+
+        user.PasswordHash       = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.MustChangePassword = false;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     /// <summary>Logs out the current user by invalidating the refresh token.</summary>
     [HttpPost("logout")]
     [Authorize]
@@ -128,3 +155,5 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 }
+
+public record ChangePasswordRequest(string NewPassword);

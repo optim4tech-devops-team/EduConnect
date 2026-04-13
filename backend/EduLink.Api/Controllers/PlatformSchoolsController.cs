@@ -17,11 +17,16 @@ public class PlatformSchoolsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IEmailService _email;
+    private readonly ISmsService _sms;
 
-    public PlatformSchoolsController(AppDbContext db, IEmailService email)
+    // Panel URL for school admins — override via Sms:SchoolPanelUrl config
+    private const string DefaultPanelUrl = "https://school.bidyno.com";
+
+    public PlatformSchoolsController(AppDbContext db, IEmailService email, ISmsService sms)
     {
-        _db = db;
+        _db    = db;
         _email = email;
+        _sms   = sms;
     }
 
     [HttpGet]
@@ -146,11 +151,12 @@ public class PlatformSchoolsController : ControllerBase
         if (assignResult is not null)
             return assignResult;
 
-        // Send welcome email with credentials
-        _ = SendWelcomeEmailAsync(
-            toEmail:    request.PrimaryAdmin.Email.Trim(),
-            toName:     request.PrimaryAdmin.FullName.Trim(),
-            schoolName: school.Name,
+        // Send welcome SMS + email with credentials
+        _ = SendWelcomeNotificationsAsync(
+            toEmail:      request.PrimaryAdmin.Email.Trim(),
+            toName:       request.PrimaryAdmin.FullName.Trim(),
+            toPhone:      NormalizePhoneNumber(request.PrimaryAdmin.Phone),
+            schoolName:   school.Name,
             tempPassword: tempPassword);
 
         return CreatedAtAction(nameof(GetSchool), new { id = school.Id }, new
@@ -199,14 +205,12 @@ public class PlatformSchoolsController : ControllerBase
         if (result is not null)
             return result;
 
-        if (!string.IsNullOrWhiteSpace(request.Email))
-        {
-            _ = SendWelcomeEmailAsync(
-                toEmail:     request.Email,
-                toName:      request.FullName,
-                schoolName:  school.Name,
-                tempPassword: tempPassword);
-        }
+        _ = SendWelcomeNotificationsAsync(
+            toEmail:      request.Email ?? "",
+            toName:       request.FullName,
+            toPhone:      NormalizePhoneNumber(request.Phone),
+            schoolName:   school.Name,
+            tempPassword: tempPassword);
 
         return Ok(new { school.Id, school.PrimaryAdminUserId });
     }
@@ -235,28 +239,30 @@ public class PlatformSchoolsController : ControllerBase
         {
             existingUser = new User
             {
-                Id           = Guid.NewGuid(),
-                FullName     = request.FullName.Trim(),
-                Email        = email,
-                Phone        = normalizedPhone,
-                AvatarUrl    = request.AvatarUrl,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword),
-                Role         = UserRole.SchoolAdmin,
-                SchoolId     = school.Id,
-                IsActive     = true,
-                CreatedAt    = DateTime.UtcNow
+                Id                 = Guid.NewGuid(),
+                FullName           = request.FullName.Trim(),
+                Email              = email,
+                Phone              = normalizedPhone,
+                AvatarUrl          = request.AvatarUrl,
+                PasswordHash       = BCrypt.Net.BCrypt.HashPassword(tempPassword),
+                Role               = UserRole.SchoolAdmin,
+                SchoolId           = school.Id,
+                IsActive           = true,
+                MustChangePassword = true,
+                CreatedAt          = DateTime.UtcNow
             };
             _db.Users.Add(existingUser);
         }
         else
         {
-            existingUser.FullName     = request.FullName.Trim();
-            existingUser.Email        = email;
-            existingUser.Phone        = normalizedPhone;
-            existingUser.AvatarUrl    = request.AvatarUrl;
-            existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
-            existingUser.Role         = UserRole.SchoolAdmin;
-            existingUser.IsActive     = true;
+            existingUser.FullName           = request.FullName.Trim();
+            existingUser.Email              = email;
+            existingUser.Phone              = normalizedPhone;
+            existingUser.AvatarUrl          = request.AvatarUrl;
+            existingUser.PasswordHash       = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+            existingUser.Role               = UserRole.SchoolAdmin;
+            existingUser.IsActive           = true;
+            existingUser.MustChangePassword = true;
         }
 
         school.PrimaryAdminUserId = existingUser.Id;
@@ -264,9 +270,34 @@ public class PlatformSchoolsController : ControllerBase
         return null;
     }
 
-    private async Task SendWelcomeEmailAsync(
-        string toEmail, string toName, string schoolName, string tempPassword)
+    private async Task SendWelcomeNotificationsAsync(
+        string toEmail, string toName, string toPhone, string schoolName, string tempPassword)
     {
+        // 1 — SMS (primary channel)
+        if (!string.IsNullOrWhiteSpace(toPhone))
+        {
+            try
+            {
+                var smsText =
+                    $"Notio - {schoolName} okul yönetici hesabınız oluşturuldu.\n" +
+                    $"Panel: {DefaultPanelUrl}\n" +
+                    $"Şifre: {tempPassword}\n" +
+                    $"İlk girişte şifrenizi değiştirmeniz gerekmektedir.";
+
+                if (_sms is NetgsmSmsService netgsm)
+                    await netgsm.SendRawAsync(toPhone, smsText);
+                else
+                    await _sms.SendOtpAsync(toPhone, tempPassword); // fallback
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[SMS] Welcome SMS failed for {toPhone}: {ex.Message}");
+            }
+        }
+
+        // 2 — Email (secondary channel)
+        if (string.IsNullOrWhiteSpace(toEmail)) return;
+
         try
         {
             var subject = $"Notio – {schoolName} Okul Yönetici Hesabınız";

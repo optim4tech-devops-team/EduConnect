@@ -11,6 +11,9 @@ export default function LoginPage() {
   }
 
   if (user) {
+    if (user.mustChangePassword) {
+      return <Redirect href="/change-password" />;
+    }
     return <Redirect href={getHomeRouteForRole(user.role)} />;
   }
 

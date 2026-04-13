@@ -8,5 +8,6 @@ public record LoginResponse(
     string? AvatarUrl,
     Guid SchoolId,
     string Email,
-    string? Phone
+    string? Phone,
+    bool MustChangePassword = false
 );

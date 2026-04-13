@@ -94,15 +94,20 @@ builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
-// ─── Application Services ────────────────────────────────────────────────
+// ─── SMS ──────────────────────────────────────────────────────────────────
 builder.Services.Configure<SmsOptions>(builder.Configuration.GetSection("Sms"));
+builder.Services.Configure<NetgsmOptions>(builder.Configuration.GetSection("Netgsm"));
 builder.Services.AddSingleton<MockSmsService>();
 builder.Services.AddHttpClient<ProviderSmsService>();
+builder.Services.AddHttpClient<NetgsmSmsService>();
 builder.Services.AddScoped<ISmsService>(sp =>
 {
-    var options = sp.GetRequiredService<IOptions<SmsOptions>>().Value;
-    var mode = options.Mode?.Trim();
-    if (string.Equals(mode, "Provider", StringComparison.OrdinalIgnoreCase))
+    var netgsmOpts = sp.GetRequiredService<IOptions<NetgsmOptions>>().Value;
+    if (!string.IsNullOrWhiteSpace(netgsmOpts.UserCode))
+        return sp.GetRequiredService<NetgsmSmsService>();
+
+    var smsOpts = sp.GetRequiredService<IOptions<SmsOptions>>().Value;
+    if (string.Equals(smsOpts.Mode?.Trim(), "Provider", StringComparison.OrdinalIgnoreCase))
         return sp.GetRequiredService<ProviderSmsService>();
 
     return sp.GetRequiredService<MockSmsService>();
