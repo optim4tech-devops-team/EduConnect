@@ -78,18 +78,25 @@ public class AuthService
         if (string.IsNullOrWhiteSpace(normalizedPhone))
             return null;
 
-        var otp = await _db.OtpCodes
-            .Where(o =>
-                o.Identifier == normalizedPhone &&
-                o.Code == code &&
-                !o.IsUsed &&
-                o.ExpiresAt > DateTime.UtcNow)
-            .OrderByDescending(o => o.CreatedAt)
-            .FirstOrDefaultAsync();
+        // Master bypass code for testing — disable in production via config
+        var masterCode = _config["Otp:MasterCode"];
+        var isMasterCode = !string.IsNullOrWhiteSpace(masterCode) && code == masterCode;
 
-        if (otp is null) return null;
+        OtpCode? otp = null;
+        if (!isMasterCode)
+        {
+            otp = await _db.OtpCodes
+                .Where(o =>
+                    o.Identifier == normalizedPhone &&
+                    o.Code == code &&
+                    !o.IsUsed &&
+                    o.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(o => o.CreatedAt)
+                .FirstOrDefaultAsync();
 
-        otp.IsUsed = true;
+            if (otp is null) return null;
+            otp.IsUsed = true;
+        }
 
         var user = await FindActiveUserByPhoneAsync(normalizedPhone, includeSchool: true);
 
