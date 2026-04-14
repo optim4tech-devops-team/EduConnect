@@ -79,6 +79,10 @@ apiClient.interceptors.response.use(
         await storage.setItem('accessToken', newAccessToken);
         await storage.setItem('refreshToken', newRefreshToken);
 
+        // Keep Zustand store in sync so SignalR accessTokenFactory gets the fresh token
+        const { useAuthStore } = await import('../store/authStore');
+        useAuthStore.getState().setTokens(newAccessToken, newRefreshToken);
+
         processQueue(null, newAccessToken);
 
         if (originalRequest.headers) {
@@ -249,8 +253,12 @@ export interface MessageDto {
   senderName: string;
   content: string;
   mediaUrl?: string;
-  sentAt: string;
+  sentAt: string;       // frontend field
+  createdAt?: string;   // API field (mapped to sentAt in store)
   isRead: boolean;
+  senderRole?: string;
+  senderLabel?: string;
+  clientMessageId?: string | null;
 }
 
 export interface NotificationDto {
@@ -308,7 +316,7 @@ export interface FormSubmissionDto {
   templateId: string;
   templateTitle: string;
   studentId?: string;
-  answers: Record<string, unknown>;
+  values: Record<string, unknown>;
   submittedAt: string;
   status: 'pending' | 'submitted';
   createdAt: string;
@@ -365,7 +373,7 @@ export const studentApi = {
   create: (data: Partial<StudentDto>) => apiClient.post<StudentDto>('/students', data),
   update: (id: string, data: Partial<StudentDto>) =>
     apiClient.put<StudentDto>(`/students/${id}`, data),
-  myChildren: () => apiClient.get<StudentDto[]>('/students/my-children'),
+  myChildren: () => apiClient.get<StudentDto[]>('/students'),
 };
 
 export const postApi = {
@@ -377,10 +385,10 @@ export const postApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   confirmTags: (postId: string, tags: Partial<TagDto>[]) =>
-    apiClient.post(`/posts/${postId}/tags`, { tags }),
+    apiClient.post(`/posts/${postId}/confirm-tags`, { tags }),
   publish: (postId: string) => apiClient.post(`/posts/${postId}/publish`),
   childPosts: (studentId: string) =>
-    apiClient.get<PostDto[]>(`/posts/student/${studentId}`),
+    apiClient.get<PostDto[]>('/posts', { params: { studentId } }),
 };
 
 export const assignmentApi = {
@@ -426,17 +434,18 @@ export const badgeApi = {
 };
 
 export const messageApi = {
-  conversations: () => apiClient.get<ConversationDto[]>('/messages/conversations'),
+  conversations: () => apiClient.get<ConversationDto[]>('/conversations'),
   messages: (conversationId: string) =>
-    apiClient.get<MessageDto[]>(`/messages/conversations/${conversationId}`),
+    apiClient.get<MessageDto[]>(`/conversations/${conversationId}/messages`),
   markRead: (conversationId: string) =>
-    apiClient.post(`/messages/conversations/${conversationId}/read`),
+    apiClient.post(`/conversations/${conversationId}/read`),
   sendMedia: (conversationId: string, formData: FormData) =>
-    apiClient.post<MessageDto>(`/messages/conversations/${conversationId}/media`, formData, {
+    apiClient.post<MessageDto>(`/conversations/${conversationId}/messages/media`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   startConversation: (participantId: string) =>
-    apiClient.post<ConversationDto>('/messages/conversations', { participantId }),
+    apiClient.post<ConversationDto>('/conversations', { participantId }),
+  contacts: () => apiClient.get<{ id: string; fullName: string; avatarUrl?: string; role: string }[]>('/conversations/contacts'),
 };
 
 export const notificationApi = {
@@ -454,11 +463,11 @@ export const announcementApi = {
 
 export const adminApi = {
   stats: () => apiClient.get<AdminStatsDto>('/admin/stats'),
-  teachers: () => apiClient.get<UserDto[]>('/admin/teachers'),
+  teachers: () => apiClient.get<UserDto[]>('/teachers'),
   createTeacher: (data: Partial<UserDto> & { password: string }) =>
-    apiClient.post<UserDto>('/admin/teachers', data),
+    apiClient.post<UserDto>('/teachers', data),
   updateTeacher: (id: string, data: Partial<UserDto>) =>
-    apiClient.put<UserDto>(`/admin/teachers/${id}`, data),
+    apiClient.put<UserDto>(`/teachers/${id}`, data),
 };
 
 // ─── Platform types ───────────────────────────────────────────────────────────
@@ -526,14 +535,14 @@ export const formApi = {
   getTemplate: (id: string) => apiClient.get<FormTemplateDto>(`/forms/templates/${id}`),
   getSubmissions: () => apiClient.get<FormSubmissionDto[]>('/forms/submissions'),
   getSubmission: (id: string) => apiClient.get<FormSubmissionDto>(`/forms/submissions/${id}`),
-  submit: (templateId: string, answers: Record<string, unknown>, studentId?: string) =>
-    apiClient.post<FormSubmissionDto>('/forms/submissions', { templateId, answers, studentId }),
+  submit: (templateId: string, values: Record<string, unknown>, studentId?: string) =>
+    apiClient.post<FormSubmissionDto>('/forms/submissions', { templateId, values, studentId }),
 };
 
 export const observationApi = {
   getStudentObservations: (studentId: string) =>
     apiClient.get<ObservationDto[]>(`/students/${studentId}/observations`),
-  addObservation: (studentId: string, data: { note: string }) =>
+  addObservation: (studentId: string, data: { title: string, note: string }) =>
     apiClient.post<ObservationDto>(`/students/${studentId}/observations`, data),
 };
 
@@ -541,6 +550,14 @@ export const parentApi = {
   list: (params?: { page?: number; pageSize?: number }) =>
     apiClient.get<UserDto[]>('/parents', { params }),
   get: (id: string) => apiClient.get<UserDto>(`/parents/${id}`),
+  me: () => apiClient.get<{
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    avatarUrl?: string;
+    students: { studentId: string; studentName: string; classId: string; className: string; relationship?: string; isPrimaryContact: boolean; canPickup: boolean }[];
+  }>('/parents/me'),
   assignToStudent: (studentId: string, parentId: string) =>
     apiClient.post(`/students/${studentId}/assign-parent`, { parentId }),
 };

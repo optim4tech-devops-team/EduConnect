@@ -225,6 +225,77 @@ public class MessagesController : ControllerBase
         return CreatedAtAction(nameof(GetMessages), new { id }, MapMessageDto(message, sender));
     }
 
+    // GET /api/conversations/contacts — returns allowed message contacts based on role
+    [HttpGet("contacts")]
+    public async Task<IActionResult> GetContacts()
+    {
+        var userId = GetUserId();
+        var role = GetRole();
+        var schoolId = GetSchoolId();
+
+        if (role == "Parent")
+        {
+            // Parent can message: their child's teacher(s) + SchoolAdmin users of the same school
+            var studentIds = await _db.StudentParents
+                .Where(sp => sp.ParentId == userId)
+                .Select(sp => sp.StudentId)
+                .ToListAsync();
+
+            var teacherIds = await _db.Students
+                .Include(s => s.Class)
+                .Where(s => studentIds.Contains(s.Id) && s.Class.TeacherId != null)
+                .Select(s => s.Class.TeacherId!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            var teachers = await _db.Users
+                .Where(u => teacherIds.Contains(u.Id) && u.IsActive)
+                .Select(u => new { u.Id, FullName = u.FullName, u.AvatarUrl, Role = u.Role.ToString() })
+                .ToListAsync();
+
+            var admins = await _db.Users
+                .Where(u => u.SchoolId == schoolId && u.Role == UserRole.SchoolAdmin && u.IsActive)
+                .Select(u => new { u.Id, FullName = u.FullName, u.AvatarUrl, Role = u.Role.ToString() })
+                .ToListAsync();
+
+            var contacts = teachers
+                .Concat(admins)
+                .DistinctBy(u => u.Id)
+                .ToList();
+
+            return Ok(contacts);
+        }
+        else if (role == "Teacher")
+        {
+            // Teacher can message: only parents of students in their class
+            var classIds = await _db.Classes
+                .Where(c => c.TeacherId == userId)
+                .Select(c => c.Id)
+                .ToListAsync();
+
+            var studentIds = await _db.Students
+                .Where(s => classIds.Contains(s.ClassId) && s.IsActive)
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            var parentIds = await _db.StudentParents
+                .Where(sp => studentIds.Contains(sp.StudentId))
+                .Select(sp => sp.ParentId)
+                .Distinct()
+                .ToListAsync();
+
+            var parents = await _db.Users
+                .Where(u => parentIds.Contains(u.Id) && u.IsActive)
+                .Select(u => new { u.Id, FullName = u.FullName, u.AvatarUrl, Role = u.Role.ToString() })
+                .OrderBy(u => u.FullName)
+                .ToListAsync();
+
+            return Ok(parents);
+        }
+
+        return Ok(new List<object>());
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static MessageDto MapMessageDto(Message m) => new(
@@ -251,7 +322,9 @@ public class MessagesController : ControllerBase
         m.CreatedAt
     );
 
-    private Guid GetUserId() => HttpContext.Items["UserId"] is Guid g ? g : Guid.Empty;
+    private Guid GetUserId()   => HttpContext.Items["UserId"]   is Guid g ? g : Guid.Empty;
+    private Guid GetSchoolId() => HttpContext.Items["SchoolId"] is Guid s ? s : Guid.Empty;
+    private string GetRole()   => HttpContext.Items["Role"]     as string ?? string.Empty;
 }
 
 public record CreateConversationRequest(Guid OtherUserId, Guid? StudentId);

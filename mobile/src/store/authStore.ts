@@ -117,7 +117,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   loginWithTestFixtureKey: async (role: 'parent' | 'teacher') => {
-    const email = role === 'parent' ? 'veli.test@notio.test' : 'ogretmen.test@notio.test';
+    const email = role === 'parent' ? 'sezer.darendeli@notio.test' : 'elif.toksoy@notio.test';
     set({ isLoading: true, error: null });
     try {
       const { data } = await authApi.login({ email, password: 'Admin123!' });

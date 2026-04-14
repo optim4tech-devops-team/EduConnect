@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { messageApi, ConversationDto, MessageDto } from '../api/client';
+import { useAuthStore } from './authStore';
 
 interface MessageStore {
   conversations: ConversationDto[];
@@ -32,7 +33,24 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const { data } = await messageApi.conversations();
-      set({ conversations: data, isLoading: false });
+      // API returns { participants: [{userId, fullName, role}], lastMessage: {}, unreadCount }
+      // Normalize to ConversationDto shape
+      const myId = useAuthStore.getState().user?.id;
+      const normalised: ConversationDto[] = (data as any[]).map((c: any) => {
+        const other = (c.participants ?? []).find((p: any) => p.userId !== myId) ?? c.participants?.[0] ?? {};
+        const lm = c.lastMessage;
+        return {
+          id: c.id,
+          participantId: other.userId ?? '',
+          participantName: other.fullName ?? c.name ?? '',
+          participantAvatarUrl: other.avatarUrl ?? undefined,
+          participantRole: other.role ?? '',
+          lastMessage: typeof lm === 'string' ? lm : (lm?.content ?? ''),
+          lastMessageAt: lm?.createdAt ?? c.updatedAt ?? '',
+          unreadCount: c.unreadCount ?? 0,
+        };
+      });
+      set({ conversations: normalised, isLoading: false });
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -45,8 +63,15 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const { data } = await messageApi.messages(conversationId);
+      // API may return paginated { items: MessageDto[] } or a flat array
+      const rawMsgs: any[] = Array.isArray(data) ? data : ((data as any)?.items ?? []);
+      // Normalize: map createdAt → sentAt
+      const msgs: MessageDto[] = rawMsgs.map((m) => ({
+        ...m,
+        sentAt: m.sentAt ?? m.createdAt ?? new Date().toISOString(),
+      }));
       set((state) => ({
-        messages: { ...state.messages, [conversationId]: data },
+        messages: { ...state.messages, [conversationId]: msgs },
         isLoading: false,
       }));
     } catch (err: unknown) {

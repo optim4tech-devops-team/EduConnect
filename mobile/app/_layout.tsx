@@ -1,7 +1,12 @@
 import { useEffect, Component, ReactNode } from 'react';
 import { View, Text } from 'react-native';
 import { Stack } from 'expo-router';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
+import * as SplashScreen from 'expo-splash-screen';
 import { useAuthStore } from '@/store/authStore';
+
+SplashScreen.preventAutoHideAsync();
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: ReactNode }) {
@@ -27,9 +32,21 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 export default function RootLayout() {
   const { initialize } = useAuthStore();
 
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+  });
+
   useEffect(() => {
     initialize();
   }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
 
   return (
     <ErrorBoundary>

@@ -14,16 +14,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Colors from '../../theme/colors';
-import { messageApi, adminApi, ConversationDto, UserDto } from '../../api/client';
+import { messageApi, ConversationDto, UserDto } from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getInitials(name: string): string {
+  if (!name) return '?';
   return name
     .split(' ')
+    .filter(Boolean)
     .map((n) => n.charAt(0))
     .join('')
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase() || '?';
 }
 
 function relativeTime(isoOrLabel: string | undefined): string {
@@ -93,6 +96,7 @@ const MOCK_CONVERSATIONS: ConversationDto[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function MessagesScreen() {
   const router = useRouter();
+  const myId = useAuthStore((s) => s.user?.id);
 
   const [conversations, setConversations] = useState<ConversationDto[]>(MOCK_CONVERSATIONS);
   const [loadingConvs,  setLoadingConvs]  = useState(true);
@@ -106,27 +110,55 @@ export default function MessagesScreen() {
     messageApi
       .conversations()
       .then((r) => {
-        if (r.data?.length) setConversations(r.data);
+        if (r.data?.length) {
+          // API returns { participants:[{userId, fullName, role}], lastMessage: obj|str, unreadCount }
+          // Normalise to ConversationDto shape
+          const normalised: ConversationDto[] = (r.data as any[]).map((c: any) => {
+            const other =
+              (c.participants ?? []).find((p: any) => p.userId !== myId) ??
+              c.participants?.[0] ?? {};
+            const lm = c.lastMessage;
+            return {
+              id: c.id,
+              participantId: other.userId ?? '',
+              participantName: other.fullName ?? c.name ?? '',
+              participantAvatarUrl: other.avatarUrl ?? undefined,
+              participantRole: other.role ?? '',
+              lastMessage: typeof lm === 'string' ? lm : (lm?.content ?? ''),
+              lastMessageAt: lm?.createdAt ?? c.updatedAt ?? '',
+              unreadCount: c.unreadCount ?? 0,
+            };
+          });
+          setConversations(normalised);
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingConvs(false));
-  }, []);
+  }, [myId]);
 
   // Load user list for "new conversation" modal
   const openNewConversation = useCallback(async () => {
     setModalOpen(true);
     setLoadingUsers(true);
     try {
-      const { data } = await adminApi.teachers();
-      setUsers(data);
+      const { data } = await messageApi.contacts();
+      const mapped: UserDto[] = data.map((u) => ({
+        id: u.id,
+        name: u.fullName,
+        email: '',
+        role: u.role as UserDto['role'],
+        avatarUrl: u.avatarUrl,
+        schoolId: '',
+      }));
+      setUsers(mapped);
     } catch {
-      // Use participants from existing conversations as fallback user list
+      // Fallback: use participants from existing conversations
       const participantUsers: UserDto[] = conversations.map((c) => ({
         id: c.participantId,
         name: c.participantName,
         email: '',
         role: c.participantRole as UserDto['role'],
-        schoolId: 's1',
+        schoolId: '',
       }));
       setUsers(participantUsers);
     } finally {

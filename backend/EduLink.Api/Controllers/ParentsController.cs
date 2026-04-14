@@ -9,7 +9,7 @@ namespace EduLink.Api.Controllers;
 
 [ApiController]
 [Route("api/parents")]
-[Authorize(Roles = "SchoolAdmin,Teacher")]
+[Authorize]
 public class ParentsController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -19,7 +19,52 @@ public class ParentsController : ControllerBase
         _db = db;
     }
 
+    // GET /api/parents/me — accessible by authenticated parents
+    [HttpGet("me")]
+    [Authorize(Roles = "Parent")]
+    public async Task<IActionResult> GetMyProfile()
+    {
+        var userId = GetUserId();
+        var schoolId = GetSchoolId();
+
+        var parent = await _db.Users
+            .Include(u => u.StudentParents)
+                .ThenInclude(sp => sp.Student)
+                    .ThenInclude(s => s.Class)
+            .Where(u => u.Id == userId && u.SchoolId == schoolId && u.Role == UserRole.Parent)
+            .Select(u => new
+            {
+                u.Id,
+                u.FullName,
+                u.Email,
+                u.Phone,
+                u.AvatarUrl,
+                u.IsActive,
+                u.CreatedAt,
+                Students = u.StudentParents
+                    .OrderBy(sp => sp.Student.FullName)
+                    .Select(sp => new
+                    {
+                        sp.StudentId,
+                        StudentName = sp.Student.FullName,
+                        sp.Student.ClassId,
+                        ClassName = sp.Student.Class.Name,
+                        sp.Relationship,
+                        sp.IsPrimaryContact,
+                        sp.CanPickup
+                    })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        if (parent is null)
+            return NotFound();
+
+        return Ok(parent);
+    }
+
     [HttpGet]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> GetParents([FromQuery] string? search)
     {
         var schoolId = GetSchoolId();
@@ -77,6 +122,7 @@ public class ParentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> GetParent(Guid id)
     {
         var schoolId = GetSchoolId();

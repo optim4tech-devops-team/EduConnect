@@ -20,7 +20,7 @@ import { notificationApi, classApi, ClassDto, PostDto } from '../../api/client';
 interface QuickAction {
   key: string;
   label: string;
-  emoji: string;
+  icon: string;
   bgColor: string;
   route: string;
 }
@@ -29,28 +29,28 @@ const QUICK_ACTIONS: QuickAction[] = [
   {
     key: 'photo',
     label: 'Fotoğraf Paylaş',
-    emoji: '📷',
+    icon: 'camera-outline',
     bgColor: Colors.PRIMARY + '1A',
-    route: '/(teacher)',
+    route: '/(teacher)/add-post',
   },
   {
     key: 'observation',
     label: 'Olumlu Gözlem',
-    emoji: '⭐',
+    icon: 'star-outline',
     bgColor: Colors.ACCENT + '22',
-    route: '/(teacher)',
+    route: '/(teacher)/add-observation',
   },
   {
     key: 'badge',
     label: 'Rozet Ver',
-    emoji: '🏅',
+    icon: 'medal-outline',
     bgColor: Colors.SECONDARY + '33',
-    route: '/(teacher)',
+    route: '/(teacher)/award-badge',
   },
   {
     key: 'message',
     label: 'Mesaj Gönder',
-    emoji: '💬',
+    icon: 'chatbubble-ellipses-outline',
     bgColor: Colors.INFO_LIGHT,
     route: '/(teacher)/messages',
   },
@@ -220,7 +220,7 @@ export default function TeacherDashboard() {
         </View>
 
         <TouchableOpacity style={styles.bellButton} activeOpacity={0.7}>
-          <Ionicons name="bell-outline" size={24} color={Colors.TEXT} />
+          <Ionicons name="notifications-outline" size={24} color={Colors.TEXT} />
           {notifCount > 0 && (
             <View style={styles.notifBadge}>
               <Text style={styles.notifBadgeText}>
@@ -279,7 +279,7 @@ export default function TeacherDashboard() {
               <View
                 style={[styles.quickIconCircle, { backgroundColor: action.bgColor }]}
               >
-                <Text style={styles.quickEmoji}>{action.emoji}</Text>
+                <Ionicons name={action.icon as any} size={28} color={action.key === 'observation' ? Colors.ACCENT : action.key === 'badge' ? Colors.SECONDARY : action.key === 'photo' ? Colors.PRIMARY : Colors.INFO} />
               </View>
               <Text style={styles.quickLabel}>{action.label}</Text>
             </TouchableOpacity>
@@ -318,6 +318,15 @@ export default function TeacherDashboard() {
             />
           </View>
         )}
+
+        {/* Demo Switcher */}
+        <TouchableOpacity 
+          style={styles.demoSwitch}
+          onPress={() => useAuthStore.getState().logout()}
+        >
+          <Ionicons name="swap-horizontal" size={20} color={Colors.TEXT_MUTED} />
+          <Text style={styles.demoSwitchText}>Demo Modu: Rol Değiştir</Text>
+        </TouchableOpacity>
 
         <View style={styles.bottomPad} />
       </ScrollView>
@@ -621,5 +630,23 @@ const styles = StyleSheet.create({
   },
   bottomPad: {
     height: 16,
+  },
+  demoSwitch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.WHITE,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: Colors.BORDER,
+    borderStyle: 'dashed',
+    gap: 8,
+  },
+  demoSwitchText: {
+    fontSize: 14,
+    color: Colors.TEXT_MUTED,
+    fontWeight: '600',
   },
 });

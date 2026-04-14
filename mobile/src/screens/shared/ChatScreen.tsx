@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,42 @@ import { useAuthStore } from '../../store/authStore';
 import { useMessageStore } from '../../store/messageStore';
 import { useSignalR } from '../../hooks/useSignalR';
 import { MessageDto } from '../../api/client';
+
+// ─── Typing dots animation ────────────────────────────────────────────────────
+function TypingDots() {
+  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+
+  useEffect(() => {
+    const animations = dots.map((dot, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 150),
+          Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.delay(600 - i * 150),
+        ])
+      )
+    );
+    animations.forEach((a) => a.start());
+    return () => animations.forEach((a) => a.stop());
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 4, gap: 2 }}>
+      {dots.map((dot, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 4, height: 4, borderRadius: 2,
+            backgroundColor: Colors.PRIMARY,
+            opacity: dot,
+            transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) }],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatTime(isoDate: string): string {
@@ -69,22 +106,49 @@ export default function ChatScreen() {
   const { messages: allMessages, fetchMessages, addIncomingMessage, markRead } = useMessageStore();
   const flatListRef        = useRef<FlatList<MessageDto>>(null);
 
-  const [inputText, setInputText] = useState('');
-  const [loading,   setLoading]   = useState(true);
-  const [sending,   setSending]   = useState(false);
-  const [localMsgs, setLocalMsgs] = useState<MessageDto[]>([]);
+  const [inputText,   setInputText]   = useState('');
+  const [loading,     setLoading]     = useState(true);
+  const [sending,     setSending]     = useState(false);
+  const [localMsgs,   setLocalMsgs]   = useState<MessageDto[]>([]);
+  const [isTyping,    setIsTyping]    = useState(false); // karşı taraf yazıyor mu
+
+  // typing göstergesi 3 saniye sonra otomatik kapanır
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // kendi typing olaylarını debounce et (her karakter için istek gitmesin)
+  const myTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── SignalR ──────────────────────────────────────────────────────────────
-  const { isConnected, sendMessage: signalRSend } = useSignalR({
+  const { isConnected, sendMessage: signalRSend, sendTyping } = useSignalR({
     onReceiveMessage: useCallback(
       (msg: MessageDto) => {
         if (msg.conversationId === conversationId) {
           addIncomingMessage(msg);
+          // Karşı taraf mesaj gönderince "yazıyor" göstergesini kapat
+          setIsTyping(false);
+          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
         }
       },
       [conversationId, addIncomingMessage],
     ),
+    onTyping: useCallback(
+      (convId: string) => {
+        if (convId !== conversationId) return;
+        setIsTyping(true);
+        // 3 saniye sonra otomatik kapat
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => setIsTyping(false), 3000);
+      },
+      [conversationId],
+    ),
   });
+
+  // cleanup timers
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      if (myTypingTimerRef.current) clearTimeout(myTypingTimerRef.current);
+    };
+  }, []);
 
   // ── Load history ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -173,8 +237,17 @@ export default function ChatScreen() {
         <View style={styles.headerCenter}>
           <Text style={styles.headerName} numberOfLines={1}>{otherUserName}</Text>
           <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: isConnected ? Colors.ACCENT : Colors.BORDER }]} />
-            <Text style={styles.statusText}>{isConnected ? 'Çevrimiçi' : 'Bağlanıyor...'}</Text>
+            {isTyping ? (
+              <>
+                <TypingDots />
+                <Text style={[styles.statusText, { color: Colors.PRIMARY }]}>Yazıyor...</Text>
+              </>
+            ) : (
+              <>
+                <View style={[styles.statusDot, { backgroundColor: isConnected ? Colors.SUCCESS : Colors.BORDER }]} />
+                <Text style={styles.statusText}>{isConnected ? 'Çevrimiçi' : 'Bağlanıyor...'}</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -212,7 +285,15 @@ export default function ChatScreen() {
           <TextInput
             style={styles.textInput}
             value={inputText}
-            onChangeText={setInputText}
+            onChangeText={(text) => {
+              setInputText(text);
+              // Debounce: her 2 saniyede bir "SendTyping" gönder
+              if (myTypingTimerRef.current) return;
+              sendTyping(conversationId).catch(() => {});
+              myTypingTimerRef.current = setTimeout(() => {
+                myTypingTimerRef.current = null;
+              }, 2000);
+            }}
             placeholder="Mesaj yazın..."
             placeholderTextColor={Colors.TEXT + '55'}
             multiline

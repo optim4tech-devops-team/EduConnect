@@ -11,48 +11,58 @@ const HUB_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000/api')
 interface UseSignalROptions {
   onReceiveMessage?: (message: MessageDto) => void;
   onNewNotification?: (notification: NotificationDto) => void;
+  onTyping?: (conversationId: string, senderName: string) => void;
 }
 
 interface UseSignalRReturn {
   isConnected: boolean;
   sendMessage: (conversationId: string, content: string) => Promise<void>;
+  sendTyping: (conversationId: string) => Promise<void>;
   disconnect: () => Promise<void>;
 }
 
 export function useSignalR(options: UseSignalROptions = {}): UseSignalRReturn {
-  const { onReceiveMessage, onNewNotification } = options;
+  const { onReceiveMessage, onNewNotification, onTyping } = options;
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+
+  // Use refs so callbacks are always current without re-connecting
+  const onReceiveMessageRef = useRef(onReceiveMessage);
+  const onNewNotificationRef = useRef(onNewNotification);
+  const onTypingRef = useRef(onTyping);
+  useEffect(() => { onReceiveMessageRef.current = onReceiveMessage; }, [onReceiveMessage]);
+  useEffect(() => { onNewNotificationRef.current = onNewNotification; }, [onNewNotification]);
+  useEffect(() => { onTypingRef.current = onTyping; }, [onTyping]);
 
   useEffect(() => {
     let isMounted = true;
 
     const connect = async () => {
       try {
-        const token = await storage.getItem('accessToken');
-
         const connection = new signalR.HubConnectionBuilder()
           .withUrl(HUB_URL, {
             accessTokenFactory: async () => {
               const t = await storage.getItem('accessToken');
               return t ?? '';
             },
-            transport: signalR.HttpTransportType.WebSockets,
           })
           .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-          .configureLogging(signalR.LogLevel.Warning)
+          .configureLogging(signalR.LogLevel.None)
           .build();
 
         connection.on('ReceiveMessage', (message: MessageDto) => {
-          if (isMounted && onReceiveMessage) {
-            onReceiveMessage(message);
-          }
+          if (!isMounted) return;
+          // Normalise createdAt → sentAt
+          const msg = { ...message, sentAt: message.sentAt ?? (message as any).createdAt ?? new Date().toISOString() };
+          onReceiveMessageRef.current?.(msg);
         });
 
         connection.on('NewNotification', (notification: NotificationDto) => {
-          if (isMounted && onNewNotification) {
-            onNewNotification(notification);
-          }
+          if (isMounted) onNewNotificationRef.current?.(notification);
+        });
+
+        connection.on('UserTyping', (payload: { conversationId: string; senderName: string }) => {
+          if (isMounted) onTypingRef.current?.(payload.conversationId, payload.senderName);
         });
 
         connection.onreconnecting(() => {
@@ -102,10 +112,16 @@ export function useSignalR(options: UseSignalROptions = {}): UseSignalRReturn {
       if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
         throw new Error('SignalR bağlantısı yok.');
       }
-      await connection.invoke('SendMessage', conversationId, content);
+      await connection.invoke('SendMessage', conversationId, content, null);
     },
     []
   );
+
+  const sendTyping = useCallback(async (conversationId: string) => {
+    const connection = connectionRef.current;
+    if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
+    await connection.invoke('SendTyping', conversationId);
+  }, []);
 
   const disconnect = useCallback(async () => {
     if (connectionRef.current) {
@@ -115,5 +131,5 @@ export function useSignalR(options: UseSignalROptions = {}): UseSignalRReturn {
     }
   }, []);
 
-  return { isConnected, sendMessage, disconnect };
+  return { isConnected, sendMessage, sendTyping, disconnect };
 }

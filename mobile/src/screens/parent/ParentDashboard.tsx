@@ -18,6 +18,7 @@ import {
   postApi,
   badgeApi,
   announcementApi,
+  parentApi,
   StudentDto,
   PostDto,
   BadgeAwardDto,
@@ -29,10 +30,28 @@ function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
+const RELATIONSHIP_SUFFIX: Record<string, string> = {
+  Baba: 'babası',
+  Anne: 'annesi',
+  Dede: 'dedesi',
+  Nine: 'ninesi',
+  Büyükbaba: 'büyükbabası',
+  Büyükanne: 'büyükannnesi',
+};
+
+function buildGreeting(childFirstName: string | undefined, relationship: string | undefined): { line1: string; line2: string } {
+  if (childFirstName && relationship) {
+    const suffix = RELATIONSHIP_SUFFIX[relationship] ?? relationship.toLowerCase();
+    return { line1: 'Hoş geldin,', line2: `${childFirstName}'ın ${suffix}` };
+  }
+  return { line1: 'Merhaba,', line2: '' };
+}
+
 export default function ParentDashboard() {
   const { user } = useAuthStore();
   const { submissions, fetchSubmissions } = useFormStore();
   const [child, setChild] = useState<StudentDto | null>(null);
+  const [relationship, setRelationship] = useState<string | undefined>(undefined);
   const [notifCount, setNotifCount] = useState(0);
   const [recentPhotos, setRecentPhotos] = useState<PostDto[]>([]);
   const [badges, setBadges] = useState<BadgeAwardDto[]>([]);
@@ -49,24 +68,36 @@ export default function ParentDashboard() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [childRes, notifRes] = await Promise.all([
-        studentApi.myChildren(),
-        notificationApi.list(),
+      const [meRes, notifRes] = await Promise.all([
+        parentApi.me().catch(() => null),
+        notificationApi.list().catch(() => ({ data: [] as any[] })),
       ]);
 
-      const firstChild = childRes.data[0] ?? null;
-      setChild(firstChild);
-      setNotifCount(notifRes.data.filter((n) => !n.isRead).length);
+      setNotifCount(notifRes.data.filter((n: any) => !n.isRead).length);
 
-      if (firstChild) {
+      const firstStudentInfo = meRes?.data?.students?.[0] ?? null;
+      if (firstStudentInfo) {
+        // Build a minimal StudentDto from parentApi.me() response
+        const pseudoChild: StudentDto = {
+          id: firstStudentInfo.studentId,
+          name: firstStudentInfo.studentName,
+          classId: firstStudentInfo.classId,
+          className: firstStudentInfo.className,
+          parentName: '',
+          parentId: meRes?.data?.id ?? '',
+          badgeCount: 0,
+        };
+        setChild(pseudoChild);
+        setRelationship(firstStudentInfo.relationship ?? undefined);
+
         const [photoRes, badgeRes, announceRes] = await Promise.all([
-          postApi.childPosts(firstChild.id),
-          badgeApi.studentBadges(firstChild.id),
-          announcementApi.list(),
+          postApi.childPosts(firstStudentInfo.studentId).catch(() => ({ data: [] })),
+          badgeApi.studentBadges(firstStudentInfo.studentId).catch(() => ({ data: [] })),
+          announcementApi.list().catch(() => ({ data: [] })),
         ]);
-        setRecentPhotos(photoRes.data.slice(0, 9));
-        setBadges(badgeRes.data);
-        setAnnouncements(announceRes.data.slice(0, 2));
+        setRecentPhotos((photoRes.data as any[]).slice(0, 9));
+        setBadges(badgeRes.data as any[]);
+        setAnnouncements((announceRes.data as any[]).slice(0, 2));
       }
     } catch {
       // ignore
@@ -90,8 +121,16 @@ export default function ParentDashboard() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Merhaba,</Text>
-          <Text style={styles.userName}>{user?.name ?? 'Veli'}</Text>
+          {(() => {
+            const childFirst = child?.name?.split(' ')[0];
+            const { line1, line2 } = buildGreeting(childFirst, relationship);
+            return (
+              <>
+                <Text style={styles.greeting}>{line1}</Text>
+                <Text style={styles.userName}>{line2 || (user?.name ?? 'Veli')}</Text>
+              </>
+            );
+          })()}
         </View>
         <TouchableOpacity style={styles.bellButton}>
           <Ionicons name="notifications-outline" size={24} color={Colors.TEXT} />
@@ -191,6 +230,15 @@ export default function ParentDashboard() {
             ))}
           </View>
         )}
+
+        {/* Demo Switcher */}
+        <TouchableOpacity 
+          style={styles.demoSwitch}
+          onPress={() => useAuthStore.getState().logout()}
+        >
+          <Ionicons name="swap-horizontal" size={20} color={Colors.TEXT_MUTED} />
+          <Text style={styles.demoSwitchText}>Demo Modu: Rol Değiştir</Text>
+        </TouchableOpacity>
 
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -310,4 +358,22 @@ const styles = StyleSheet.create({
   announcementContent: { flex: 1 },
   announcementTitle: { fontSize: 14, fontWeight: '700', color: Colors.TEXT, marginBottom: 4 },
   announcementBody: { fontSize: 13, color: Colors.TEXT_MUTED, lineHeight: 18 },
+  demoSwitch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.WHITE,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: Colors.BORDER,
+    borderStyle: 'dashed',
+    gap: 8,
+  },
+  demoSwitchText: {
+    fontSize: 14,
+    color: Colors.TEXT_MUTED,
+    fontWeight: '600',
+  },
 });

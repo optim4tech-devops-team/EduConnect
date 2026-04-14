@@ -45,16 +45,19 @@ const TEACHER_VARIANTS = [
 ];
 
 function hashString(value: string) {
+  if (!value) return 0;
   return value.split('').reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) >>> 0, 7);
 }
 
 function getInitials(name: string) {
+  if (!name) return '?';
   return name
     .split(' ')
+    .filter(Boolean)
     .map((part) => part[0])
     .join('')
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || '?';
 }
 
 export default function GeneratedProfileAvatar({

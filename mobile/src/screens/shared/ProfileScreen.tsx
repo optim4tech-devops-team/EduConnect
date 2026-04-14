@@ -18,12 +18,14 @@ import type { UserDto } from '../../api/client';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getInitials(name: string): string {
+  if (!name) return '?';
   return name
     .split(' ')
+    .filter(Boolean)
     .map((n) => n.charAt(0))
     .join('')
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || '?';
 }
 
 // ─── Role chip config ─────────────────────────────────────────────────────────

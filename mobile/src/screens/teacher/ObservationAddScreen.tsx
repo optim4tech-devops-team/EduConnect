@@ -31,6 +31,7 @@ export default function ObservationAddScreen({ navigation }: Props) {
   const [loadingData, setLoadingData] = useState(true);
 
   const [selectedStudent, setSelectedStudent] = useState<StudentDto | null>(null);
+  const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [selectedBadge, setSelectedBadge] = useState<BadgeDto | null>(null);
   const [awardNote, setAwardNote] = useState('');
@@ -50,13 +51,13 @@ export default function ObservationAddScreen({ navigation }: Props) {
   }, []);
 
   const handleSave = async () => {
-    if (!selectedStudent || !note.trim()) {
-      Alert.alert('Uyarı', 'Öğrenci ve gözlem notu zorunludur.');
+    if (!selectedStudent || !title.trim() || !note.trim()) {
+      Alert.alert('Uyarı', 'Öğrenci, başlık ve gözlem notu zorunludur.');
       return;
     }
     setSaving(true);
     try {
-      await addObservation(selectedStudent.id, note.trim());
+      await addObservation(selectedStudent.id, title.trim(), note.trim());
       if (selectedBadge) {
         await badgeApi.award({
           badgeId: selectedBadge.id,
@@ -142,6 +143,16 @@ export default function ObservationAddScreen({ navigation }: Props) {
               <Text style={styles.selectedStudentName}>{selectedStudent?.name}</Text>
               <Ionicons name="pencil-outline" size={16} color={Colors.TEXT_MUTED} />
             </TouchableOpacity>
+
+            {/* Gözlem başlığı */}
+            <Text style={styles.sectionLabel}>Gözlem Başlığı *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Örn: Arkadaşlarıyla harika paylaştı..."
+              placeholderTextColor={Colors.TEXT_MUTED}
+              value={title}
+              onChangeText={setTitle}
+            />
 
             {/* Gözlem notu */}
             <Text style={styles.sectionLabel}>Olumlu Gözlem Notu *</Text>

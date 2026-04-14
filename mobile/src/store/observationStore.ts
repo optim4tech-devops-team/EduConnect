@@ -6,7 +6,7 @@ interface ObservationState {
   isLoading: boolean;
   error: string | null;
   fetchObservations: (studentId: string) => Promise<void>;
-  addObservation: (studentId: string, note: string) => Promise<void>;
+  addObservation: (studentId: string, title: string, note: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -30,10 +30,10 @@ export const useObservationStore = create<ObservationState>((set, get) => ({
     }
   },
 
-  addObservation: async (studentId, note) => {
+  addObservation: async (studentId, title, note) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await observationApi.addObservation(studentId, { note });
+      const res = await observationApi.addObservation(studentId, { title, note });
       const newObs = res.data as unknown as ObservationDto;
       const current = get().observations[studentId] ?? [];
       set((state) => ({
