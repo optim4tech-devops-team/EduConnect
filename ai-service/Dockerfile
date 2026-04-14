@@ -1,8 +1,11 @@
 FROM python:3.11-slim
 
-# Build tools needed to compile dlib from source
+# Build tools + runtime libs needed by dlib / face_recognition
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    cmake \
+    libopenblas-dev \
+    liblapack-dev \
     libglib2.0-0 \
     libgl1 \
     libgomp1 \
@@ -11,10 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY requirements.txt .
 
-# cmake pip package provides the cmake binary without a system install
-RUN pip install --no-cache-dir cmake
-
-# dlib compiles from source; GHA layer cache keeps subsequent builds fast
+# Compile dlib from source (system cmake keeps build reliable)
 RUN pip install --no-cache-dir dlib==19.24.4
 
 RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
