@@ -301,7 +301,7 @@ public class ParentsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(email))
             return email.Trim().ToLowerInvariant();
 
-        return $"{prefix}.{normalizedPhone}@notio.local";
+        return $"{prefix}.{normalizedPhone}@notioedu.com";
     }
 }
 

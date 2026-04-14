@@ -182,13 +182,17 @@ using (var scope = app.Services.CreateScope())
     }
 
     // ── Platform admin user ──────────────────────────────────────────────
-    if (!db.Users.Any(u => u.Email == "admin@edulink.com"))
+    var platformAdminEmail = "admin@notioedu.com";
+    // Also migrate old email if it still exists
+    var oldAdminEmail = "admin@edulink.com";
+    var existingAdmin = db.Users.FirstOrDefault(u => u.Email == platformAdminEmail || u.Email == oldAdminEmail);
+    if (existingAdmin == null)
     {
         db.Users.Add(new EduLink.Domain.Entities.User
         {
             Id = Guid.NewGuid(),
             FullName = "Admin Kullanıcı",
-            Email = "admin@edulink.com",
+            Email = platformAdminEmail,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
             Role = EduLink.Domain.Enums.UserRole.Admin,
             SchoolId = platformSchoolId,
@@ -199,13 +203,12 @@ using (var scope = app.Services.CreateScope())
     }
     else
     {
-        // Ensure admin is on platform school (not a demo school)
-        var adminUser = db.Users.First(u => u.Email == "admin@edulink.com");
-        if (adminUser.SchoolId != platformSchoolId)
-        {
-            adminUser.SchoolId = platformSchoolId;
-            db.SaveChanges();
-        }
+        // Ensure admin has correct email, role, and school
+        var changed = false;
+        if (existingAdmin.Email != platformAdminEmail) { existingAdmin.Email = platformAdminEmail; changed = true; }
+        if (existingAdmin.Role != EduLink.Domain.Enums.UserRole.Admin) { existingAdmin.Role = EduLink.Domain.Enums.UserRole.Admin; changed = true; }
+        if (existingAdmin.SchoolId != platformSchoolId) { existingAdmin.SchoolId = platformSchoolId; changed = true; }
+        if (changed) db.SaveChanges();
     }
 
     // ── One-time cleanup: remove demo schools and test users ─────────────
@@ -312,7 +315,7 @@ using (var scope = app.Services.CreateScope())
                 -- Users in demo schools (except platform admin)
                 DELETE FROM ""Users""
                 WHERE ""SchoolId"" = ANY(demo_ids)
-                  AND ""Email"" != 'admin@edulink.com';
+                  AND ""Email"" NOT IN ('admin@notioedu.com', 'admin@edulink.com');
 
                 -- Schools
                 UPDATE ""Schools"" SET ""PrimaryAdminUserId"" = NULL
