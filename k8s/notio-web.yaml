@@ -62,14 +62,14 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: edulink-api
+                name: edulink-gateway
                 port:
                   number: 80
           - path: /hubs
             pathType: Prefix
             backend:
               service:
-                name: edulink-api
+                name: edulink-gateway
                 port:
                   number: 80
           - path: /

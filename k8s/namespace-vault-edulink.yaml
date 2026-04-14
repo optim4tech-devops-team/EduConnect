@@ -332,3 +332,75 @@ spec:
                 name: edulink-api
                 port:
                   number: 80
+---
+# API Gateway
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edulink-gateway
+  namespace: vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edulink-gateway
+  template:
+    metadata:
+      labels:
+        app: edulink-gateway
+    spec:
+      imagePullSecrets:
+        - name: reg-hub-secret
+      containers:
+        - name: edulink-gateway
+          image: registry.bibanka.com/test/edulink-gateway:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edulink-gateway
+  namespace: vault
+spec:
+  selector:
+    app: edulink-gateway
+  ports:
+    - port: 80
+      targetPort: 5000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: edulink-gateway
+  namespace: vault
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - apigateway-notio.bidyno.com
+      secretName: wildcard-bidyno-tls
+  rules:
+    - host: apigateway-notio.bidyno.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: edulink-gateway
+                port:
+                  number: 80

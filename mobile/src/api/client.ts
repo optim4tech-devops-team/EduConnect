@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { storage } from '@/utils/storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://apigateway-notio.bidyno.com/api';
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
