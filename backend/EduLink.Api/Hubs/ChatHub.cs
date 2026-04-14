@@ -86,6 +86,25 @@ public class ChatHub : Hub
         }
     }
 
+    public async Task SendTyping(Guid conversationId)
+    {
+        var userId = GetUserId();
+        if (!userId.HasValue) return;
+
+        var participants = await _db.ConversationParticipants
+            .Where(cp => cp.ConversationId == conversationId && cp.UserId != userId.Value)
+            .Select(cp => cp.UserId)
+            .ToListAsync();
+
+        var sender = await _db.Users.FindAsync(userId.Value);
+
+        foreach (var participantId in participants)
+        {
+            await Clients.Group($"user_{participantId}")
+                .SendAsync("UserTyping", new { conversationId, userId = userId.Value, senderName = sender?.FullName });
+        }
+    }
+
     public async Task MarkAsRead(Guid conversationId)
     {
         var userId = GetUserId();

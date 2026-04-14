@@ -78,7 +78,7 @@ public class AuthService
         if (string.IsNullOrWhiteSpace(normalizedPhone))
             return null;
 
-        // Master bypass code for testing — disable in production via config
+        // Master bypass code for testing — set Otp:MasterCode in appsettings
         var masterCode = _config["Otp:MasterCode"];
         var isMasterCode = !string.IsNullOrWhiteSpace(masterCode) && code == masterCode;
 
