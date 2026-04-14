@@ -13,6 +13,7 @@ import {
   Switch,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -595,9 +596,16 @@ export default function PlatformDashboard() {
 
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerLabel}>Platform Yönetimi</Text>
-          <Text style={styles.headerTitle}>Okullar</Text>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require('../../../assets/notio-mark.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <View>
+            <Text style={styles.headerLabel}>Platform Yönetimi</Text>
+            <Text style={styles.headerTitle}>Okullar</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowNewModal(true)}>
           <Ionicons name="add" size={22} color="#fff" />
@@ -688,6 +696,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 14,
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logo: { width: 36, height: 36, borderRadius: 8 },
   headerLabel: { fontSize: 11, color: Colors.TEXT_MUTED, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.TEXT, marginTop: 2 },
 
