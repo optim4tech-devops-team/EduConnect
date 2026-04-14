@@ -517,6 +517,8 @@ export const platformApi = {
     apiClient.put(`/platform/schools/${id}`, data),
   assignAdmin: (id: string, data: { fullName: string; phone: string; email?: string; avatarUrl?: string }) =>
     apiClient.post(`/platform/schools/${id}/assign-admin`, data),
+  deleteSchool: (id: string) =>
+    apiClient.delete(`/platform/schools/${id}`),
 };
 
 export const formApi = {
