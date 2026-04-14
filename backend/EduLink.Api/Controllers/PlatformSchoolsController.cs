@@ -143,15 +143,30 @@ public class PlatformSchoolsController : ControllerBase
             CreatedAt        = DateTime.UtcNow
         };
 
-        _db.Schools.Add(school);
-        await _db.SaveChangesAsync();
-
         var tempPassword = GenerateTemporaryPassword();
-        var assignResult = await UpsertPrimarySchoolAdminAsync(school, request.PrimaryAdmin, tempPassword);
-        if (assignResult is not null)
-            return assignResult;
 
-        // Send welcome SMS + email with credentials
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            _db.Schools.Add(school);
+            await _db.SaveChangesAsync();
+
+            var assignResult = await UpsertPrimarySchoolAdminAsync(school, request.PrimaryAdmin, tempPassword);
+            if (assignResult is not null)
+            {
+                await tx.RollbackAsync();
+                return assignResult;
+            }
+
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+
+        // Send welcome SMS + email with credentials (outside transaction — non-critical)
         _ = SendWelcomeNotificationsAsync(
             toEmail:      request.PrimaryAdmin.Email.Trim(),
             toName:       request.PrimaryAdmin.FullName.Trim(),
@@ -187,6 +202,47 @@ public class PlatformSchoolsController : ControllerBase
 
         await _db.SaveChangesAsync();
         return Ok(new { message = "Okul güncellendi." });
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteSchool(Guid id)
+    {
+        var platformSchoolId = Guid.Parse("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
+        if (id == platformSchoolId)
+            return BadRequest(new { message = "Platform okulu silinemez." });
+
+        var school = await _db.Schools.FirstOrDefaultAsync(s => s.Id == id);
+        if (school is null)
+            return NotFound();
+
+        // Reset primary admin user's school to platform school so FK doesn't block delete
+        var adminUser = school.PrimaryAdminUserId.HasValue
+            ? await _db.Users.FirstOrDefaultAsync(u => u.Id == school.PrimaryAdminUserId)
+            : null;
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            // Detach admin user from this school
+            if (adminUser is not null)
+            {
+                _db.Users.Remove(adminUser);
+            }
+
+            school.PrimaryAdminUserId = null;
+            await _db.SaveChangesAsync();
+
+            _db.Schools.Remove(school);
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+
+        return NoContent();
     }
 
     [HttpPost("{id:guid}/assign-admin")]
