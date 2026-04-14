@@ -185,7 +185,7 @@ export default function AdminDashboard() {
         {/* ── Classes List ─────────────────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Sınıflar</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Siniflar' as never)}>
+          <TouchableOpacity onPress={() => router.push('/(admin)/classes' as any)}>
             <Text style={styles.seeAll}>Tümünü Gör</Text>
           </TouchableOpacity>
         </View>
