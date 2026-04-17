@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   StatusBar,
   Animated,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -65,52 +66,20 @@ function formatTime(isoDate: string): string {
   return `${hh}:${mm}`;
 }
 
-// ─── Mock messages for demo ───────────────────────────────────────────────────
-function buildMockMessages(conversationId: string, myId: string): MessageDto[] {
-  const now = Date.now();
-  return [
-    {
-      id: 'm1', conversationId, senderId: 'other',
-      senderName: 'Karşı Taraf', content: 'Merhaba! Nasılsınız?',
-      sentAt: new Date(now - 1000 * 60 * 10).toISOString(), isRead: true,
-    },
-    {
-      id: 'm2', conversationId, senderId: myId,
-      senderName: 'Ben', content: 'İyiyim, teşekkür ederim. Siz nasılsınız?',
-      sentAt: new Date(now - 1000 * 60 * 9).toISOString(), isRead: true,
-    },
-    {
-      id: 'm3', conversationId, senderId: 'other',
-      senderName: 'Karşı Taraf', content: 'Çok iyiyim. Ali bugün çok güzel bir resim çizdi!',
-      sentAt: new Date(now - 1000 * 60 * 8).toISOString(), isRead: true,
-    },
-    {
-      id: 'm4', conversationId, senderId: myId,
-      senderName: 'Ben', content: 'Vay canına! Harika, tebrikler Ali\'ye 🎉',
-      sentAt: new Date(now - 1000 * 60 * 7).toISOString(), isRead: true,
-    },
-    {
-      id: 'm5', conversationId, senderId: 'other',
-      senderName: 'Karşı Taraf', content: 'Bu hafta toplantıya katılacak mısınız?',
-      sentAt: new Date(now - 1000 * 60 * 2).toISOString(), isRead: false,
-    },
-  ];
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
   const router = useRouter();
   const { conversationId = '', otherUserName = '' } = useLocalSearchParams<{ conversationId: string; otherUserName: string }>();
 
   const { user }           = useAuthStore();
-  const { messages: allMessages, fetchMessages, addIncomingMessage, markRead } = useMessageStore();
+  const { messages: allMessages, fetchMessages, addIncomingMessage, markRead, setActiveConversation } = useMessageStore();
   const flatListRef        = useRef<FlatList<MessageDto>>(null);
 
   const [inputText,   setInputText]   = useState('');
   const [loading,     setLoading]     = useState(true);
   const [sending,     setSending]     = useState(false);
-  const [localMsgs,   setLocalMsgs]   = useState<MessageDto[]>([]);
   const [isTyping,    setIsTyping]    = useState(false); // karşı taraf yazıyor mu
+  const [typingLabel, setTypingLabel] = useState('');
 
   // typing göstergesi 3 saniye sonra otomatik kapanır
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -125,20 +94,27 @@ export default function ChatScreen() {
           addIncomingMessage(msg);
           // Karşı taraf mesaj gönderince "yazıyor" göstergesini kapat
           setIsTyping(false);
+          setTypingLabel('');
           if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
         }
       },
       [conversationId, addIncomingMessage],
     ),
     onTyping: useCallback(
-      (convId: string) => {
+      (convId: string, senderName: string) => {
         if (convId !== conversationId) return;
+        const nextLabel = senderName || String(otherUserName || 'Karşı taraf');
+        if (nextLabel === user?.name) return;
+        setTypingLabel(nextLabel);
         setIsTyping(true);
         // 3 saniye sonra otomatik kapat
         if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-        typingTimerRef.current = setTimeout(() => setIsTyping(false), 3000);
+        typingTimerRef.current = setTimeout(() => {
+          setIsTyping(false);
+          setTypingLabel('');
+        }, 3000);
       },
-      [conversationId],
+      [conversationId, otherUserName, user?.name],
     ),
   });
 
@@ -147,8 +123,9 @@ export default function ChatScreen() {
     return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (myTypingTimerRef.current) clearTimeout(myTypingTimerRef.current);
+      setActiveConversation(null);
     };
-  }, []);
+  }, [setActiveConversation]);
 
   // ── Load history ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -156,22 +133,17 @@ export default function ChatScreen() {
       setLoading(true);
       try {
         await fetchMessages(conversationId);
-      } catch {
-        // Use mock data as fallback
-        const mock = buildMockMessages(conversationId, user?.id ?? 'me');
-        setLocalMsgs(mock);
       } finally {
         setLoading(false);
       }
     };
+    setActiveConversation(conversationId);
     load();
     markRead(conversationId);
-  }, [conversationId, fetchMessages, markRead, user?.id]);
+  }, [conversationId, fetchMessages, markRead, setActiveConversation]);
 
-  // Merge store messages + local optimistic messages
   const storeMessages = allMessages[conversationId] ?? [];
-  const displayMessages: MessageDto[] =
-    storeMessages.length > 0 ? storeMessages : localMsgs;
+  const displayMessages: MessageDto[] = storeMessages;
 
   // ── Send ─────────────────────────────────────────────────────────────────
   const handleSend = async () => {
@@ -179,25 +151,32 @@ export default function ChatScreen() {
     if (!text || sending) return;
     setInputText('');
     setSending(true);
+    const clientMessageId = `client-${Date.now()}`;
 
     // Optimistic message
     const optimistic: MessageDto = {
-      id: `opt-${Date.now()}`,
+      id: clientMessageId,
       conversationId,
       senderId:   user?.id ?? 'me',
       senderName: user?.name ?? 'Ben',
+      senderRole: user?.role ?? undefined,
+      senderLabel: user?.role === 'Teacher' ? 'Öğretmen' : user?.role === 'Parent' ? 'Veli' : user?.name ?? 'Ben',
+      clientMessageId,
       content:    text,
       sentAt:     new Date().toISOString(),
       isRead:     false,
     };
     addIncomingMessage(optimistic);
-    // Also add to local fallback list
-    setLocalMsgs((prev) => [...prev, optimistic]);
 
     try {
-      await signalRSend(conversationId, text);
-    } catch {
-      // Message was added optimistically; show silently
+      await signalRSend(conversationId, text, clientMessageId);
+      setIsTyping(false);
+      setTypingLabel('');
+    } catch (error) {
+      Alert.alert(
+        'Mesaj gönderilemedi',
+        error instanceof Error ? error.message : 'Bağlantıyı kontrol edip tekrar deneyin.'
+      );
     } finally {
       setSending(false);
     }
@@ -240,7 +219,9 @@ export default function ChatScreen() {
             {isTyping ? (
               <>
                 <TypingDots />
-                <Text style={[styles.statusText, { color: Colors.PRIMARY }]}>Yazıyor...</Text>
+                <Text style={[styles.statusText, { color: Colors.PRIMARY }]}>
+                  {typingLabel || String(otherUserName || 'Karşı taraf')} yazıyor...
+                </Text>
               </>
             ) : (
               <>

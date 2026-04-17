@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   StatusBar,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -51,6 +52,7 @@ const ROLE_COLORS: Record<string, string> = {
   Admin:         Colors.INFO,
   SchoolAdmin:   Colors.INFO,
   PlatformAdmin: Colors.TEAL_700,
+  StudentAffairs: Colors.TEAL_600,
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -59,46 +61,15 @@ const ROLE_LABELS: Record<string, string> = {
   Admin:         'Yönetici',
   SchoolAdmin:   'Okul Yöneticisi',
   PlatformAdmin: 'Platform Admin',
+  StudentAffairs: 'Öğrenci İşleri',
 };
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK_CONVERSATIONS: ConversationDto[] = [
-  {
-    id: 'cv1', participantId: 'u1', participantName: 'Ayşe Yılmaz',
-    participantRole: 'Teacher',
-    lastMessage: 'Ali bugün çok güzel bir resim çizdi!',
-    lastMessageAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-    unreadCount: 2,
-  },
-  {
-    id: 'cv2', participantId: 'u2', participantName: 'Fatma Demir',
-    participantRole: 'Teacher',
-    lastMessage: 'Haftalık ödevi teslim ettiniz mi?',
-    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-    unreadCount: 0,
-  },
-  {
-    id: 'cv3', participantId: 'u3', participantName: 'Mehmet Veli',
-    participantRole: 'Parent',
-    lastMessage: 'Teşekkür ederim bilgi için.',
-    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-    unreadCount: 0,
-  },
-  {
-    id: 'cv4', participantId: 'u4', participantName: 'Zeynep Çelik',
-    participantRole: 'Parent',
-    lastMessage: 'Toplantıya katılacak mısınız?',
-    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    unreadCount: 1,
-  },
-];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function MessagesScreen() {
   const router = useRouter();
   const myId = useAuthStore((s) => s.user?.id);
 
-  const [conversations, setConversations] = useState<ConversationDto[]>(MOCK_CONVERSATIONS);
+  const [conversations, setConversations] = useState<ConversationDto[]>([]);
   const [loadingConvs,  setLoadingConvs]  = useState(true);
   const [users,         setUsers]         = useState<UserDto[]>([]);
   const [loadingUsers,  setLoadingUsers]  = useState(false);
@@ -110,29 +81,26 @@ export default function MessagesScreen() {
     messageApi
       .conversations()
       .then((r) => {
-        if (r.data?.length) {
-          // API returns { participants:[{userId, fullName, role}], lastMessage: obj|str, unreadCount }
-          // Normalise to ConversationDto shape
-          const normalised: ConversationDto[] = (r.data as any[]).map((c: any) => {
-            const other =
-              (c.participants ?? []).find((p: any) => p.userId !== myId) ??
-              c.participants?.[0] ?? {};
-            const lm = c.lastMessage;
-            return {
-              id: c.id,
-              participantId: other.userId ?? '',
-              participantName: other.fullName ?? c.name ?? '',
-              participantAvatarUrl: other.avatarUrl ?? undefined,
-              participantRole: other.role ?? '',
-              lastMessage: typeof lm === 'string' ? lm : (lm?.content ?? ''),
-              lastMessageAt: lm?.createdAt ?? c.updatedAt ?? '',
-              unreadCount: c.unreadCount ?? 0,
-            };
-          });
-          setConversations(normalised);
-        }
+        const responseItems = Array.isArray(r.data) ? r.data : [];
+        const normalised: ConversationDto[] = responseItems.map((c: any) => {
+          const other =
+            (c.participants ?? []).find((p: any) => p.userId !== myId) ??
+            c.participants?.[0] ?? {};
+          const lm = c.lastMessage;
+          return {
+            id: c.id,
+            participantId: other.userId ?? c.participantId ?? '',
+            participantName: other.fullName ?? c.participantName ?? c.name ?? '',
+            participantAvatarUrl: other.avatarUrl ?? c.participantAvatarUrl ?? undefined,
+            participantRole: other.role ?? c.participantRole ?? '',
+            lastMessage: typeof lm === 'string' ? lm : (lm?.content ?? c.lastMessage ?? ''),
+            lastMessageAt: lm?.createdAt ?? c.lastMessageAt ?? c.updatedAt ?? '',
+            unreadCount: c.unreadCount ?? 0,
+          };
+        });
+        setConversations(normalised);
       })
-      .catch(() => {})
+      .catch(() => setConversations([]))
       .finally(() => setLoadingConvs(false));
   }, [myId]);
 
@@ -142,7 +110,8 @@ export default function MessagesScreen() {
     setLoadingUsers(true);
     try {
       const { data } = await messageApi.contacts();
-      const mapped: UserDto[] = data.map((u) => ({
+      const safeContacts = Array.isArray(data) ? data : [];
+      const mapped: UserDto[] = safeContacts.map((u) => ({
         id: u.id,
         name: u.fullName,
         email: '',
@@ -170,17 +139,27 @@ export default function MessagesScreen() {
     setStarting(user.id);
     try {
       const { data: conv } = await messageApi.startConversation(user.id);
+      const normalizedConversation: ConversationDto = {
+        id: conv.id,
+        participantId: conv.participantId ?? user.id,
+        participantName: conv.participantName ?? user.name,
+        participantAvatarUrl: conv.participantAvatarUrl ?? user.avatarUrl,
+        participantRole: conv.participantRole ?? user.role,
+        lastMessage: conv.lastMessage ?? '',
+        lastMessageAt: conv.lastMessageAt ?? '',
+        unreadCount: conv.unreadCount ?? 0,
+      };
       setConversations((prev) => {
-        if (prev.find((c) => c.id === conv.id)) return prev;
-        return [conv, ...prev];
+        if (prev.find((c) => c.id === normalizedConversation.id)) return prev;
+        return [normalizedConversation, ...prev];
       });
       setModalOpen(false);
-      router.push({ pathname: '/chat', params: { conversationId: conv.id, otherUserName: user.name } });
-    } catch {
-      // Optimistic: navigate with generated id
-      const fakeId = `new-${user.id}`;
-      setModalOpen(false);
-      router.push({ pathname: '/chat', params: { conversationId: fakeId, otherUserName: user.name } });
+      router.push({ pathname: '/chat', params: { conversationId: normalizedConversation.id, otherUserName: user.name } });
+    } catch (error) {
+      Alert.alert(
+        'Konuşma başlatılamadı',
+        error instanceof Error ? error.message : 'Lütfen tekrar deneyin.'
+      );
     } finally {
       setStarting(null);
     }

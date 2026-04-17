@@ -110,7 +110,7 @@ export interface LoginRequest {
   password: string;
 }
 
-export type UserRole = 'Teacher' | 'Parent' | 'SchoolAdmin' | 'PlatformAdmin' | 'Admin';
+export type UserRole = 'Teacher' | 'Parent' | 'SchoolAdmin' | 'PlatformAdmin' | 'Admin' | 'StudentAffairs';
 
 export interface AuthResponse {
   accessToken: string;

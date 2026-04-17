@@ -7,8 +7,8 @@ export async function runMobileSmoke() {
   await buildMobileWeb();
 
   const server = startBackground(
-    'npx',
-    ['http-server', mobileBuildDir, '-p', config.mobileWebPort, '-s', '-c-1'],
+    'node',
+    ['./scripts/serve-mobile-web.mjs', mobileBuildDir, config.mobileWebPort],
     { cwd: qaRoot },
   );
 

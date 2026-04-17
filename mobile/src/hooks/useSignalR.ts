@@ -16,7 +16,7 @@ interface UseSignalROptions {
 
 interface UseSignalRReturn {
   isConnected: boolean;
-  sendMessage: (conversationId: string, content: string) => Promise<void>;
+  sendMessage: (conversationId: string, content: string, clientMessageId?: string) => Promise<void>;
   sendTyping: (conversationId: string) => Promise<void>;
   disconnect: () => Promise<void>;
 }
@@ -53,7 +53,11 @@ export function useSignalR(options: UseSignalROptions = {}): UseSignalRReturn {
         connection.on('ReceiveMessage', (message: MessageDto) => {
           if (!isMounted) return;
           // Normalise createdAt → sentAt
-          const msg = { ...message, sentAt: message.sentAt ?? (message as any).createdAt ?? new Date().toISOString() };
+          const msg = {
+            ...message,
+            senderLabel: message.senderLabel ?? message.senderName,
+            sentAt: message.sentAt ?? (message as any).createdAt ?? new Date().toISOString(),
+          };
           onReceiveMessageRef.current?.(msg);
         });
 
@@ -61,8 +65,13 @@ export function useSignalR(options: UseSignalROptions = {}): UseSignalRReturn {
           if (isMounted) onNewNotificationRef.current?.(notification);
         });
 
-        connection.on('UserTyping', (payload: { conversationId: string; senderName: string }) => {
-          if (isMounted) onTypingRef.current?.(payload.conversationId, payload.senderName);
+        connection.on('UserTyping', (payload: { conversationId: string; senderName?: string; senderLabel?: string } | string, senderName?: string) => {
+          if (!isMounted) return;
+          if (typeof payload === 'string') {
+            onTypingRef.current?.(payload, senderName ?? '');
+            return;
+          }
+          onTypingRef.current?.(payload.conversationId, payload.senderLabel ?? payload.senderName ?? senderName ?? '');
         });
 
         connection.onreconnecting(() => {
@@ -107,12 +116,12 @@ export function useSignalR(options: UseSignalROptions = {}): UseSignalRReturn {
   }, []);
 
   const sendMessage = useCallback(
-    async (conversationId: string, content: string) => {
+    async (conversationId: string, content: string, clientMessageId?: string) => {
       const connection = connectionRef.current;
       if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
         throw new Error('SignalR bağlantısı yok.');
       }
-      await connection.invoke('SendMessage', conversationId, content, null);
+      await connection.invoke('SendMessage', conversationId, content, clientMessageId ?? null);
     },
     []
   );
