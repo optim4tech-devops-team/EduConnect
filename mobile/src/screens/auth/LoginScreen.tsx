@@ -101,6 +101,12 @@ export default function LoginScreen() {
     clearError();
     try {
       await verifyOtp(normalizePhoneNumber(phoneNumber), otp.trim());
+      const nextUser = useAuthStore.getState().user;
+      router.replace(
+        nextUser?.mustChangePassword
+          ? '/change-password'
+          : getHomeRouteForRole(nextUser?.role ?? 'Parent'),
+      );
     } catch {
       // error set by store
     }
@@ -111,6 +117,12 @@ export default function LoginScreen() {
     clearError();
     try {
       await loginWithPassword(email.trim(), password);
+      const nextUser = useAuthStore.getState().user;
+      router.replace(
+        nextUser?.mustChangePassword
+          ? '/change-password'
+          : getHomeRouteForRole(nextUser?.role ?? 'SchoolAdmin'),
+      );
     } catch {
       // error set by store
     }
