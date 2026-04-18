@@ -108,6 +108,8 @@ public class AuthService
         var refreshExpiryDays = _config.GetValue<int>("Jwt:RefreshExpiryDays", 30);
         user.RefreshToken = refreshToken;
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(refreshExpiryDays);
+        // OTP login proves phone ownership — clear any pending password-change requirement
+        user.MustChangePassword = false;
         await _db.SaveChangesAsync();
 
         return new LoginResponse(
@@ -120,7 +122,7 @@ public class AuthService
             SchoolId: user.SchoolId,
             Email: user.Email,
             Phone: user.Phone,
-            MustChangePassword: user.MustChangePassword
+            MustChangePassword: false
         );
     }
 
