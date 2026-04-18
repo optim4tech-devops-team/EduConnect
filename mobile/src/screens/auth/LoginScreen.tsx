@@ -33,6 +33,7 @@ export default function LoginScreen() {
   const [countdown, setCountdown] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
   const otpRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const didAutoLoginRef = useRef(false);
@@ -168,16 +169,16 @@ export default function LoginScreen() {
         </View>
 
         <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          {Platform.OS === 'web' ? (
+          {showAdminLogin ? (
             <>
-              <Text style={styles.cardTitle}>Yönetici Girişi</Text>
+              <Text style={styles.cardTitle}>Platform Girişi</Text>
               <Text style={styles.cardSubtitle}>E-posta ve şifrenizi girin</Text>
 
               <View style={styles.inputWrapper}>
                 <Ionicons name="mail-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="ornek@okul.com"
+                  placeholder="admin@notioedu.com"
                   placeholderTextColor={Colors.TEXT_MUTED}
                   value={email}
                   onChangeText={setEmail}
@@ -222,6 +223,14 @@ export default function LoginScreen() {
                   </>
                 )}
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.switchLoginRow}
+                onPress={() => { setShowAdminLogin(false); clearError(); }}
+              >
+                <Ionicons name="arrow-back-outline" size={15} color={Colors.TEXT_MUTED} />
+                <Text style={styles.switchLoginText}>Telefon ile giriş</Text>
+              </TouchableOpacity>
             </>
           ) : step === 'phone' ? (
             <>
@@ -262,6 +271,14 @@ export default function LoginScreen() {
                     <Ionicons name="arrow-forward" size={20} color="#fff" />
                   </>
                 )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.switchLoginRow}
+                onPress={() => { setShowAdminLogin(true); clearError(); }}
+              >
+                <Text style={styles.switchLoginText}>Platform Yöneticisi misiniz?</Text>
+                <Ionicons name="arrow-forward-outline" size={15} color={Colors.TEXT_MUTED} />
               </TouchableOpacity>
 
               <View style={styles.quickAccessSection}>
@@ -457,6 +474,21 @@ const styles = StyleSheet.create({
   resendText: { color: Colors.PRIMARY, fontSize: 14, fontWeight: '600' },
   resendDisabled: { color: Colors.SLATE_300 },
   backText: { color: Colors.TEXT_MUTED, fontSize: 14 },
+  switchLoginRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 18,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: Colors.SECONDARY,
+  },
+  switchLoginText: {
+    color: Colors.TEXT_MUTED,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   quickAccessSection: {
     marginTop: 18,
     paddingTop: 18,

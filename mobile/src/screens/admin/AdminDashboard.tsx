@@ -32,9 +32,9 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'addClass',    label: 'Sınıf Ekle',     icon: 'add-circle-outline',  route: '/(admin)/classes'   },
-  { key: 'addStudent',  label: 'Öğrenci Ekle',   icon: 'people-outline',      route: '/(admin)/classes'   },
-  { key: 'addTeacher',  label: 'Öğretmen Ekle',  icon: 'person-add-outline',  route: '/(admin)/teachers'  },
-  { key: 'parents',     label: 'Veliler',         icon: 'heart-outline',       route: '/(admin)/classes'   },
+  { key: 'addStudent',  label: 'Öğrenciler',     icon: 'people-outline',      route: '/(admin)/students'  },
+  { key: 'addTeacher',  label: 'Öğretmenler',    icon: 'person-add-outline',  route: '/(admin)/teachers'  },
+  { key: 'parents',     label: 'Veliler',         icon: 'heart-outline',       route: '/(admin)/parents'   },
 ];
 
 const MOCK_STATS: AdminStatsDto = {

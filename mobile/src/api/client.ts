@@ -464,9 +464,9 @@ export const announcementApi = {
 export const adminApi = {
   stats: () => apiClient.get<AdminStatsDto>('/admin/stats'),
   teachers: () => apiClient.get<UserDto[]>('/teachers'),
-  createTeacher: (data: Partial<UserDto> & { password: string }) =>
+  createTeacher: (data: { fullName: string; email?: string; phone: string; avatarUrl?: string; isActive?: boolean }) =>
     apiClient.post<UserDto>('/teachers', data),
-  updateTeacher: (id: string, data: Partial<UserDto>) =>
+  updateTeacher: (id: string, data: { fullName: string; email?: string; phone: string; avatarUrl?: string; isActive?: boolean }) =>
     apiClient.put<UserDto>(`/teachers/${id}`, data),
 };
 
@@ -547,9 +547,10 @@ export const observationApi = {
 };
 
 export const parentApi = {
-  list: (params?: { page?: number; pageSize?: number }) =>
+  list: (params?: { search?: string; page?: number; pageSize?: number }) =>
     apiClient.get<UserDto[]>('/parents', { params }),
   get: (id: string) => apiClient.get<UserDto>(`/parents/${id}`),
+<<<<<<< HEAD
   me: () => apiClient.get<{
     id: string;
     fullName: string;
@@ -558,6 +559,12 @@ export const parentApi = {
     avatarUrl?: string;
     students: { studentId: string; studentName: string; classId: string; className: string; relationship?: string; isPrimaryContact: boolean; canPickup: boolean }[];
   }>('/parents/me'),
+=======
+  create: (data: { fullName: string; email?: string; phone: string; avatarUrl?: string; isActive?: boolean; students?: Array<{ studentId: string; relationship?: string; isPrimaryContact?: boolean; canPickup?: boolean }> }) =>
+    apiClient.post<UserDto>('/parents', data),
+  update: (id: string, data: { fullName: string; email?: string; phone: string; avatarUrl?: string; isActive?: boolean; students?: Array<{ studentId: string; relationship?: string; isPrimaryContact?: boolean; canPickup?: boolean }> }) =>
+    apiClient.put<UserDto>(`/parents/${id}`, data),
+>>>>>>> 202451e (feat: okul yöneticisi ve öğretmen ekranları — eksiksiz güncelleme)
   assignToStudent: (studentId: string, parentId: string) =>
     apiClient.post(`/students/${studentId}/assign-parent`, { parentId }),
 };

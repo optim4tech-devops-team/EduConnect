@@ -5,8 +5,6 @@ using EduLink.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace EduLink.Api.Controllers;
 
@@ -143,15 +141,13 @@ public class PlatformSchoolsController : ControllerBase
             CreatedAt        = DateTime.UtcNow
         };
 
-        var tempPassword = GenerateTemporaryPassword();
-
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
             _db.Schools.Add(school);
             await _db.SaveChangesAsync();
 
-            var assignResult = await UpsertPrimarySchoolAdminAsync(school, request.PrimaryAdmin, tempPassword);
+            var assignResult = await UpsertPrimarySchoolAdminAsync(school, request.PrimaryAdmin);
             if (assignResult is not null)
             {
                 await tx.RollbackAsync();
@@ -166,13 +162,12 @@ public class PlatformSchoolsController : ControllerBase
             throw;
         }
 
-        // Send welcome SMS + email with credentials (outside transaction — non-critical)
+        // Send welcome SMS + email (outside transaction — non-critical)
         _ = SendWelcomeNotificationsAsync(
-            toEmail:      request.PrimaryAdmin.Email.Trim(),
-            toName:       request.PrimaryAdmin.FullName.Trim(),
-            toPhone:      NormalizePhoneNumber(request.PrimaryAdmin.Phone),
-            schoolName:   school.Name,
-            tempPassword: tempPassword);
+            toEmail:    request.PrimaryAdmin.Email?.Trim() ?? string.Empty,
+            toName:     request.PrimaryAdmin.FullName.Trim(),
+            toPhone:    NormalizePhoneNumber(request.PrimaryAdmin.Phone),
+            schoolName: school.Name);
 
         return CreatedAtAction(nameof(GetSchool), new { id = school.Id }, new
         {
@@ -252,21 +247,18 @@ public class PlatformSchoolsController : ControllerBase
         if (school is null)
             return NotFound();
 
-        var tempPassword = GenerateTemporaryPassword();
         var result = await UpsertPrimarySchoolAdminAsync(
             school,
-            new SchoolAdminSeedRequest(request.FullName, request.Phone, request.Email, request.AvatarUrl),
-            tempPassword);
+            new SchoolAdminSeedRequest(request.FullName, request.Phone, request.Email, request.AvatarUrl));
 
         if (result is not null)
             return result;
 
         _ = SendWelcomeNotificationsAsync(
-            toEmail:      request.Email ?? "",
-            toName:       request.FullName,
-            toPhone:      NormalizePhoneNumber(request.Phone),
-            schoolName:   school.Name,
-            tempPassword: tempPassword);
+            toEmail:    request.Email ?? "",
+            toName:     request.FullName,
+            toPhone:    NormalizePhoneNumber(request.Phone),
+            schoolName: school.Name);
 
         return Ok(new { school.Id, school.PrimaryAdminUserId });
     }
@@ -275,8 +267,7 @@ public class PlatformSchoolsController : ControllerBase
 
     private async Task<IActionResult?> UpsertPrimarySchoolAdminAsync(
         School school,
-        SchoolAdminSeedRequest request,
-        string tempPassword)
+        SchoolAdminSeedRequest request)
     {
         var normalizedPhone = NormalizePhoneNumber(request.Phone);
         if (string.IsNullOrWhiteSpace(normalizedPhone))
@@ -300,11 +291,11 @@ public class PlatformSchoolsController : ControllerBase
                 Email              = email,
                 Phone              = normalizedPhone,
                 AvatarUrl          = request.AvatarUrl,
-                PasswordHash       = BCrypt.Net.BCrypt.HashPassword(tempPassword),
+                PasswordHash       = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
                 Role               = UserRole.SchoolAdmin,
                 SchoolId           = school.Id,
                 IsActive           = true,
-                MustChangePassword = true,
+                MustChangePassword = false,
                 CreatedAt          = DateTime.UtcNow
             };
             _db.Users.Add(existingUser);
@@ -315,10 +306,10 @@ public class PlatformSchoolsController : ControllerBase
             existingUser.Email              = email;
             existingUser.Phone              = normalizedPhone;
             existingUser.AvatarUrl          = request.AvatarUrl;
-            existingUser.PasswordHash       = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+            existingUser.PasswordHash       = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
             existingUser.Role               = UserRole.SchoolAdmin;
             existingUser.IsActive           = true;
-            existingUser.MustChangePassword = true;
+            existingUser.MustChangePassword = false;
         }
 
         school.PrimaryAdminUserId = existingUser.Id;
@@ -327,7 +318,7 @@ public class PlatformSchoolsController : ControllerBase
     }
 
     private async Task SendWelcomeNotificationsAsync(
-        string toEmail, string toName, string toPhone, string schoolName, string tempPassword)
+        string toEmail, string toName, string toPhone, string schoolName)
     {
         // 1 — SMS (primary channel)
         if (!string.IsNullOrWhiteSpace(toPhone))
@@ -337,13 +328,12 @@ public class PlatformSchoolsController : ControllerBase
                 var smsText =
                     $"Notio - {schoolName} okul yönetici hesabınız oluşturuldu.\n" +
                     $"Panel: {DefaultPanelUrl}\n" +
-                    $"Şifre: {tempPassword}\n" +
-                    $"İlk girişte şifrenizi değiştirmeniz gerekmektedir.";
+                    $"Giriş için telefon numaranızı ve SMS doğrulama kodunu kullanın.";
 
                 if (_sms is NetgsmSmsService netgsm)
                     await netgsm.SendRawAsync(toPhone, smsText);
                 else
-                    await _sms.SendOtpAsync(toPhone, tempPassword); // fallback
+                    await _sms.SendOtpAsync(toPhone, "000000"); // fallback (OTP will be sent on demand)
             }
             catch (Exception ex)
             {
@@ -378,33 +368,26 @@ public class PlatformSchoolsController : ControllerBase
                             <p style="margin:0 0 16px;font-size:16px;color:#1a1a2e;">Merhaba <strong>{toName}</strong>,</p>
                             <p style="margin:0 0 24px;font-size:15px;color:#4a5568;line-height:1.6;">
                               <strong>{schoolName}</strong> okulu için yönetici hesabınız oluşturulmuştur.
-                              Aşağıdaki bilgilerle sisteme giriş yapabilirsiniz.
                             </p>
 
-                            <!-- Credentials Box -->
+                            <!-- Login Info Box -->
                             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;margin-bottom:24px;">
                               <tr>
                                 <td style="padding:20px 24px;">
                                   <p style="margin:0 0 12px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Giriş Bilgileri</p>
                                   <table width="100%" cellpadding="0" cellspacing="0">
                                     <tr>
-                                      <td style="padding:6px 0;font-size:13px;color:#64748b;width:120px;">E-posta</td>
-                                      <td style="padding:6px 0;font-size:14px;color:#1a1a2e;font-weight:600;">{toEmail}</td>
+                                      <td style="padding:6px 0;font-size:13px;color:#64748b;width:120px;">Panel</td>
+                                      <td style="padding:6px 0;font-size:14px;color:#FF8C42;font-weight:600;">{DefaultPanelUrl}</td>
                                     </tr>
                                     <tr>
-                                      <td style="padding:6px 0;font-size:13px;color:#64748b;">Geçici Şifre</td>
-                                      <td style="padding:6px 0;">
-                                        <span style="font-size:15px;font-weight:700;color:#FF8C42;background:#fff4ed;padding:3px 10px;border-radius:6px;letter-spacing:1px;">{tempPassword}</span>
-                                      </td>
+                                      <td style="padding:6px 0;font-size:13px;color:#64748b;">Giriş Yöntemi</td>
+                                      <td style="padding:6px 0;font-size:14px;color:#1a1a2e;font-weight:600;">Telefon numaranız + SMS doğrulama kodu</td>
                                     </tr>
                                   </table>
                                 </td>
                               </tr>
                             </table>
-
-                            <p style="margin:0 0 24px;font-size:13px;color:#94a3b8;line-height:1.6;">
-                              ⚠️ İlk girişinizde şifrenizi değiştirmenizi öneririz.
-                            </p>
 
                             <p style="margin:0;font-size:14px;color:#4a5568;">
                               Herhangi bir sorunuz için platform yöneticisiyle iletişime geçebilirsiniz.
@@ -431,17 +414,6 @@ public class PlatformSchoolsController : ControllerBase
             // Email failure must not break school creation — log and continue
             Console.Error.WriteLine($"[EMAIL] Welcome email failed for {toEmail}: {ex.Message}");
         }
-    }
-
-    private static string GenerateTemporaryPassword()
-    {
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-        var bytes = RandomNumberGenerator.GetBytes(10);
-        var sb = new StringBuilder();
-        foreach (var b in bytes)
-            sb.Append(chars[b % chars.Length]);
-        // Ensure at least one digit and one uppercase
-        return $"Nt{sb.ToString()[..8]}!";
     }
 
     private static string NormalizePhoneNumber(string? phoneNumber)

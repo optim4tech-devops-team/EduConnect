@@ -34,6 +34,22 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="students"
+        options={{
+          title: 'Öğrenciler',
+          tabBarIcon: ({ color }) => <Ionicons name="people-circle" size={24} color={color} />,
+          href: isPlatformAdmin ? null : undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="parents"
+        options={{
+          title: 'Veliler',
+          tabBarIcon: ({ color }) => <Ionicons name="heart" size={24} color={color} />,
+          href: isPlatformAdmin ? null : undefined,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profil',
