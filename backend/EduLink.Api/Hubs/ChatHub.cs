@@ -27,7 +27,7 @@ public class ChatHub : Hub
         await base.OnConnectedAsync();
     }
 
-    public async Task SendMessage(Guid conversationId, string? content, string? mediaUrl)
+    public async Task SendMessage(Guid conversationId, string? content, string? clientMessageId, string? mediaUrl = null)
     {
         var userId = GetUserId();
         if (!userId.HasValue)
@@ -42,6 +42,13 @@ public class ChatHub : Hub
         if (!isParticipant)
         {
             throw new HubException("You are not a participant of this conversation.");
+        }
+
+        if (mediaUrl is null && !string.IsNullOrWhiteSpace(clientMessageId)
+            && Uri.TryCreate(clientMessageId, UriKind.Absolute, out _))
+        {
+            mediaUrl = clientMessageId;
+            clientMessageId = null;
         }
 
         var message = new Message
@@ -68,10 +75,13 @@ public class ChatHub : Hub
             senderId = message.SenderId,
             senderName = sender?.FullName ?? string.Empty,
             senderAvatar = sender?.AvatarUrl,
+            senderRole = sender?.Role.ToString(),
+            senderLabel = GetSenderLabel(sender),
             content = message.Content,
             mediaUrl = message.MediaUrl,
             isRead = message.IsRead,
-            createdAt = message.CreatedAt
+            createdAt = message.CreatedAt,
+            clientMessageId
         };
 
         // Broadcast to all participants
@@ -141,5 +151,17 @@ public class ChatHub : Hub
             return id;
 
         return null;
+    }
+
+    private static string GetSenderLabel(User? sender)
+    {
+        return sender?.Role switch
+        {
+            Domain.Enums.UserRole.Teacher => "Öğretmen",
+            Domain.Enums.UserRole.Parent => "Veli",
+            Domain.Enums.UserRole.SchoolAdmin => "Okul Yönetimi",
+            Domain.Enums.UserRole.Admin => "Yönetim",
+            _ => sender?.FullName ?? string.Empty
+        };
     }
 }

@@ -203,10 +203,13 @@ public class MessagesController : ControllerBase
             senderId       = message.SenderId,
             senderName     = sender?.FullName ?? string.Empty,
             senderAvatar   = sender?.AvatarUrl,
+            senderRole     = sender?.Role.ToString(),
+            senderLabel    = GetSenderLabel(sender),
             content        = message.Content,
             mediaUrl       = message.MediaUrl,
             isRead         = message.IsRead,
-            createdAt      = message.CreatedAt
+            createdAt      = message.CreatedAt,
+            clientMessageId = request.ClientMessageId
         };
 
         // Broadcast to all participants via SignalR
@@ -290,7 +293,25 @@ public class MessagesController : ControllerBase
                 .OrderBy(u => u.FullName)
                 .ToListAsync();
 
-            return Ok(parents);
+            var admins = await _db.Users
+                .Where(u => u.SchoolId == schoolId && u.Role == UserRole.SchoolAdmin && u.IsActive)
+                .Select(u => new { u.Id, FullName = u.FullName, u.AvatarUrl, Role = u.Role.ToString() })
+                .ToListAsync();
+
+            return Ok(parents.Concat(admins).DistinctBy(u => u.Id).ToList());
+        }
+        else if (role == "SchoolAdmin")
+        {
+            var contacts = await _db.Users
+                .Where(u => u.SchoolId == schoolId
+                            && u.IsActive
+                            && u.Id != userId
+                            && (u.Role == UserRole.Teacher || u.Role == UserRole.Parent))
+                .Select(u => new { u.Id, FullName = u.FullName, u.AvatarUrl, Role = u.Role.ToString() })
+                .OrderBy(u => u.FullName)
+                .ToListAsync();
+
+            return Ok(contacts);
         }
 
         return Ok(new List<object>());
@@ -307,7 +328,10 @@ public class MessagesController : ControllerBase
         m.Content,
         m.MediaUrl,
         m.IsRead,
-        m.CreatedAt
+        m.CreatedAt,
+        m.Sender?.Role.ToString(),
+        GetSenderLabel(m.Sender),
+        null
     );
 
     private static MessageDto MapMessageDto(Message m, User? sender) => new(
@@ -319,8 +343,23 @@ public class MessagesController : ControllerBase
         m.Content,
         m.MediaUrl,
         m.IsRead,
-        m.CreatedAt
+        m.CreatedAt,
+        sender?.Role.ToString(),
+        GetSenderLabel(sender),
+        null
     );
+
+    private static string GetSenderLabel(User? sender)
+    {
+        return sender?.Role switch
+        {
+            UserRole.Teacher => "Öğretmen",
+            UserRole.Parent => "Veli",
+            UserRole.SchoolAdmin => "Okul Yönetimi",
+            UserRole.Admin => "Yönetim",
+            _ => sender?.FullName ?? string.Empty
+        };
+    }
 
     private Guid GetUserId()   => HttpContext.Items["UserId"]   is Guid g ? g : Guid.Empty;
     private Guid GetSchoolId() => HttpContext.Items["SchoolId"] is Guid s ? s : Guid.Empty;
@@ -328,4 +367,4 @@ public class MessagesController : ControllerBase
 }
 
 public record CreateConversationRequest(Guid OtherUserId, Guid? StudentId);
-public record SendMessageRequest(string? Content, string? MediaUrl);
+public record SendMessageRequest(string? Content, string? MediaUrl, string? ClientMessageId = null);

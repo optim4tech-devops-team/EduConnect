@@ -215,7 +215,6 @@ using (var scope = app.Services.CreateScope())
     var demoSchoolIds = new[]
     {
         Guid.Parse("00000000-0000-0000-0000-000000000001"),
-        Guid.Parse("11111111-1111-1111-1111-111111111111"),
     };
     var hasDemoSchools = db.Schools.Any(s => demoSchoolIds.Contains(s.Id));
     if (hasDemoSchools)
@@ -224,8 +223,7 @@ using (var scope = app.Services.CreateScope())
         db.Database.ExecuteSqlRaw(@"
             DO $$
             DECLARE demo_ids UUID[] := ARRAY[
-                '00000000-0000-0000-0000-000000000001'::UUID,
-                '11111111-1111-1111-1111-111111111111'::UUID
+                '00000000-0000-0000-0000-000000000001'::UUID
             ];
             BEGIN
                 -- Messages / Conversations (no school FK, but clean up via users)
@@ -324,6 +322,242 @@ using (var scope = app.Services.CreateScope())
             END $$;
         ");
     }
+
+    var demoSchoolId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    var demoSchoolAdminId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    var demoTeacherId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    var demoParentId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+    var demoClassId = Guid.Parse("55555555-5555-5555-5555-555555555555");
+    var demoStudentId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+    var teacherParentConversationId = Guid.Parse("88888888-8888-8888-8888-888888888888");
+    var parentAdminConversationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
+    var teacherAdminConversationId = Guid.Parse("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
+
+    var demoSchool = db.Schools.FirstOrDefault(s => s.Id == demoSchoolId);
+    if (demoSchool is null)
+    {
+        demoSchool = new EduLink.Domain.Entities.School
+        {
+            Id = demoSchoolId,
+            Name = "Küçük Sıralar Anaokulları",
+            IsActive = true,
+            Plan = "demo",
+            FamilyMessagingMode = "separate_parents",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Schools.Add(demoSchool);
+    }
+    else
+    {
+        demoSchool.Name = "Küçük Sıralar Anaokulları";
+        demoSchool.IsActive = true;
+        demoSchool.Plan = "demo";
+        demoSchool.FamilyMessagingMode = "separate_parents";
+    }
+
+    db.SaveChanges();
+
+    EduLink.Domain.Entities.User UpsertDemoUser(Guid id, string fullName, string email, string? phone, EduLink.Domain.Enums.UserRole role)
+    {
+        var user = db.Users.FirstOrDefault(u => u.Id == id || u.Email == email);
+        if (user is null)
+        {
+            user = new EduLink.Domain.Entities.User
+            {
+                Id = id,
+                FullName = fullName,
+                Email = email,
+                Phone = phone,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+                Role = role,
+                SchoolId = demoSchoolId,
+                IsActive = true,
+                MustChangePassword = false,
+                RefreshToken = null,
+                RefreshTokenExpiry = null,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Users.Add(user);
+        }
+        else
+        {
+            user.FullName = fullName;
+            user.Email = email;
+            user.Phone = phone;
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!");
+            user.Role = role;
+            user.SchoolId = demoSchoolId;
+            user.IsActive = true;
+            user.MustChangePassword = false;
+            user.RefreshToken = null;
+            user.RefreshTokenExpiry = null;
+        }
+
+        return user;
+    }
+
+    var demoSchoolAdmin = UpsertDemoUser(
+        demoSchoolAdminId,
+        "Sümeyra Darendeli",
+        "sumeyra.darendeli@notio.test",
+        "05337102008",
+        EduLink.Domain.Enums.UserRole.SchoolAdmin);
+
+    var demoTeacher = UpsertDemoUser(
+        demoTeacherId,
+        "Elif Toksoy",
+        "elif.toksoy@notio.test",
+        "05442698494",
+        EduLink.Domain.Enums.UserRole.Teacher);
+
+    var demoParent = UpsertDemoUser(
+        demoParentId,
+        "Sezer Darendeli",
+        "sezer.darendeli@notio.test",
+        "05337102007",
+        EduLink.Domain.Enums.UserRole.Parent);
+
+    db.SaveChanges();
+
+    if (demoSchool.PrimaryAdminUserId != demoSchoolAdmin.Id)
+    {
+        demoSchool.PrimaryAdminUserId = demoSchoolAdmin.Id;
+        db.SaveChanges();
+    }
+
+    var demoClass = db.Classes.FirstOrDefault(c => c.Id == demoClassId);
+    if (demoClass is null)
+    {
+        demoClass = new EduLink.Domain.Entities.Class
+        {
+            Id = demoClassId,
+            Name = "Harfler Dünyası",
+            SchoolId = demoSchoolId,
+            TeacherId = demoTeacher.Id,
+            AcademicYear = "2025-2026",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Classes.Add(demoClass);
+    }
+    else
+    {
+        demoClass.Name = "Harfler Dünyası";
+        demoClass.SchoolId = demoSchoolId;
+        demoClass.TeacherId = demoTeacher.Id;
+        demoClass.AcademicYear = "2025-2026";
+    }
+
+    db.SaveChanges();
+
+    var demoStudent = db.Students.FirstOrDefault(s => s.Id == demoStudentId);
+    if (demoStudent is null)
+    {
+        demoStudent = new EduLink.Domain.Entities.Student
+        {
+            Id = demoStudentId,
+            FullName = "Rana Darendeli",
+            BirthDate = new DateOnly(2020, 9, 1),
+            ClassId = demoClassId,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Students.Add(demoStudent);
+    }
+    else
+    {
+        demoStudent.FullName = "Rana Darendeli";
+        demoStudent.BirthDate = new DateOnly(2020, 9, 1);
+        demoStudent.ClassId = demoClassId;
+        demoStudent.IsActive = true;
+    }
+
+    if (!db.StudentParents.Any(sp => sp.StudentId == demoStudentId && sp.ParentId == demoParent.Id))
+    {
+        db.StudentParents.Add(new EduLink.Domain.Entities.StudentParent
+        {
+            StudentId = demoStudentId,
+            ParentId = demoParent.Id,
+            Relationship = "Baba",
+            IsPrimaryContact = true,
+            CanPickup = true,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    db.SaveChanges();
+
+    void EnsureDirectConversation(Guid conversationId, params Guid[] participantIds)
+    {
+        var conversation = db.Conversations
+            .Include(c => c.Participants)
+            .FirstOrDefault(c => c.Id == conversationId);
+
+        if (conversation is null)
+        {
+            conversation = new EduLink.Domain.Entities.Conversation
+            {
+                Id = conversationId,
+                Type = EduLink.Domain.Enums.ConversationType.Direct,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Conversations.Add(conversation);
+        }
+
+        foreach (var participantId in participantIds.Distinct())
+        {
+            var exists = db.ConversationParticipants.Any(cp => cp.ConversationId == conversationId && cp.UserId == participantId);
+            if (!exists)
+            {
+                db.ConversationParticipants.Add(new EduLink.Domain.Entities.ConversationParticipant
+                {
+                    ConversationId = conversationId,
+                    UserId = participantId,
+                    JoinedAt = DateTime.UtcNow
+                });
+            }
+        }
+    }
+
+    void SeedConversationIfEmpty(Guid conversationId, Guid senderId, string content)
+    {
+        if (db.Messages.Any(m => m.ConversationId == conversationId))
+        {
+            return;
+        }
+
+        db.Messages.Add(new EduLink.Domain.Entities.Message
+        {
+            Id = Guid.NewGuid(),
+            ConversationId = conversationId,
+            SenderId = senderId,
+            Content = content,
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    EnsureDirectConversation(teacherParentConversationId, demoTeacher.Id, demoParent.Id);
+    EnsureDirectConversation(parentAdminConversationId, demoParent.Id, demoSchoolAdmin.Id);
+    EnsureDirectConversation(teacherAdminConversationId, demoTeacher.Id, demoSchoolAdmin.Id);
+
+    db.SaveChanges();
+
+    SeedConversationIfEmpty(
+        teacherParentConversationId,
+        demoTeacher.Id,
+        "Merhaba, Rana bugün kitap köşesinde çok keyifliydi. Yarın kitap günü için küçük bir hikâye kitabı getirebilir misiniz?");
+
+    SeedConversationIfEmpty(
+        parentAdminConversationId,
+        demoSchoolAdmin.Id,
+        "Merhaba, okul iletişim kanalı üzerinden bize her zaman yazabilirsiniz.");
+
+    SeedConversationIfEmpty(
+        teacherAdminConversationId,
+        demoSchoolAdmin.Id,
+        "Merhaba Elif öğretmenim, veli iletişimlerinde bu hat üzerinden de destek olacağız.");
+
+    db.SaveChanges();
 }
 
 // ─── Middleware Pipeline ─────────────────────────────────────────────────
@@ -338,4 +572,3 @@ app.MapHub<ChatHub>("/hubs/chat");
 app.UseHangfireDashboard("/hangfire");
 
 app.Run();
-

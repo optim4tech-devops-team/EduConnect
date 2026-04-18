@@ -19,5 +19,8 @@ public record MessageDto(
     string? Content,
     string? MediaUrl,
     bool IsRead,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string? SenderRole = null,
+    string? SenderLabel = null,
+    string? ClientMessageId = null
 );
