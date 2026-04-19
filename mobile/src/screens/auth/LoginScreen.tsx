@@ -19,22 +19,34 @@ import { isValidTurkishPhoneNumber, normalizePhoneNumber } from '@/utils/phone';
 import { getHomeRouteForRole } from '@/utils/roleRoutes';
 import Colors from '@/theme/colors';
 
-type Step = 'phone' | 'password';
+type Step = 'phone' | 'password' | 'otp';
+
+const isWeb = Platform.OS === 'web';
 
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ fixtureRole?: string | string[]; redirect?: string | string[] }>();
-  const { lookup, loginByPhone, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
+  const { lookup, loginByPhone, sendOtp, verifyOtp, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phonePassword, setPhonePassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Web'de platform admin toggle başlangıçta kapalı; mobilde hiç gösterilmez
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const otpRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const didAutoLoginRef = useRef(false);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   useEffect(() => {
     const fixtureRole = Array.isArray(params.fixtureRole)
@@ -68,8 +80,38 @@ export default function LoginScreen() {
     clearError();
     try {
       await lookup(normalizedPhone);
-      animateStep(() => setStep('password'));
-      setTimeout(() => passwordRef.current?.focus(), 400);
+      if (isWeb) {
+        // Web: okul yöneticisi → telefon + şifre
+        animateStep(() => setStep('password'));
+        setTimeout(() => passwordRef.current?.focus(), 400);
+      } else {
+        // Mobil: öğretmen / veli → OTP
+        animateStep(() => setStep('otp'));
+        await sendOtp(normalizedPhone);
+        setCountdown(60);
+        setTimeout(() => otpRef.current?.focus(), 400);
+      }
+    } catch {
+      // error set by store
+    }
+  };
+
+  const handleResend = async () => {
+    if (countdown > 0) return;
+    try {
+      await sendOtp(normalizePhoneNumber(phoneNumber));
+      setCountdown(60);
+      setOtp('');
+    } catch {
+      // error set by store
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) return;
+    clearError();
+    try {
+      await verifyOtp(normalizePhoneNumber(phoneNumber), otp.trim());
     } catch {
       // error set by store
     }
@@ -136,7 +178,7 @@ export default function LoginScreen() {
           </View>
           <Text style={styles.appName}>Notio</Text>
           <Text style={styles.tagline}>
-            {step === 'phone' ? 'Onun dünyasına bir pencere.' : 'Şifrenizi girin'}
+            {step === 'phone' ? 'Onun dünyasına bir pencere.' : step === 'password' ? 'Şifrenizi girin' : 'SMS kodunuzu girin'}
           </Text>
           {schoolInfo?.schoolLogoUrl ? (
             <View style={styles.schoolBadge}>
@@ -251,37 +293,42 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.switchLoginRow}
-                onPress={() => { setShowAdminLogin(true); clearError(); }}
-              >
-                <Text style={styles.switchLoginText}>Platform Yöneticisi misiniz?</Text>
-                <Ionicons name="arrow-forward-outline" size={15} color={Colors.TEXT_MUTED} />
-              </TouchableOpacity>
-
-              <View style={styles.quickAccessSection}>
-                <Text style={styles.quickAccessTitle}>Geçici test girişleri</Text>
-                <View style={styles.quickAccessRow}>
-                  <TouchableOpacity
-                    style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
-                    onPress={() => handleFixtureLogin('parent')}
-                    disabled={isLoading}
-                  >
-                    <Ionicons name="people-outline" size={18} color={Colors.PRIMARY} />
-                    <Text style={styles.quickAccessButtonText}>Veli</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
-                    onPress={() => handleFixtureLogin('teacher')}
-                    disabled={isLoading}
-                  >
-                    <Ionicons name="school-outline" size={18} color={Colors.PRIMARY} />
-                    <Text style={styles.quickAccessButtonText}>Öğretmen</Text>
-                  </TouchableOpacity>
+              {/* Platform admin toggle — sadece web'de */}
+              {isWeb ? (
+                <TouchableOpacity
+                  style={styles.switchLoginRow}
+                  onPress={() => { setShowAdminLogin(true); clearError(); }}
+                >
+                  <Text style={styles.switchLoginText}>Platform Yöneticisi misiniz?</Text>
+                  <Ionicons name="arrow-forward-outline" size={15} color={Colors.TEXT_MUTED} />
+                </TouchableOpacity>
+              ) : (
+                /* Mobil test girişleri — sadece native */
+                <View style={styles.quickAccessSection}>
+                  <Text style={styles.quickAccessTitle}>Geçici test girişleri</Text>
+                  <View style={styles.quickAccessRow}>
+                    <TouchableOpacity
+                      style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
+                      onPress={() => handleFixtureLogin('parent')}
+                      disabled={isLoading}
+                    >
+                      <Ionicons name="people-outline" size={18} color={Colors.PRIMARY} />
+                      <Text style={styles.quickAccessButtonText}>Veli</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
+                      onPress={() => handleFixtureLogin('teacher')}
+                      disabled={isLoading}
+                    >
+                      <Ionicons name="school-outline" size={18} color={Colors.PRIMARY} />
+                      <Text style={styles.quickAccessButtonText}>Öğretmen</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
+              )}
             </>
-          ) : (
+          ) : step === 'password' ? (
+            /* ── Web: Şifre adımı ── */
             <>
               <Text style={styles.cardTitle}>Şifre Girin</Text>
               <Text style={styles.cardSubtitle}>
@@ -329,6 +376,64 @@ export default function LoginScreen() {
               <View style={styles.resendRow}>
                 <TouchableOpacity onPress={() => { setStep('phone'); clearError(); setPhonePassword(''); }}>
                   <Text style={styles.backText}>← Telefonu değiştir</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            /* ── Mobil: OTP adımı ── */
+            <>
+              <Text style={styles.cardTitle}>Doğrulama Kodu</Text>
+              <Text style={styles.cardSubtitle}>
+                <Text style={styles.maskedId}>{schoolInfo?.maskedIdentifier ?? normalizePhoneNumber(phoneNumber)}</Text>
+                {'\n'}numarasına gönderilen 6 haneli kodu girin
+              </Text>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="keypad-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
+                <TextInput
+                  ref={otpRef}
+                  style={[styles.input, styles.otpInput]}
+                  placeholder="• • • • • •"
+                  placeholderTextColor={Colors.TEXT_MUTED}
+                  value={otp}
+                  onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 6))}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  returnKeyType="done"
+                  onSubmitEditing={handleVerifyOtp}
+                />
+              </View>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.ERROR} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.button, (isLoading || otp.length !== 6) && styles.buttonDisabled]}
+                onPress={handleVerifyOtp}
+                disabled={isLoading || otp.length !== 6}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Giriş Yap</Text>
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.resendRow}>
+                <TouchableOpacity onPress={handleResend} disabled={countdown > 0}>
+                  <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
+                    {countdown > 0 ? `Tekrar gönder (${countdown}s)` : 'Tekrar gönder'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { setStep('phone'); clearError(); setOtp(''); }}>
+                  <Text style={styles.backText}>Değiştir</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -410,6 +515,7 @@ const styles = StyleSheet.create({
   },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, height: 50, fontSize: 16, color: Colors.TEXT },
+  otpInput: { letterSpacing: 6, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -436,7 +542,9 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.55 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  resendRow: { flexDirection: 'row', justifyContent: 'flex-start', marginTop: 16 },
+  resendRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
+  resendText: { color: Colors.PRIMARY, fontSize: 14, fontWeight: '600' },
+  resendDisabled: { color: Colors.SLATE_300 },
   backText: { color: Colors.TEXT_MUTED, fontSize: 14 },
   switchLoginRow: {
     flexDirection: 'row',
