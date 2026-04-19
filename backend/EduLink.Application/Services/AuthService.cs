@@ -229,6 +229,41 @@ public class AuthService
         );
     }
 
+    public async Task<LoginResponse?> LoginByPhoneAsync(string phoneNumber, string password)
+    {
+        var normalizedPhone = NormalizePhoneNumber(phoneNumber);
+        if (string.IsNullOrWhiteSpace(normalizedPhone))
+            return null;
+
+        var user = await FindActiveUserByPhoneAsync(normalizedPhone, includeSchool: true);
+        if (user is null)
+            return null;
+
+        if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            return null;
+
+        var accessToken = GenerateAccessToken(user.Id, user.Email, user.Role.ToString(), user.SchoolId);
+        var refreshToken = GenerateRefreshToken();
+
+        var refreshExpiryDays = _config.GetValue<int>("Jwt:RefreshExpiryDays", 30);
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(refreshExpiryDays);
+        await _db.SaveChangesAsync();
+
+        return new LoginResponse(
+            AccessToken: accessToken,
+            RefreshToken: refreshToken,
+            Role: user.Role.ToString(),
+            UserId: user.Id,
+            FullName: user.FullName,
+            AvatarUrl: user.AvatarUrl,
+            SchoolId: user.SchoolId,
+            Email: user.Email,
+            Phone: user.Phone,
+            MustChangePassword: user.MustChangePassword
+        );
+    }
+
     public async Task<LoginResponse?> RefreshAsync(string refreshToken)
     {
         var user = await _db.Users

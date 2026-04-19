@@ -5,6 +5,7 @@ using EduLink.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace EduLink.Api.Controllers;
 
@@ -265,6 +266,15 @@ public class PlatformSchoolsController : ControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
+    private static string GenerateTempPassword()
+    {
+        const string chars = "abcdefghjkmnpqrstuvwxyz23456789";
+        var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+        var bytes = new byte[8];
+        rng.GetBytes(bytes);
+        return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
+    }
+
     private async Task<IActionResult?> UpsertPrimarySchoolAdminAsync(
         School school,
         SchoolAdminSeedRequest request)
@@ -282,6 +292,8 @@ public class PlatformSchoolsController : ControllerBase
             (u.Email == email || u.Phone == normalizedPhone) &&
             u.SchoolId == school.Id);
 
+        var tempPassword = GenerateTempPassword();
+
         if (existingUser is null)
         {
             existingUser = new User
@@ -291,7 +303,7 @@ public class PlatformSchoolsController : ControllerBase
                 Email              = email,
                 Phone              = normalizedPhone,
                 AvatarUrl          = request.AvatarUrl,
-                PasswordHash       = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+                PasswordHash       = BCrypt.Net.BCrypt.HashPassword(tempPassword),
                 Role               = UserRole.SchoolAdmin,
                 SchoolId           = school.Id,
                 IsActive           = true,
@@ -306,7 +318,7 @@ public class PlatformSchoolsController : ControllerBase
             existingUser.Email              = email;
             existingUser.Phone              = normalizedPhone;
             existingUser.AvatarUrl          = request.AvatarUrl;
-            existingUser.PasswordHash       = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
+            existingUser.PasswordHash       = BCrypt.Net.BCrypt.HashPassword(tempPassword);
             existingUser.Role               = UserRole.SchoolAdmin;
             existingUser.IsActive           = true;
             existingUser.MustChangePassword = false;
@@ -314,34 +326,32 @@ public class PlatformSchoolsController : ControllerBase
 
         school.PrimaryAdminUserId = existingUser.Id;
         await _db.SaveChangesAsync();
+
+        // Send temp password via SMS
+        if (!string.IsNullOrWhiteSpace(normalizedPhone))
+        {
+            try
+            {
+                var smsText =
+                    $"Notio - {school.Name} okul yönetici hesabınız hazır.\n" +
+                    $"Panel: {DefaultPanelUrl}\n" +
+                    $"Telefon: {normalizedPhone}\n" +
+                    $"Şifre: {tempPassword}";
+
+                if (_sms is NetgsmSmsService netgsm)
+                    await netgsm.SendRawAsync(normalizedPhone, smsText);
+            }
+            catch { /* SMS failure must not block account creation */ }
+        }
+
         return null;
     }
 
     private async Task SendWelcomeNotificationsAsync(
         string toEmail, string toName, string toPhone, string schoolName)
     {
-        // 1 — SMS (primary channel)
-        if (!string.IsNullOrWhiteSpace(toPhone))
-        {
-            try
-            {
-                var smsText =
-                    $"Notio - {schoolName} okul yönetici hesabınız oluşturuldu.\n" +
-                    $"Panel: {DefaultPanelUrl}\n" +
-                    $"Giriş için telefon numaranızı ve SMS doğrulama kodunu kullanın.";
-
-                if (_sms is NetgsmSmsService netgsm)
-                    await netgsm.SendRawAsync(toPhone, smsText);
-                else
-                    await _sms.SendOtpAsync(toPhone, "000000"); // fallback (OTP will be sent on demand)
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"[SMS] Welcome SMS failed for {toPhone}: {ex.Message}");
-            }
-        }
-
-        // 2 — Email (secondary channel)
+        _ = toPhone; // SMS is sent with the temp password inside UpsertPrimarySchoolAdminAsync
+        // Email (secondary channel)
         if (string.IsNullOrWhiteSpace(toEmail)) return;
 
         try

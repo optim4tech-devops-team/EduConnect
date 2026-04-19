@@ -353,6 +353,8 @@ export const authApi = {
     apiClient.post('/auth/send-otp', { identifier: phoneNumber }),
   verifyOtp: (phoneNumber: string, code: string) =>
     apiClient.post<AuthResponse>('/auth/verify-otp', { identifier: phoneNumber, code }),
+  loginByPhone: (phone: string, password: string) =>
+    apiClient.post<AuthResponse>('/auth/login-by-phone', { phone, password }),
 };
 
 export const classApi = {

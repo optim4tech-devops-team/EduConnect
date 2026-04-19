@@ -25,16 +25,18 @@ type Step = 'phone' | 'otp';
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ fixtureRole?: string | string[]; redirect?: string | string[] }>();
-  const { lookup, sendOtp, verifyOtp, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
+  const { lookup, sendOtp, verifyOtp, loginByPhone, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phonePassword, setPhonePassword] = useState('');
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const otpRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const didAutoLoginRef = useRef(false);
   const fixtureOtpCode = getFixtureOtpCode(phoneNumber);
@@ -78,9 +80,7 @@ export default function LoginScreen() {
     try {
       await lookup(normalizedPhone);
       animateStep(() => setStep('otp'));
-      await sendOtp(normalizedPhone);
-      setCountdown(60);
-      setTimeout(() => otpRef.current?.focus(), 400);
+      setTimeout(() => passwordRef.current?.focus(), 400);
     } catch {
       // error set by store
     }
@@ -102,6 +102,16 @@ export default function LoginScreen() {
     clearError();
     try {
       await verifyOtp(normalizePhoneNumber(phoneNumber), otp.trim());
+    } catch {
+      // error set by store
+    }
+  };
+
+  const handlePhonePasswordLogin = async () => {
+    if (!phonePassword) return;
+    clearError();
+    try {
+      await loginByPhone(phoneNumber, phonePassword);
     } catch {
       // error set by store
     }
@@ -158,7 +168,7 @@ export default function LoginScreen() {
           </View>
           <Text style={styles.appName}>Notio</Text>
           <Text style={styles.tagline}>
-            {step === 'phone' ? 'Onun dünyasına bir pencere.' : 'SMS kodunuzu girin'}
+            {step === 'phone' ? 'Onun dünyasına bir pencere.' : 'Şifrenizi girin'}
           </Text>
           {schoolInfo?.schoolLogoUrl ? (
             <View style={styles.schoolBadge}>
@@ -305,31 +315,26 @@ export default function LoginScreen() {
             </>
           ) : (
             <>
-              <Text style={styles.cardTitle}>Doğrulama Kodu</Text>
+              <Text style={styles.cardTitle}>Şifre Girin</Text>
               <Text style={styles.cardSubtitle}>
                 <Text style={styles.maskedId}>{schoolInfo?.maskedIdentifier ?? normalizePhoneNumber(phoneNumber)}</Text>
-                {'\n'}numarasına gönderilen 6 haneli kodu girin
+                {'\n'}hesabınızın şifresini girin
               </Text>
 
               <View style={styles.inputWrapper}>
-                <Ionicons name="keypad-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
                 <TextInput
-                  ref={otpRef}
-                  style={[styles.input, styles.otpInput]}
-                  placeholder="• • • • • •"
+                  ref={passwordRef}
+                  style={styles.input}
+                  placeholder="••••••••"
                   placeholderTextColor={Colors.TEXT_MUTED}
-                  value={otp}
-                  onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 6))}
-                  keyboardType="number-pad"
-                  maxLength={6}
+                  value={phonePassword}
+                  onChangeText={setPhonePassword}
+                  secureTextEntry
                   returnKeyType="done"
-                  onSubmitEditing={handleVerify}
+                  onSubmitEditing={handlePhonePasswordLogin}
                 />
               </View>
-
-              {fixtureOtpCode ? (
-                <Text style={styles.fixtureHint}>Test kodu: {fixtureOtpCode}</Text>
-              ) : null}
 
               {error ? (
                 <View style={styles.errorBox}>
@@ -339,9 +344,9 @@ export default function LoginScreen() {
               ) : null}
 
               <TouchableOpacity
-                style={[styles.button, (isLoading || otp.length !== 6) && styles.buttonDisabled]}
-                onPress={handleVerify}
-                disabled={isLoading || otp.length !== 6}
+                style={[styles.button, (isLoading || !phonePassword) && styles.buttonDisabled]}
+                onPress={handlePhonePasswordLogin}
+                disabled={isLoading || !phonePassword}
               >
                 {isLoading ? (
                   <ActivityIndicator color="#fff" />
@@ -354,13 +359,8 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               <View style={styles.resendRow}>
-                <TouchableOpacity onPress={handleResend} disabled={countdown > 0}>
-                  <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
-                    {countdown > 0 ? `Tekrar gönder (${countdown}s)` : 'Tekrar gönder'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => { setStep('phone'); clearError(); setOtp(''); }}>
-                  <Text style={styles.backText}>Değiştir</Text>
+                <TouchableOpacity onPress={() => { setStep('phone'); clearError(); setPhonePassword(''); }}>
+                  <Text style={styles.backText}>← Telefonu değiştir</Text>
                 </TouchableOpacity>
               </View>
             </>
