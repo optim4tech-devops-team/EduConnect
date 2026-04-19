@@ -18,34 +18,23 @@ import { useAuthStore } from '@/store/authStore';
 import { isValidTurkishPhoneNumber, normalizePhoneNumber } from '@/utils/phone';
 import { getHomeRouteForRole } from '@/utils/roleRoutes';
 import Colors from '@/theme/colors';
-import { getFixtureOtpCode } from '@/mocks/authFixtures';
 
-type Step = 'phone' | 'otp';
+type Step = 'phone' | 'password';
 
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ fixtureRole?: string | string[]; redirect?: string | string[] }>();
-  const { lookup, sendOtp, verifyOtp, loginByPhone, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
+  const { lookup, loginByPhone, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phonePassword, setPhonePassword] = useState('');
-  const [otp, setOtp] = useState('');
-  const [countdown, setCountdown] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const otpRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const didAutoLoginRef = useRef(false);
-  const fixtureOtpCode = getFixtureOtpCode(phoneNumber);
-
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [countdown]);
 
   useEffect(() => {
     const fixtureRole = Array.isArray(params.fixtureRole)
@@ -79,29 +68,8 @@ export default function LoginScreen() {
     clearError();
     try {
       await lookup(normalizedPhone);
-      animateStep(() => setStep('otp'));
+      animateStep(() => setStep('password'));
       setTimeout(() => passwordRef.current?.focus(), 400);
-    } catch {
-      // error set by store
-    }
-  };
-
-  const handleResend = async () => {
-    if (countdown > 0) return;
-    try {
-      await sendOtp(normalizePhoneNumber(phoneNumber));
-      setCountdown(60);
-      setOtp('');
-    } catch {
-      // error set by store
-    }
-  };
-
-  const handleVerify = async () => {
-    if (otp.length !== 6) return;
-    clearError();
-    try {
-      await verifyOtp(normalizePhoneNumber(phoneNumber), otp.trim());
     } catch {
       // error set by store
     }
@@ -430,7 +398,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 22, fontWeight: '700', color: Colors.TEXT, marginBottom: 6 },
   cardSubtitle: { fontSize: 14, color: Colors.TEXT_MUTED, marginBottom: 24, lineHeight: 20 },
   maskedId: { fontWeight: '700', color: Colors.PRIMARY },
-  fixtureHint: { fontSize: 13, color: Colors.PRIMARY, fontWeight: '700', marginTop: -6, marginBottom: 12 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -443,7 +410,6 @@ const styles = StyleSheet.create({
   },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, height: 50, fontSize: 16, color: Colors.TEXT },
-  otpInput: { letterSpacing: 6, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,9 +436,7 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.55 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  resendRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
-  resendText: { color: Colors.PRIMARY, fontSize: 14, fontWeight: '600' },
-  resendDisabled: { color: Colors.SLATE_300 },
+  resendRow: { flexDirection: 'row', justifyContent: 'flex-start', marginTop: 16 },
   backText: { color: Colors.TEXT_MUTED, fontSize: 14 },
   switchLoginRow: {
     flexDirection: 'row',
