@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
+import { request as httpRequest } from 'node:http';
 
 const rootDir = path.resolve(process.argv[2] ?? '.');
 const port = Number(process.argv[3] ?? 4173);
@@ -30,7 +31,47 @@ function sendFile(res, filePath) {
   fs.createReadStream(filePath).pipe(res);
 }
 
+function proxyRequest(req, res, prefix) {
+  const targetPath = req.url ?? '/';
+  const upstream = httpRequest(
+    {
+      hostname: '127.0.0.1',
+      port: 5005,
+      path: targetPath,
+      method: req.method,
+      headers: {
+        ...req.headers,
+        host: '127.0.0.1:5005',
+      },
+    },
+    (upstreamRes) => {
+      res.writeHead(upstreamRes.statusCode ?? 502, {
+        ...upstreamRes.headers,
+        'access-control-allow-origin': '*',
+      });
+      upstreamRes.pipe(res);
+    },
+  );
+
+  upstream.on('error', (error) => {
+    res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ message: `${prefix} proxy error`, detail: error.message }));
+  });
+
+  req.pipe(upstream);
+}
+
 const server = http.createServer((req, res) => {
+  if ((req.url ?? '').startsWith('/api/')) {
+    proxyRequest(req, res, 'api');
+    return;
+  }
+
+  if ((req.url ?? '').startsWith('/uploads/')) {
+    proxyRequest(req, res, 'uploads');
+    return;
+  }
+
   const requestPath = decodeURIComponent((req.url ?? '/').split('?')[0]);
   const relativePath = requestPath === '/' ? '/index.html' : requestPath;
   const safePath = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '');

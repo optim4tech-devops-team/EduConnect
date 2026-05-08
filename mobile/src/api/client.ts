@@ -139,10 +139,25 @@ export interface UserDto {
 export interface ClassDto {
   id: string;
   name: string;
-  teacherId: string;
-  teacherName: string;
+  academicYear?: string;
+  teacherId?: string;
+  teacherName?: string;
   studentCount: number;
   schoolId: string;
+}
+
+export interface TeacherDto {
+  id: string;
+  name: string;
+  fullName?: string;
+  role: UserRole;
+  avatarUrl?: string;
+  schoolId: string;
+  email: string;
+  phone?: string;
+  isActive?: boolean;
+  classCount?: number;
+  studentCount?: number;
 }
 
 export interface StudentDto {
@@ -151,10 +166,33 @@ export interface StudentDto {
   avatarUrl?: string;
   classId: string;
   className: string;
-  parentName: string;
-  parentId: string;
+  parentName?: string;
+  parentId?: string;
   badgeCount: number;
   birthDate?: string;
+  notes?: string;
+  isActive?: boolean;
+}
+
+export interface ParentStudentAssignmentDto {
+  studentId: string;
+  studentName: string;
+  classId: string;
+  className: string;
+  relationship?: string;
+  isPrimaryContact: boolean;
+  canPickup: boolean;
+}
+
+export interface ParentDto {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  avatarUrl?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  students: ParentStudentAssignmentDto[];
 }
 
 export interface PostDto {
@@ -282,6 +320,7 @@ export interface AnnouncementDto {
 }
 
 export interface AdminStatsDto {
+  schoolName: string;
   classCount: number;
   teacherCount: number;
   studentCount: number;
@@ -463,11 +502,11 @@ export const announcementApi = {
 
 export const adminApi = {
   stats: () => apiClient.get<AdminStatsDto>('/admin/stats'),
-  teachers: () => apiClient.get<UserDto[]>('/teachers'),
-  createTeacher: (data: Partial<UserDto> & { password: string }) =>
-    apiClient.post<UserDto>('/teachers', data),
-  updateTeacher: (id: string, data: Partial<UserDto>) =>
-    apiClient.put<UserDto>(`/teachers/${id}`, data),
+  teachers: () => apiClient.get<TeacherDto[]>('/teachers'),
+  createTeacher: (data: { fullName: string; email?: string; phone: string; password?: string; avatarUrl?: string; isActive?: boolean }) =>
+    apiClient.post<TeacherDto>('/teachers', data),
+  updateTeacher: (id: string, data: { fullName: string; email?: string; phone: string; avatarUrl?: string; isActive?: boolean }) =>
+    apiClient.put<TeacherDto>(`/teachers/${id}`, data),
 };
 
 // ─── Platform types ───────────────────────────────────────────────────────────
@@ -548,8 +587,21 @@ export const observationApi = {
 
 export const parentApi = {
   list: (params?: { page?: number; pageSize?: number }) =>
-    apiClient.get<UserDto[]>('/parents', { params }),
-  get: (id: string) => apiClient.get<UserDto>(`/parents/${id}`),
+    apiClient.get<ParentDto[]>('/parents', { params }),
+  get: (id: string) => apiClient.get<ParentDto>(`/parents/${id}`),
+  create: (data: {
+    fullName: string;
+    email?: string;
+    phone: string;
+    avatarUrl?: string;
+    isActive?: boolean;
+    students?: {
+      studentId: string;
+      relationship?: string;
+      isPrimaryContact?: boolean;
+      canPickup?: boolean;
+    }[];
+  }) => apiClient.post<ParentDto>('/parents', data),
   me: () => apiClient.get<{
     id: string;
     fullName: string;

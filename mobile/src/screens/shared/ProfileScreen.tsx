@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,7 +84,27 @@ export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const [loggingOut, setLoggingOut] = useState(false);
 
+  const performLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      // ignore
+    } finally {
+      setLoggingOut(false);
+      router.replace('/login');
+    }
+  };
+
   const handleLogout = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (!window.confirm('Oturumunuzu kapatmak istediğinizden emin misiniz?')) {
+        return;
+      }
+      void performLogout();
+      return;
+    }
+
     Alert.alert(
       'Çıkış Yap',
       'Oturumunuzu kapatmak istediğinizden emin misiniz?',
@@ -92,16 +113,8 @@ export default function ProfileScreen() {
         {
           text: 'Çıkış Yap',
           style: 'destructive',
-          onPress: async () => {
-            setLoggingOut(true);
-            try {
-              await logout();
-            } catch {
-              // ignore
-            } finally {
-              setLoggingOut(false);
-              router.replace('/login');
-            }
+          onPress: () => {
+            void performLogout();
           },
         },
       ],
@@ -111,6 +124,7 @@ export default function ProfileScreen() {
   const displayName = user?.name ?? 'Kullanıcı';
   const initials    = getInitials(displayName);
   const roleConfig  = user?.role ? ROLE_CONFIG[user.role] : ROLE_CONFIG.Parent;
+  const isPlatformAdmin = user?.role === 'Admin' || user?.role === 'PlatformAdmin';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -156,11 +170,13 @@ export default function ProfileScreen() {
             label="Telefon"
             value={user?.phone ?? ''}
           />
-          <InfoRow
-            icon="business-outline"
-            label="Okul ID"
-            value={user?.schoolId ?? ''}
-          />
+          {!isPlatformAdmin ? (
+            <InfoRow
+              icon="business-outline"
+              label="Okul ID"
+              value={user?.schoolId ?? ''}
+            />
+          ) : null}
           <View style={[rowStyles.row, { borderBottomWidth: 0 }]}>
             <View style={rowStyles.iconCircle}>
               <Ionicons name="person-circle-outline" size={18} color={Colors.PRIMARY} />

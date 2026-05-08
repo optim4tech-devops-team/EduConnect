@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,12 @@ import {
   Alert,
   StatusBar,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../theme/colors';
-import { adminApi, classApi, UserDto, ClassDto } from '../../api/client';
+import { adminApi, classApi, TeacherDto, ClassDto } from '../../api/client';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getInitials(name: string): string {
@@ -49,28 +50,17 @@ interface TeacherForm {
 
 const EMPTY_FORM: TeacherForm = { name: '', email: '', phone: '', password: '', classId: '' };
 
-interface TeacherItem extends UserDto {
+interface TeacherItem extends TeacherDto {
   assignedClassName?: string;
 }
 
-const MOCK_TEACHERS: TeacherItem[] = [
-  { id: 't1', name: 'Ayşe Yılmaz',  email: 'ayse@edu.com',   phone: '0532 111 11 11', role: 'Teacher', schoolId: 's1', assignedClassName: 'Papatyalar' },
-  { id: 't2', name: 'Mehmet Kaya',  email: 'mehmet@edu.com', phone: '0533 222 22 22', role: 'Teacher', schoolId: 's1', assignedClassName: 'Güneşler'   },
-  { id: 't3', name: 'Fatma Demir',  email: 'fatma@edu.com',  phone: '0534 333 33 33', role: 'Teacher', schoolId: 's1', assignedClassName: 'Yıldızlar'  },
-  { id: 't4', name: 'Ali Çelik',    email: 'ali@edu.com',    phone: '0535 444 44 44', role: 'Teacher', schoolId: 's1', assignedClassName: ''           },
-];
-
-const MOCK_CLASSES: ClassDto[] = [
-  { id: 'c1', name: 'Papatyalar', teacherId: 't1', teacherName: 'Ayşe Yılmaz', studentCount: 22, schoolId: 's1' },
-  { id: 'c2', name: 'Güneşler',   teacherId: 't2', teacherName: 'Mehmet Kaya', studentCount: 19, schoolId: 's1' },
-  { id: 'c3', name: 'Yıldızlar',  teacherId: 't3', teacherName: 'Fatma Demir', studentCount: 21, schoolId: 's1' },
-  { id: 'c4', name: 'Kartallar',  teacherId: '',   teacherName: '',             studentCount: 18, schoolId: 's1' },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ManageTeachersScreen() {
-  const [teachers,  setTeachers]  = useState<TeacherItem[]>(MOCK_TEACHERS);
-  const [classes,   setClasses]   = useState<ClassDto[]>(MOCK_CLASSES);
+  const { width } = useWindowDimensions();
+  const isWide = width >= 960;
+  const isWeb = Platform.OS === 'web';
+  const [teachers,  setTeachers]  = useState<TeacherItem[]>([]);
+  const [classes,   setClasses]   = useState<ClassDto[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -92,14 +82,16 @@ export default function ManageTeachersScreen() {
       setTeachers(enriched);
       setClasses(classRes.data);
     } catch {
-      setTeachers(MOCK_TEACHERS);
-      setClasses(MOCK_CLASSES);
+      setTeachers([]);
+      setClasses([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
@@ -120,32 +112,17 @@ export default function ManageTeachersScreen() {
     setSaving(true);
     try {
       const { data: newUser } = await adminApi.createTeacher({
-        name:     form.name,
+        fullName: form.name,
         email:    form.email,
         phone:    form.phone,
         password: form.password,
-        role:     'Teacher',
-        schoolId: 's1',
       });
-      const cls = classes.find((c) => c.id === form.classId);
       if (form.classId) await classApi.assignTeacher(form.classId, newUser.id);
-      setTeachers((prev) => [{ ...newUser, assignedClassName: cls?.name ?? '' }, ...prev]);
+      await loadData();
       closeModal();
       Alert.alert('Başarılı', 'Öğretmen hesabı oluşturuldu.');
     } catch {
-      // Optimistic fallback
-      const cls = classes.find((c) => c.id === form.classId);
-      const optimistic: TeacherItem = {
-        id: Date.now().toString(),
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        role: 'Teacher',
-        schoolId: 's1',
-        assignedClassName: cls?.name ?? '',
-      };
-      setTeachers((prev) => [optimistic, ...prev]);
-      closeModal();
+      Alert.alert('Hata', 'Öğretmen oluşturulamadı.');
     } finally {
       setSaving(false);
     }
@@ -187,31 +164,33 @@ export default function ManageTeachersScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.BACKGROUND} />
 
-      {/* ── Header ──────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Öğretmenler</Text>
-        <Text style={styles.headerCount}>{teachers.length} öğretmen</Text>
-      </View>
+      <View style={[styles.contentShell, isWide && styles.contentShellWide]}>
+        {/* ── Header ──────────────────────────────────────────────────── */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Öğretmenler</Text>
+          <Text style={styles.headerCount}>{teachers.length} öğretmen</Text>
+        </View>
 
-      {/* ── List ────────────────────────────────────────────────────── */}
-      {loading ? (
-        <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} size="large" />
-      ) : (
-        <FlatList
-          data={teachers}
-          keyExtractor={(item) => item.id}
-          renderItem={renderTeacher}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="people-outline" size={56} color={Colors.BORDER} />
-              <Text style={styles.emptyText}>Henüz öğretmen eklenmedi</Text>
-            </View>
-          }
-        />
-      )}
+        {/* ── List ────────────────────────────────────────────────────── */}
+        {loading ? (
+          <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} size="large" />
+        ) : (
+          <FlatList
+            data={teachers}
+            keyExtractor={(item) => item.id}
+            renderItem={renderTeacher}
+            contentContainerStyle={[styles.listContent, isWide && styles.listContentWide]}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={56} color={Colors.BORDER} />
+                <Text style={styles.emptyText}>Henüz öğretmen eklenmedi</Text>
+              </View>
+            }
+          />
+        )}
+      </View>
 
       {/* ── FAB ─────────────────────────────────────────────────────── */}
       <TouchableOpacity style={styles.fab} onPress={openAdd} activeOpacity={0.85}>
@@ -221,11 +200,11 @@ export default function ManageTeachersScreen() {
       {/* ── Add Modal ────────────────────────────────────────────────── */}
       <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={closeModal}>
         <KeyboardAvoidingView
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, isWeb && styles.modalOverlayWeb]}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeModal} activeOpacity={1} />
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, isWeb && styles.modalSheetWeb]}>
             {/* Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Öğretmen Ekle</Text>
@@ -363,6 +342,16 @@ export default function ManageTeachersScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.BACKGROUND },
+  contentShell: {
+    flex: 1,
+    width: '100%',
+  },
+  contentShellWide: {
+    maxWidth: 1160,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
 
   header: {
     paddingHorizontal: 22, paddingVertical: 16,
@@ -374,6 +363,7 @@ const styles = StyleSheet.create({
   loader: { marginTop: 60 },
 
   listContent: { paddingHorizontal: 22, paddingBottom: 100 },
+  listContentWide: { paddingHorizontal: 0, paddingBottom: 120 },
   separator:   { height: 10 },
 
   // Card
@@ -424,12 +414,23 @@ const styles = StyleSheet.create({
     flex: 1, justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
+  modalOverlayWeb: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   modalSheet: {
     backgroundColor: Colors.WHITE,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: Platform.OS === 'ios' ? 44 : 28,
     maxHeight: '90%',
+  },
+  modalSheetWeb: {
+    width: '100%',
+    maxWidth: 760,
+    maxHeight: '85%',
+    borderRadius: 28,
   },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between',

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,12 @@ import {
   Alert,
   StatusBar,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../theme/colors';
-import { classApi, adminApi, ClassDto, UserDto } from '../../api/client';
+import { classApi, adminApi, ClassDto, TeacherDto } from '../../api/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ClassForm {
@@ -28,24 +29,13 @@ interface ClassForm {
 
 const EMPTY_FORM: ClassForm = { name: '', year: '', teacherId: '' };
 
-const MOCK_CLASSES: ClassDto[] = [
-  { id: 'c1', name: 'Papatyalar', teacherId: 't1', teacherName: 'Ayşe Yılmaz',  studentCount: 22, schoolId: 's1' },
-  { id: 'c2', name: 'Güneşler',   teacherId: 't2', teacherName: 'Mehmet Kaya',  studentCount: 19, schoolId: 's1' },
-  { id: 'c3', name: 'Yıldızlar',  teacherId: 't3', teacherName: 'Fatma Demir',  studentCount: 21, schoolId: 's1' },
-  { id: 'c4', name: 'Kartallar',  teacherId: 't4', teacherName: 'Ali Çelik',    studentCount: 18, schoolId: 's1' },
-];
-
-const MOCK_TEACHERS: UserDto[] = [
-  { id: 't1', name: 'Ayşe Yılmaz',  role: 'Teacher', email: 'ayse@edu.com',   schoolId: 's1' },
-  { id: 't2', name: 'Mehmet Kaya',  role: 'Teacher', email: 'mehmet@edu.com', schoolId: 's1' },
-  { id: 't3', name: 'Fatma Demir',  role: 'Teacher', email: 'fatma@edu.com',  schoolId: 's1' },
-  { id: 't4', name: 'Ali Çelik',    role: 'Teacher', email: 'ali@edu.com',    schoolId: 's1' },
-];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ManageClassesScreen() {
-  const [classes,   setClasses]   = useState<ClassDto[]>(MOCK_CLASSES);
-  const [teachers,  setTeachers]  = useState<UserDto[]>(MOCK_TEACHERS);
+  const { width } = useWindowDimensions();
+  const isWide = width >= 960;
+  const isWeb = Platform.OS === 'web';
+  const [classes,   setClasses]   = useState<ClassDto[]>([]);
+  const [teachers,  setTeachers]  = useState<TeacherDto[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -62,14 +52,16 @@ export default function ManageClassesScreen() {
       setClasses(classRes.data);
       setTeachers(teacherRes.data);
     } catch {
-      setClasses(MOCK_CLASSES);
-      setTeachers(MOCK_TEACHERS);
+      setClasses([]);
+      setTeachers([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // ── Modal helpers ────────────────────────────────────────────────────────
   const openAdd = () => {
@@ -80,7 +72,7 @@ export default function ManageClassesScreen() {
 
   const openEdit = (cls: ClassDto) => {
     setEditingId(cls.id);
-    setForm({ name: cls.name, year: '', teacherId: cls.teacherId });
+    setForm({ name: cls.name, year: cls.academicYear ?? '', teacherId: cls.teacherId ?? '' });
     setModalOpen(true);
   };
 
@@ -98,51 +90,23 @@ export default function ManageClassesScreen() {
     setSaving(true);
     try {
       if (editingId) {
-        await classApi.update(editingId, { name: form.name });
-        if (form.teacherId) await classApi.assignTeacher(editingId, form.teacherId);
-        setClasses((prev) =>
-          prev.map((c) => {
-            if (c.id !== editingId) return c;
-            const t = teachers.find((x) => x.id === form.teacherId);
-            return { ...c, name: form.name, teacherId: form.teacherId || c.teacherId, teacherName: t?.name ?? c.teacherName };
-          }),
-        );
+        await classApi.update(editingId, {
+          name: form.name,
+          academicYear: form.year || undefined,
+          teacherId: form.teacherId || undefined,
+          clearTeacher: !form.teacherId,
+        } as any);
       } else {
-        const { data: newClass } = await classApi.create({ name: form.name });
-        if (form.teacherId) {
-          await classApi.assignTeacher(newClass.id, form.teacherId);
-          const t = teachers.find((x) => x.id === form.teacherId);
-          newClass.teacherId   = form.teacherId;
-          newClass.teacherName = t?.name ?? '';
-        }
-        setClasses((prev) => [newClass, ...prev]);
+        await classApi.create({
+          name: form.name,
+          academicYear: form.year || undefined,
+          teacherId: form.teacherId || undefined,
+        } as any);
       }
+      await loadData();
       closeModal();
     } catch {
-      // Optimistic fallback for offline / demo
-      if (editingId) {
-        setClasses((prev) =>
-          prev.map((c) => {
-            if (c.id !== editingId) return c;
-            const t = teachers.find((x) => x.id === form.teacherId);
-            return { ...c, name: form.name, teacherId: form.teacherId || c.teacherId, teacherName: t?.name ?? c.teacherName };
-          }),
-        );
-      } else {
-        const t = teachers.find((x) => x.id === form.teacherId);
-        setClasses((prev) => [
-          {
-            id: Date.now().toString(),
-            name: form.name,
-            teacherId: form.teacherId,
-            teacherName: t?.name ?? '',
-            studentCount: 0,
-            schoolId: 's1',
-          },
-          ...prev,
-        ]);
-      }
-      closeModal();
+      Alert.alert('Hata', 'Sınıf kaydedilemedi.');
     } finally {
       setSaving(false);
     }
@@ -158,8 +122,12 @@ export default function ManageClassesScreen() {
           text: 'Sil',
           style: 'destructive',
           onPress: async () => {
-            try { await classApi.delete(cls.id); } catch { /* silent */ }
-            setClasses((prev) => prev.filter((c) => c.id !== cls.id));
+            try {
+              await classApi.delete(cls.id);
+              setClasses((prev) => prev.filter((c) => c.id !== cls.id));
+            } catch {
+              Alert.alert('Hata', 'Sınıf silinemedi.');
+            }
           },
         },
       ],
@@ -199,31 +167,33 @@ export default function ManageClassesScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.BACKGROUND} />
 
-      {/* ── Header ──────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Sınıf Yönetimi</Text>
-        <Text style={styles.headerCount}>{classes.length} sınıf</Text>
-      </View>
+      <View style={[styles.contentShell, isWide && styles.contentShellWide]}>
+        {/* ── Header ──────────────────────────────────────────────────── */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Sınıf Yönetimi</Text>
+          <Text style={styles.headerCount}>{classes.length} sınıf</Text>
+        </View>
 
-      {/* ── List ────────────────────────────────────────────────────── */}
-      {loading ? (
-        <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} size="large" />
-      ) : (
-        <FlatList
-          data={classes}
-          keyExtractor={(item) => item.id}
-          renderItem={renderCard}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="school-outline" size={56} color={Colors.BORDER} />
-              <Text style={styles.emptyText}>Henüz sınıf eklenmedi</Text>
-            </View>
-          }
-        />
-      )}
+        {/* ── List ────────────────────────────────────────────────────── */}
+        {loading ? (
+          <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} size="large" />
+        ) : (
+          <FlatList
+            data={classes}
+            keyExtractor={(item) => item.id}
+            renderItem={renderCard}
+            contentContainerStyle={[styles.listContent, isWide && styles.listContentWide]}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Ionicons name="school-outline" size={56} color={Colors.BORDER} />
+                <Text style={styles.emptyText}>Henüz sınıf eklenmedi</Text>
+              </View>
+            }
+          />
+        )}
+      </View>
 
       {/* ── FAB ─────────────────────────────────────────────────────── */}
       <TouchableOpacity style={styles.fab} onPress={openAdd} activeOpacity={0.85}>
@@ -233,11 +203,11 @@ export default function ManageClassesScreen() {
       {/* ── Add / Edit Modal ─────────────────────────────────────────── */}
       <Modal visible={modalOpen} animationType="slide" transparent onRequestClose={closeModal}>
         <KeyboardAvoidingView
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, isWeb && styles.modalOverlayWeb]}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeModal} activeOpacity={1} />
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, isWeb && styles.modalSheetWeb]}>
             {/* Modal header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -337,6 +307,16 @@ export default function ManageClassesScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.BACKGROUND },
+  contentShell: {
+    flex: 1,
+    width: '100%',
+  },
+  contentShellWide: {
+    maxWidth: 1160,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
 
   header: {
     paddingHorizontal: 22,
@@ -351,6 +331,7 @@ const styles = StyleSheet.create({
   loader: { marginTop: 60 },
 
   listContent: { paddingHorizontal: 22, paddingBottom: 100 },
+  listContentWide: { paddingHorizontal: 0, paddingBottom: 120 },
   separator:   { height: 10 },
 
   // Card
@@ -416,12 +397,23 @@ const styles = StyleSheet.create({
     flex: 1, justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
+  modalOverlayWeb: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   modalSheet: {
     backgroundColor: Colors.WHITE,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 28,
     maxHeight: '85%',
+  },
+  modalSheetWeb: {
+    width: '100%',
+    maxWidth: 760,
+    maxHeight: '85%',
+    borderRadius: 28,
   },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between',

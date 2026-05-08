@@ -1,10 +1,15 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
 
 export default function AdminLayout() {
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
   const isPlatformAdmin = user?.role === 'PlatformAdmin' || user?.role === 'Admin';
+  const isAllowed = user?.role === 'PlatformAdmin' || user?.role === 'Admin' || user?.role === 'SchoolAdmin';
+
+  if (!isInitialized) return null;
+  if (!user) return <Redirect href="/login" />;
+  if (!isAllowed) return <Redirect href="/access-denied" />;
 
   return (
     <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: '#FF8C42' }}>
@@ -31,6 +36,20 @@ export default function AdminLayout() {
           title: 'Öğretmenler',
           tabBarIcon: ({ color }) => <Ionicons name="people" size={24} color={color} />,
           href: isPlatformAdmin ? null : undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="students"
+        options={{
+          title: 'Öğrenciler',
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="parents"
+        options={{
+          title: 'Veliler',
+          href: null,
         }}
       />
       <Tabs.Screen

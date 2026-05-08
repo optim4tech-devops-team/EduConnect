@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../theme/colors';
 import { platformApi, PlatformSchoolDto, CreatePlatformSchoolDto } from '../../api/client';
-import { useAuthStore } from '../../store/authStore';
+
+const PLATFORM_SCHOOL_ID = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const PLAN_LABELS: Record<string, { label: string; color: string }> = {
@@ -459,7 +460,6 @@ function AssignAdminModal({ school, onClose, onSaved }: AssignAdminModalProps) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function PlatformDashboard() {
-  const { user } = useAuthStore();
   const [schools, setSchools]         = useState<PlatformSchoolDto[]>([]);
   const [loading, setLoading]         = useState(true);
   const [search,  setSearch]          = useState('');
@@ -467,6 +467,7 @@ export default function PlatformDashboard() {
   const [editSchool, setEditSchool]         = useState<PlatformSchoolDto | null>(null);
   const [assignSchool, setAssignSchool]     = useState<PlatformSchoolDto | null>(null);
   const [deletingId, setDeletingId]         = useState<string | null>(null);
+  const searchDebounce = useRef<NodeJS.Timeout | null>(null);
 
   const loadSchools = useCallback(async (q?: string) => {
     setLoading(true);
@@ -480,11 +481,22 @@ export default function PlatformDashboard() {
     }
   }, []);
 
-  useEffect(() => { loadSchools(); }, [loadSchools]);
+  useEffect(() => {
+    loadSchools();
+    // Component unmount olduğunda çalışan timeout'u temizle
+    return () => {
+      if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    };
+  }, [loadSchools]);
 
   const handleSearch = (text: string) => {
     setSearch(text);
-    loadSchools(text);
+    // Önceki timeout'u temizle
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    // Kullanıcı yazmayı bıraktıktan 400ms sonra API çağrısı yap
+    searchDebounce.current = setTimeout(() => {
+      loadSchools(text);
+    }, 400);
   };
 
   const handleDelete = (school: PlatformSchoolDto) => {
@@ -519,6 +531,7 @@ export default function PlatformDashboard() {
 
   const renderSchool = ({ item }: { item: PlatformSchoolDto }) => {
     const isDeleting = deletingId === item.id;
+    const isProtectedSchool = item.id.toLowerCase() === PLATFORM_SCHOOL_ID;
     return (
       <View style={styles.card}>
         {/* Card header */}
@@ -576,13 +589,15 @@ export default function PlatformDashboard() {
           <TouchableOpacity
             style={[styles.actionBtn, styles.actionBtnDanger]}
             onPress={() => handleDelete(item)}
-            disabled={isDeleting}
+            disabled={isDeleting || isProtectedSchool}
           >
             {isDeleting
               ? <ActivityIndicator size="small" color={Colors.ERROR} />
               : <>
                   <Ionicons name="trash-outline" size={15} color={Colors.ERROR} />
-                  <Text style={[styles.actionBtnText, { color: Colors.ERROR }]}>Sil</Text>
+                  <Text style={[styles.actionBtnText, { color: Colors.ERROR, opacity: isProtectedSchool ? 0.45 : 1 }]}>
+                    {isProtectedSchool ? 'Kilitli' : 'Sil'}
+                  </Text>
                 </>}
           </TouchableOpacity>
         </View>

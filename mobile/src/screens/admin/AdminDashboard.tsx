@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   StatusBar,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,35 +34,33 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'addClass',    label: 'Sınıf Ekle',     icon: 'add-circle-outline',  route: '/(admin)/classes'   },
-  { key: 'addStudent',  label: 'Öğrenci Ekle',   icon: 'people-outline',      route: '/(admin)/classes'   },
+  { key: 'addStudent',  label: 'Öğrenci Ekle',   icon: 'people-outline',      route: '/(admin)/students'  },
   { key: 'addTeacher',  label: 'Öğretmen Ekle',  icon: 'person-add-outline',  route: '/(admin)/teachers'  },
-  { key: 'parents',     label: 'Veliler',         icon: 'heart-outline',       route: '/(admin)/classes'   },
-];
-
-const MOCK_STATS: AdminStatsDto = {
-  classCount:   6,
-  teacherCount: 8,
-  studentCount: 124,
-  parentCount:  98,
-};
-
-const MOCK_CLASSES: ClassDto[] = [
-  { id: 'c1', name: 'Papatyalar', teacherId: 't1', teacherName: 'Ayşe Yılmaz',  studentCount: 22, schoolId: 's1' },
-  { id: 'c2', name: 'Güneşler',   teacherId: 't2', teacherName: 'Mehmet Kaya',  studentCount: 19, schoolId: 's1' },
-  { id: 'c3', name: 'Yıldızlar',  teacherId: 't3', teacherName: 'Fatma Demir',  studentCount: 21, schoolId: 's1' },
-  { id: 'c4', name: 'Kartallar',  teacherId: 't4', teacherName: 'Ali Çelik',    studentCount: 18, schoolId: 's1' },
+  { key: 'parents',     label: 'Veliler',         icon: 'heart-outline',       route: '/(admin)/parents'   },
 ];
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isTablet = width >= 768;
+  const isDesktop = width >= 1180;
 
-  const [stats,   setStats]   = useState<AdminStatsDto>(MOCK_STATS);
-  const [classes, setClasses] = useState<ClassDto[]>(MOCK_CLASSES);
+  const [stats,   setStats]   = useState<AdminStatsDto>({
+    schoolName: 'Okul',
+    classCount: 0,
+    teacherCount: 0,
+    studentCount: 0,
+    parentCount: 0,
+  });
+  const [classes, setClasses] = useState<ClassDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const [statsRes, classesRes] = await Promise.all([
         adminApi.stats(),
@@ -69,14 +69,17 @@ export default function AdminDashboard() {
       setStats(statsRes.data);
       setClasses(classesRes.data);
     } catch {
-      setStats(MOCK_STATS);
-      setClasses(MOCK_CLASSES);
+      setStats((prev) => ({ ...prev, classCount: 0, teacherCount: 0, studentCount: 0, parentCount: 0 }));
+      setClasses([]);
+      setError('Panel verileri yüklenemedi.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const statCards: StatCard[] = [
     { key: 'class',   label: 'Sınıf',     value: stats.classCount,   emoji: '🏫' },
@@ -103,7 +106,7 @@ export default function AdminDashboard() {
       </View>
       <View style={styles.classInfo}>
         <Text style={styles.className}>{item.name}</Text>
-        <Text style={styles.classTeacher}>{item.teacherName}</Text>
+        <Text style={styles.classTeacher}>{item.teacherName || 'Öğretmen atanmadı'}</Text>
       </View>
       <View style={styles.classStudentBadge}>
         <Ionicons name="people" size={13} color={Colors.PRIMARY} />
@@ -117,99 +120,134 @@ export default function AdminDashboard() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.BACKGROUND} />
 
-      {/* ── Header ──────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Yönetici Paneli</Text>
-          <Text style={styles.userName} numberOfLines={1}>
-            {user?.name ?? 'Admin'} 👋
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.bellButton}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="bell-outline" size={22} color={Colors.TEXT} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isTablet && styles.scrollContentTablet,
+        ]}
       >
-        {/* ── Banner Card ─────────────────────────────────────────── */}
-        <View style={styles.bannerCard}>
-          <View style={styles.bannerTextBlock}>
-            <Text style={styles.bannerTitle}>notio Yönetimi</Text>
-            <Text style={styles.bannerSub}>
-              Okul genelinde {stats.classCount} sınıf, {stats.studentCount} öğrenci kayıtlı.
-            </Text>
-          </View>
-          <Text style={styles.bannerEmoji}>🏫</Text>
-          <View style={styles.bannerCircle1} />
-          <View style={styles.bannerCircle2} />
-        </View>
-
-        {/* ── Stats Row ───────────────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>Genel Durum</Text>
-        {loading ? (
-          <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} />
-        ) : (
-          <FlatList
-            data={statCards}
-            keyExtractor={(item) => item.key}
-            renderItem={renderStatCard}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.statsRow}
-            scrollEnabled={false}
-          />
-        )}
-
-        {/* ── Quick Actions ────────────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
-        <View style={styles.actionsRow}>
-          {QUICK_ACTIONS.map((action) => (
+        <View
+          style={[
+            styles.contentShell,
+            isTablet && styles.contentShellTablet,
+          ]}
+        >
+          {/* ── Header ──────────────────────────────────────────────────── */}
+          <View style={[styles.header, isTablet && styles.headerTablet]}>
+            <View>
+              <Text style={styles.greeting}>Yönetici Paneli</Text>
+              <Text style={styles.userName} numberOfLines={1}>
+                {user?.name ?? 'Admin'} 👋
+              </Text>
+            </View>
             <TouchableOpacity
-              key={action.key}
-              style={styles.actionButton}
-              activeOpacity={0.75}
-              onPress={() => router.push(action.route as any)}
+              style={styles.bellButton}
+              activeOpacity={0.7}
             >
-              <Ionicons name={action.icon} size={20} color={Colors.PRIMARY} />
-              <Text style={styles.actionLabel}>{action.label}</Text>
+              <Ionicons name="help-outline" size={22} color={Colors.TEXT} />
             </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ── Classes List ─────────────────────────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Sınıflar</Text>
-          <TouchableOpacity onPress={() => router.push('/(admin)/classes' as any)}>
-            <Text style={styles.seeAll}>Tümünü Gör</Text>
-          </TouchableOpacity>
-        </View>
-
-        {loading ? (
-          <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} />
-        ) : classes.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="school-outline" size={48} color={Colors.BORDER} />
-            <Text style={styles.emptyText}>Henüz sınıf yok</Text>
           </View>
-        ) : (
-          <View style={styles.classListCard}>
-            <FlatList
-              data={classes.slice(0, 6)}
-              keyExtractor={(item) => item.id}
-              renderItem={renderClassItem}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
-          </View>
-        )}
 
-        <View style={{ height: 32 }} />
+          {/* ── Banner Card ─────────────────────────────────────────── */}
+          <View style={[styles.bannerCard, isTablet && styles.bannerCardTablet]}>
+            <View style={styles.bannerTextBlock}>
+              <Text style={styles.bannerTitle}>{stats.schoolName}</Text>
+              <Text style={styles.bannerSub}>
+                Okul genelinde {stats.classCount} sınıf, {stats.studentCount} öğrenci kayıtlı.
+              </Text>
+            </View>
+            <Text style={styles.bannerEmoji}>🏫</Text>
+            <View style={styles.bannerCircle1} />
+            <View style={styles.bannerCircle2} />
+          </View>
+
+          {!!error && <Text style={styles.errorText}>{error}</Text>}
+
+          <View style={[styles.dashboardGrid, isDesktop && styles.dashboardGridDesktop]}>
+            <View style={[styles.primaryColumn, isDesktop && styles.primaryColumnDesktop]}>
+              {/* ── Stats Row ───────────────────────────────────────────── */}
+              <Text style={styles.sectionTitle}>Genel Durum</Text>
+              {loading ? (
+                <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} />
+              ) : (
+                <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
+                  {statCards.map((item) => (
+                    <View
+                      key={item.key}
+                      style={[
+                        styles.statCard,
+                        isTablet && styles.statCardTablet,
+                        isDesktop && styles.statCardDesktop,
+                        {
+                          flexBasis: isDesktop ? '31%' : isTablet ? '31%' : '30%',
+                          flexGrow: 1,
+                        },
+                      ]}
+                    >
+                      {renderStatCard({ item })}
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* ── Quick Actions ────────────────────────────────────────── */}
+              <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
+              <View style={[styles.actionsRow, isTablet && styles.actionsRowTablet]}>
+                {QUICK_ACTIONS.map((action) => (
+                  <TouchableOpacity
+                    key={action.key}
+                    style={[
+                      styles.actionButton,
+                      isTablet && styles.actionButtonTablet,
+                      isDesktop && styles.actionButtonDesktop,
+                      {
+                        flexBasis: isDesktop ? '48%' : isTablet ? '48%' : '47%',
+                        flexGrow: 1,
+                      },
+                    ]}
+                    activeOpacity={0.75}
+                    onPress={() => router.push(action.route as any)}
+                  >
+                    <Ionicons name={action.icon} size={20} color={Colors.PRIMARY} />
+                    <Text style={styles.actionLabel}>{action.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={[styles.secondaryColumn, isDesktop && styles.secondaryColumnDesktop]}>
+              {/* ── Classes List ─────────────────────────────────────────── */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Sınıflar</Text>
+                <TouchableOpacity onPress={() => router.push('/(admin)/classes' as any)}>
+                  <Text style={styles.seeAll}>Tümünü Gör</Text>
+                </TouchableOpacity>
+              </View>
+
+              {loading ? (
+                <ActivityIndicator color={Colors.PRIMARY} style={styles.loader} />
+              ) : classes.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="school-outline" size={48} color={Colors.BORDER} />
+                  <Text style={styles.emptyText}>Henüz sınıf yok</Text>
+                </View>
+              ) : (
+                <View style={styles.classListCard}>
+                  <FlatList
+                    data={classes.slice(0, 6)}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderClassItem}
+                    scrollEnabled={false}
+                    ItemSeparatorComponent={() => <View style={styles.separator} />}
+                  />
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={{ height: 32 }} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -255,8 +293,22 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   scrollContent: {
-    paddingHorizontal: 22,
     paddingBottom: 32,
+  },
+  scrollContentTablet: {
+    paddingHorizontal: 24,
+  },
+  contentShell: {
+    width: '100%',
+  },
+  contentShellTablet: {
+    maxWidth: 1240,
+    alignSelf: 'center',
+  },
+  headerTablet: {
+    paddingHorizontal: 0,
+    paddingTop: 20,
+    paddingBottom: 18,
   },
 
   // Banner
@@ -274,6 +326,9 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 10,
   },
+  bannerCardTablet: {
+    minHeight: 144,
+  },
   bannerTextBlock: {
     flex: 1,
   },
@@ -288,6 +343,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 18,
+  },
+  errorText: {
+    marginTop: -10,
+    marginBottom: 18,
+    color: Colors.ERROR,
+    fontSize: 13,
+    fontWeight: '600',
   },
   bannerEmoji: {
     fontSize: 42,
@@ -330,24 +392,54 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 14,
   },
+  dashboardGrid: {
+    width: '100%',
+  },
+  dashboardGridDesktop: {
+    flexDirection: 'row',
+    gap: 28,
+    alignItems: 'flex-start',
+  },
+  primaryColumn: {
+    width: '100%',
+  },
+  primaryColumnDesktop: {
+    flex: 1.2,
+  },
+  secondaryColumn: {
+    width: '100%',
+  },
+  secondaryColumnDesktop: {
+    flex: 1,
+  },
 
   // Stats
   statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginBottom: 28,
   },
+  statsRowTablet: {
+    gap: 14,
+  },
   statCard: {
-    width: 110,
+    minWidth: 100,
     borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 12,
-    alignItems: 'center',
     backgroundColor: Colors.TEAL_100,
     shadowColor: Colors.PRIMARY,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 2,
+  },
+  statCardTablet: {
+    minWidth: 148,
+  },
+  statCardDesktop: {
+    minWidth: 168,
   },
   statEmoji: {
     fontSize: 28,
@@ -369,11 +461,14 @@ const styles = StyleSheet.create({
   // Actions
   actionsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     marginBottom: 28,
   },
+  actionsRowTablet: {
+    gap: 14,
+  },
   actionButton: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
@@ -383,6 +478,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.PRIMARY,
     backgroundColor: Colors.WHITE,
     gap: 6,
+  },
+  actionButtonTablet: {
+    minHeight: 88,
+  },
+  actionButtonDesktop: {
+    minHeight: 94,
   },
   actionLabel: {
     fontSize: 11,
