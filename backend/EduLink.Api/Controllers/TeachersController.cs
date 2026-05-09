@@ -41,10 +41,13 @@ public class TeachersController : ControllerBase
             .Select(u => new
             {
                 u.Id,
+                Name = u.FullName,
                 u.FullName,
                 u.Email,
                 u.Phone,
                 u.AvatarUrl,
+                Role = u.Role.ToString(),
+                u.SchoolId,
                 u.IsActive,
                 u.CreatedAt,
                 ClassCount = _db.Classes.Count(c => c.TeacherId == u.Id && c.SchoolId == schoolId),
@@ -68,10 +71,13 @@ public class TeachersController : ControllerBase
             .Select(u => new
             {
                 u.Id,
+                Name = u.FullName,
                 u.FullName,
                 u.Email,
                 u.Phone,
                 u.AvatarUrl,
+                Role = u.Role.ToString(),
+                u.SchoolId,
                 u.IsActive,
                 u.CreatedAt,
                 Classes = _db.Classes
@@ -113,10 +119,11 @@ public class TeachersController : ControllerBase
             Email = email,
             Phone = normalizedPhone,
             AvatarUrl = request.AvatarUrl,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(string.IsNullOrWhiteSpace(request.Password) ? Guid.NewGuid().ToString("N") : request.Password),
             Role = UserRole.Teacher,
             SchoolId = schoolId,
             IsActive = request.IsActive,
+            MustChangePassword = string.IsNullOrWhiteSpace(request.Password),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -126,10 +133,13 @@ public class TeachersController : ControllerBase
         return CreatedAtAction(nameof(GetTeacher), new { id = teacher.Id }, new
         {
             teacher.Id,
+            Name = teacher.FullName,
             teacher.FullName,
             teacher.Email,
             teacher.Phone,
             teacher.AvatarUrl,
+            Role = teacher.Role.ToString(),
+            teacher.SchoolId,
             teacher.IsActive,
             teacher.CreatedAt
         });
@@ -167,6 +177,29 @@ public class TeachersController : ControllerBase
         return Ok(new { message = "Ogretmen guncellendi." });
     }
 
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteTeacher(Guid id)
+    {
+        var schoolId = GetSchoolId();
+        var teacher = await _db.Users
+            .FirstOrDefaultAsync(u => u.Id == id && u.SchoolId == schoolId && u.Role == UserRole.Teacher);
+
+        if (teacher is null)
+            return NotFound();
+
+        teacher.IsActive = false;
+
+        var classes = await _db.Classes
+            .Where(c => c.SchoolId == schoolId && c.TeacherId == id)
+            .ToListAsync();
+
+        foreach (var cls in classes)
+            cls.TeacherId = null;
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private Guid GetSchoolId() => HttpContext.Items["SchoolId"] is Guid s ? s : Guid.Empty;
 
     private static string NormalizePhoneNumber(string? phoneNumber)
@@ -200,5 +233,6 @@ public record UpsertTeacherRequest(
     string? Email,
     string Phone,
     string? AvatarUrl,
+    string? Password = null,
     bool IsActive = true
 );

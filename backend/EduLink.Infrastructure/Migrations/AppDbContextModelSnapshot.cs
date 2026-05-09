@@ -1206,6 +1206,10 @@ namespace EduLink.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("Phone")
+                        .IsUnique()
+                        .HasFilter("\"Phone\" IS NOT NULL");
+
                     b.HasIndex("SchoolId");
 
                     b.ToTable("Users");

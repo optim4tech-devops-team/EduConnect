@@ -12,6 +12,7 @@ using Hangfire.PostgreSql;
 using CloudinaryDotNet;
 using EduLink.Api.Hubs;
 using EduLink.Api.Middleware;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -115,14 +116,6 @@ builder.Services.AddScoped<ISmsService>(sp =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CloudinaryService>();
 builder.Services.AddScoped<AiService>();
-builder.Services.AddHttpClient<AiService>(client =>
-{
-    client.BaseAddress = new Uri(
-        builder.Configuration["AiService:BaseUrl"] ?? "http://ai-service:8000");
-    client.DefaultRequestHeaders.Add(
-        "X-Api-Key",
-        builder.Configuration["AiService:ApiKey"] ?? "");
-});
 builder.Services.AddHttpContextAccessor();
 
 // ─── Hangfire ─────────────────────────────────────────────────────────────
@@ -160,12 +153,120 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(webRootPath);
 
 // ─── Auto Migrate + Seed ──────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    if (app.Environment.IsDevelopment())
+    {
+        db.Database.EnsureCreated();
+    }
+    else
+    {
+        db.Database.Migrate();
+    }
+
+    void DeleteSchoolGraph(Guid schoolId)
+    {
+        db.Database.ExecuteSqlRaw($@"
+            DO $$
+            DECLARE target_school_id UUID := '{schoolId}'::UUID;
+            BEGIN
+                DELETE FROM ""Messages"" WHERE ""SenderId"" IN (
+                    SELECT ""Id"" FROM ""Users"" WHERE ""SchoolId"" = target_school_id);
+                DELETE FROM ""ConversationParticipants"" WHERE ""UserId"" IN (
+                    SELECT ""Id"" FROM ""Users"" WHERE ""SchoolId"" = target_school_id);
+                DELETE FROM ""Conversations"" WHERE ""Id"" NOT IN (
+                    SELECT DISTINCT ""ConversationId"" FROM ""ConversationParticipants"");
+
+                DELETE FROM ""PostStudentTags"" WHERE ""PostId"" IN (
+                    SELECT p.""Id"" FROM ""Posts"" p
+                    JOIN ""Classes"" c ON c.""Id"" = p.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+                DELETE FROM ""PostMedias"" WHERE ""PostId"" IN (
+                    SELECT p.""Id"" FROM ""Posts"" p
+                    JOIN ""Classes"" c ON c.""Id"" = p.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+                DELETE FROM ""Posts"" WHERE ""ClassId"" IN (
+                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = target_school_id);
+
+                DELETE FROM ""Submissions"" WHERE ""AssignmentId"" IN (
+                    SELECT a.""Id"" FROM ""Assignments"" a
+                    JOIN ""Classes"" c ON c.""Id"" = a.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+                DELETE FROM ""Assignments"" WHERE ""ClassId"" IN (
+                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = target_school_id);
+
+                DELETE FROM ""Attendances"" WHERE ""ClassId"" IN (
+                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = target_school_id);
+                DELETE FROM ""DailyReports"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+
+                DELETE FROM ""StudentObservations"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+                DELETE FROM ""StudentBadges"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+                DELETE FROM ""StudentFaceEncodings"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+                DELETE FROM ""StudentParents"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+
+                DELETE FROM ""FormSubmissionValues"" WHERE ""FormSubmissionId"" IN (
+                    SELECT fs.""Id"" FROM ""FormSubmissions"" fs
+                    JOIN ""Students"" s ON s.""Id"" = fs.""StudentId""
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+                DELETE FROM ""FormSubmissions"" WHERE ""StudentId"" IN (
+                    SELECT s.""Id"" FROM ""Students"" s
+                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
+                    WHERE c.""SchoolId"" = target_school_id);
+
+                DELETE FROM ""OtpCodes"" WHERE ""Identifier"" IN (
+                    SELECT DISTINCT
+                        CASE
+                            WHEN LENGTH(REGEXP_REPLACE(COALESCE(""Phone"", ''), '\D', '', 'g')) = 10
+                                THEN '0' || REGEXP_REPLACE(COALESCE(""Phone"", ''), '\D', '', 'g')
+                            WHEN LENGTH(REGEXP_REPLACE(COALESCE(""Phone"", ''), '\D', '', 'g')) = 12
+                                 AND LEFT(REGEXP_REPLACE(COALESCE(""Phone"", ''), '\D', '', 'g'), 2) = '90'
+                                THEN '0' || RIGHT(REGEXP_REPLACE(COALESCE(""Phone"", ''), '\D', '', 'g'), 10)
+                            ELSE REGEXP_REPLACE(COALESCE(""Phone"", ''), '\D', '', 'g')
+                        END
+                    FROM ""Users""
+                    WHERE ""SchoolId"" = target_school_id AND ""Phone"" IS NOT NULL
+                );
+
+                DELETE FROM ""Students"" WHERE ""ClassId"" IN (
+                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = target_school_id);
+                DELETE FROM ""ClassRoutineRules"" WHERE ""SchoolId"" = target_school_id;
+                UPDATE ""Classes"" SET ""TeacherId"" = NULL WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""Classes"" WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""Badges"" WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""Announcements"" WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""SchoolCalendarEvents"" WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""MealPlanEntries"" WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""StudentObservations"" WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""ComplianceAcceptances"" WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""ComplianceDocuments"" WHERE ""SchoolId"" = target_school_id;
+
+                UPDATE ""Schools"" SET ""PrimaryAdminUserId"" = NULL WHERE ""Id"" = target_school_id;
+                DELETE FROM ""Users"" WHERE ""SchoolId"" = target_school_id;
+                DELETE FROM ""Schools"" WHERE ""Id"" = target_school_id;
+            END $$;
+        ");
+    }
 
     // ── Platform school: single anchor for platform admin ────────────────
     var platformSchoolId = Guid.Parse("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
@@ -183,147 +284,66 @@ using (var scope = app.Services.CreateScope())
 
     // ── Platform admin user ──────────────────────────────────────────────
     var platformAdminEmail = "admin@notioedu.com";
+    var platformAdminPhone = "05337102009";
+    var bootstrapPlatformAdminPassword = builder.Configuration["Bootstrap:PlatformAdminPassword"];
+    var isDevelopment = app.Environment.IsDevelopment();
     // Also migrate old email if it still exists
     var oldAdminEmail = "admin@edulink.com";
     var existingAdmin = db.Users.FirstOrDefault(u => u.Email == platformAdminEmail || u.Email == oldAdminEmail);
     if (existingAdmin == null)
     {
+        var seedPassword = !string.IsNullOrWhiteSpace(bootstrapPlatformAdminPassword)
+            ? bootstrapPlatformAdminPassword
+            : (isDevelopment ? "Admin123!" : null);
+
+        if (string.IsNullOrWhiteSpace(seedPassword))
+        {
+            app.Logger.LogWarning(
+                "Platform admin user was not seeded because Bootstrap:PlatformAdminPassword is not configured for environment {EnvironmentName}.",
+                app.Environment.EnvironmentName);
+        }
+        else
+        {
         db.Users.Add(new EduLink.Domain.Entities.User
         {
             Id = Guid.NewGuid(),
             FullName = "Admin Kullanıcı",
             Email = platformAdminEmail,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            Phone = platformAdminPhone,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedPassword),
             Role = EduLink.Domain.Enums.UserRole.Admin,
             SchoolId = platformSchoolId,
             IsActive = true,
+            MustChangePassword = !isDevelopment,
             CreatedAt = DateTime.UtcNow
         });
         db.SaveChanges();
+        }
     }
     else
     {
         // Ensure admin has correct email, role, and school
         var changed = false;
         if (existingAdmin.Email != platformAdminEmail) { existingAdmin.Email = platformAdminEmail; changed = true; }
+        if (existingAdmin.Phone != platformAdminPhone) { existingAdmin.Phone = platformAdminPhone; changed = true; }
         if (existingAdmin.Role != EduLink.Domain.Enums.UserRole.Admin) { existingAdmin.Role = EduLink.Domain.Enums.UserRole.Admin; changed = true; }
         if (existingAdmin.SchoolId != platformSchoolId) { existingAdmin.SchoolId = platformSchoolId; changed = true; }
         if (changed) db.SaveChanges();
     }
 
-    // ── One-time cleanup: remove demo schools and test users ─────────────
-    var demoSchoolIds = new[]
+    var demoSchoolId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    var legacyDemoSchoolId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    var enableDemoSchoolSeed = builder.Configuration.GetValue("Seed:EnableDemoSchool", false);
+    if (db.Schools.Any(s => s.Id == legacyDemoSchoolId))
     {
-        Guid.Parse("00000000-0000-0000-0000-000000000001"),
-    };
-    var hasDemoSchools = db.Schools.Any(s => demoSchoolIds.Contains(s.Id));
-    if (hasDemoSchools)
-    {
-        // Delete in dependency order to satisfy FK Restrict constraints
-        db.Database.ExecuteSqlRaw(@"
-            DO $$
-            DECLARE demo_ids UUID[] := ARRAY[
-                '00000000-0000-0000-0000-000000000001'::UUID
-            ];
-            BEGIN
-                -- Messages / Conversations (no school FK, but clean up via users)
-                DELETE FROM ""Messages"" WHERE ""SenderId"" IN (
-                    SELECT ""Id"" FROM ""Users"" WHERE ""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""ConversationParticipants"" WHERE ""UserId"" IN (
-                    SELECT ""Id"" FROM ""Users"" WHERE ""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""Conversations"" WHERE ""Id"" NOT IN (
-                    SELECT DISTINCT ""ConversationId"" FROM ""ConversationParticipants"");
-
-                -- Posts and related
-                DELETE FROM ""PostStudentTags"" WHERE ""PostId"" IN (
-                    SELECT p.""Id"" FROM ""Posts"" p
-                    JOIN ""Classes"" c ON c.""Id"" = p.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""PostMedias"" WHERE ""PostId"" IN (
-                    SELECT p.""Id"" FROM ""Posts"" p
-                    JOIN ""Classes"" c ON c.""Id"" = p.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""Posts"" WHERE ""ClassId"" IN (
-                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids));
-
-                -- Assignments / Submissions
-                DELETE FROM ""Submissions"" WHERE ""AssignmentId"" IN (
-                    SELECT a.""Id"" FROM ""Assignments"" a
-                    JOIN ""Classes"" c ON c.""Id"" = a.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""Assignments"" WHERE ""ClassId"" IN (
-                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids));
-
-                -- Attendances / DailyReports (via student)
-                DELETE FROM ""Attendances"" WHERE ""ClassId"" IN (
-                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""DailyReports"" WHERE ""StudentId"" IN (
-                    SELECT s.""Id"" FROM ""Students"" s
-                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-
-                -- StudentObservations, StudentBadges, StudentFaceEncodings, StudentParents
-                DELETE FROM ""StudentObservations"" WHERE ""StudentId"" IN (
-                    SELECT s.""Id"" FROM ""Students"" s
-                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""StudentBadges"" WHERE ""StudentId"" IN (
-                    SELECT s.""Id"" FROM ""Students"" s
-                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""StudentFaceEncodings"" WHERE ""StudentId"" IN (
-                    SELECT s.""Id"" FROM ""Students"" s
-                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""StudentParents"" WHERE ""StudentId"" IN (
-                    SELECT s.""Id"" FROM ""Students"" s
-                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-
-                -- FormSubmissions
-                DELETE FROM ""FormSubmissionValues"" WHERE ""FormSubmissionId"" IN (
-                    SELECT fs.""Id"" FROM ""FormSubmissions"" fs
-                    JOIN ""Students"" s ON s.""Id"" = fs.""StudentId""
-                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""FormSubmissions"" WHERE ""StudentId"" IN (
-                    SELECT s.""Id"" FROM ""Students"" s
-                    JOIN ""Classes"" c ON c.""Id"" = s.""ClassId""
-                    WHERE c.""SchoolId"" = ANY(demo_ids));
-
-                -- Students, ClassRoutineRules
-                DELETE FROM ""Students"" WHERE ""ClassId"" IN (
-                    SELECT ""Id"" FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids));
-                DELETE FROM ""ClassRoutineRules"" WHERE ""SchoolId"" = ANY(demo_ids);
-
-                -- Classes
-                UPDATE ""Classes"" SET ""TeacherId"" = NULL WHERE ""SchoolId"" = ANY(demo_ids);
-                DELETE FROM ""Classes"" WHERE ""SchoolId"" = ANY(demo_ids);
-
-                -- School-level records
-                DELETE FROM ""Badges"" WHERE ""SchoolId"" = ANY(demo_ids);
-                DELETE FROM ""Announcements"" WHERE ""SchoolId"" = ANY(demo_ids);
-                DELETE FROM ""SchoolCalendarEvents"" WHERE ""SchoolId"" = ANY(demo_ids);
-                DELETE FROM ""MealPlanEntries"" WHERE ""SchoolId"" = ANY(demo_ids);
-                DELETE FROM ""StudentObservations"" WHERE ""SchoolId"" = ANY(demo_ids);
-                DELETE FROM ""ComplianceAcceptances"" WHERE ""SchoolId"" = ANY(demo_ids);
-                DELETE FROM ""ComplianceDocuments"" WHERE ""SchoolId"" = ANY(demo_ids);
-                DELETE FROM ""OtpCodes"" WHERE TRUE;
-
-                -- Users in demo schools (except platform admin)
-                DELETE FROM ""Users""
-                WHERE ""SchoolId"" = ANY(demo_ids)
-                  AND ""Email"" NOT IN ('admin@notioedu.com', 'admin@edulink.com');
-
-                -- Schools
-                UPDATE ""Schools"" SET ""PrimaryAdminUserId"" = NULL
-                WHERE ""Id"" = ANY(demo_ids);
-                DELETE FROM ""Schools"" WHERE ""Id"" = ANY(demo_ids);
-            END $$;
-        ");
+        DeleteSchoolGraph(legacyDemoSchoolId);
     }
 
-    var demoSchoolId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    if (!enableDemoSchoolSeed && db.Schools.Any(s => s.Id == demoSchoolId))
+    {
+        DeleteSchoolGraph(demoSchoolId);
+    }
+
     var demoSchoolAdminId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     var demoTeacherId = Guid.Parse("33333333-3333-3333-3333-333333333333");
     var demoParentId = Guid.Parse("44444444-4444-4444-4444-444444444444");
@@ -333,236 +353,243 @@ using (var scope = app.Services.CreateScope())
     var parentAdminConversationId = Guid.Parse("99999999-9999-9999-9999-999999999999");
     var teacherAdminConversationId = Guid.Parse("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA");
 
-    var demoSchool = db.Schools.FirstOrDefault(s => s.Id == demoSchoolId);
-    if (demoSchool is null)
+    if (enableDemoSchoolSeed)
     {
-        demoSchool = new EduLink.Domain.Entities.School
+        var demoSchool = db.Schools.FirstOrDefault(s => s.Id == demoSchoolId);
+        if (demoSchool is null)
         {
-            Id = demoSchoolId,
-            Name = "Küçük Sıralar Anaokulları",
-            IsActive = true,
-            Plan = "demo",
-            FamilyMessagingMode = "separate_parents",
-            CreatedAt = DateTime.UtcNow
-        };
-        db.Schools.Add(demoSchool);
-    }
-    else
-    {
-        demoSchool.Name = "Küçük Sıralar Anaokulları";
-        demoSchool.IsActive = true;
-        demoSchool.Plan = "demo";
-        demoSchool.FamilyMessagingMode = "separate_parents";
-    }
-
-    db.SaveChanges();
-
-    EduLink.Domain.Entities.User UpsertDemoUser(Guid id, string fullName, string email, string? phone, EduLink.Domain.Enums.UserRole role)
-    {
-        var user = db.Users.FirstOrDefault(u => u.Id == id || u.Email == email);
-        if (user is null)
-        {
-            user = new EduLink.Domain.Entities.User
+            demoSchool = new EduLink.Domain.Entities.School
             {
-                Id = id,
-                FullName = fullName,
-                Email = email,
-                Phone = phone,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-                Role = role,
-                SchoolId = demoSchoolId,
+                Id = demoSchoolId,
+                Name = "Küçük Sıralar Anaokulları",
                 IsActive = true,
-                MustChangePassword = false,
-                RefreshToken = null,
-                RefreshTokenExpiry = null,
+                Plan = "demo",
+                FamilyMessagingMode = "separate_parents",
                 CreatedAt = DateTime.UtcNow
             };
-            db.Users.Add(user);
+            db.Schools.Add(demoSchool);
         }
         else
         {
-            user.FullName = fullName;
-            user.Email = email;
-            user.Phone = phone;
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!");
-            user.Role = role;
-            user.SchoolId = demoSchoolId;
-            user.IsActive = true;
-            user.MustChangePassword = false;
-            user.RefreshToken = null;
-            user.RefreshTokenExpiry = null;
+            demoSchool.Name = "Küçük Sıralar Anaokulları";
+            demoSchool.IsActive = true;
+            demoSchool.Plan = "demo";
+            demoSchool.FamilyMessagingMode = "separate_parents";
         }
 
-        return user;
-    }
-
-    var demoSchoolAdmin = UpsertDemoUser(
-        demoSchoolAdminId,
-        "Sümeyra Darendeli",
-        "sumeyra.darendeli@notio.test",
-        "05337102008",
-        EduLink.Domain.Enums.UserRole.SchoolAdmin);
-
-    var demoTeacher = UpsertDemoUser(
-        demoTeacherId,
-        "Elif Toksoy",
-        "elif.toksoy@notio.test",
-        "05442698494",
-        EduLink.Domain.Enums.UserRole.Teacher);
-
-    var demoParent = UpsertDemoUser(
-        demoParentId,
-        "Sezer Darendeli",
-        "sezer.darendeli@notio.test",
-        "05337102007",
-        EduLink.Domain.Enums.UserRole.Parent);
-
-    db.SaveChanges();
-
-    if (demoSchool.PrimaryAdminUserId != demoSchoolAdmin.Id)
-    {
-        demoSchool.PrimaryAdminUserId = demoSchoolAdmin.Id;
         db.SaveChanges();
-    }
 
-    var demoClass = db.Classes.FirstOrDefault(c => c.Id == demoClassId);
-    if (demoClass is null)
-    {
-        demoClass = new EduLink.Domain.Entities.Class
+        EduLink.Domain.Entities.User UpsertDemoUser(Guid id, string fullName, string email, string? phone, EduLink.Domain.Enums.UserRole role)
         {
-            Id = demoClassId,
-            Name = "Harfler Dünyası",
-            SchoolId = demoSchoolId,
-            TeacherId = demoTeacher.Id,
-            AcademicYear = "2025-2026",
-            CreatedAt = DateTime.UtcNow
-        };
-        db.Classes.Add(demoClass);
-    }
-    else
-    {
-        demoClass.Name = "Harfler Dünyası";
-        demoClass.SchoolId = demoSchoolId;
-        demoClass.TeacherId = demoTeacher.Id;
-        demoClass.AcademicYear = "2025-2026";
-    }
-
-    db.SaveChanges();
-
-    var demoStudent = db.Students.FirstOrDefault(s => s.Id == demoStudentId);
-    if (demoStudent is null)
-    {
-        demoStudent = new EduLink.Domain.Entities.Student
-        {
-            Id = demoStudentId,
-            FullName = "Rana Darendeli",
-            BirthDate = new DateOnly(2020, 9, 1),
-            ClassId = demoClassId,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        db.Students.Add(demoStudent);
-    }
-    else
-    {
-        demoStudent.FullName = "Rana Darendeli";
-        demoStudent.BirthDate = new DateOnly(2020, 9, 1);
-        demoStudent.ClassId = demoClassId;
-        demoStudent.IsActive = true;
-    }
-
-    if (!db.StudentParents.Any(sp => sp.StudentId == demoStudentId && sp.ParentId == demoParent.Id))
-    {
-        db.StudentParents.Add(new EduLink.Domain.Entities.StudentParent
-        {
-            StudentId = demoStudentId,
-            ParentId = demoParent.Id,
-            Relationship = "Baba",
-            IsPrimaryContact = true,
-            CanPickup = true,
-            CreatedAt = DateTime.UtcNow
-        });
-    }
-
-    db.SaveChanges();
-
-    void EnsureDirectConversation(Guid conversationId, params Guid[] participantIds)
-    {
-        var conversation = db.Conversations
-            .Include(c => c.Participants)
-            .FirstOrDefault(c => c.Id == conversationId);
-
-        if (conversation is null)
-        {
-            conversation = new EduLink.Domain.Entities.Conversation
+            var user = db.Users.FirstOrDefault(u => u.Id == id || u.Email == email);
+            if (user is null)
             {
-                Id = conversationId,
-                Type = EduLink.Domain.Enums.ConversationType.Direct,
+                user = new EduLink.Domain.Entities.User
+                {
+                    Id = id,
+                    FullName = fullName,
+                    Email = email,
+                    Phone = phone,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+                    Role = role,
+                    SchoolId = demoSchoolId,
+                    IsActive = true,
+                    MustChangePassword = false,
+                    RefreshToken = null,
+                    RefreshTokenExpiry = null,
+                    CreatedAt = DateTime.UtcNow
+                };
+                db.Users.Add(user);
+            }
+            else
+            {
+                user.FullName = fullName;
+                user.Email = email;
+                user.Phone = phone;
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!");
+                user.Role = role;
+                user.SchoolId = demoSchoolId;
+                user.IsActive = true;
+                user.MustChangePassword = false;
+                user.RefreshToken = null;
+                user.RefreshTokenExpiry = null;
+            }
+
+            return user;
+        }
+
+        var demoSchoolAdmin = UpsertDemoUser(
+            demoSchoolAdminId,
+            "Sümeyra Darendeli",
+            "sumeyra.darendeli@notio.test",
+            "05337102008",
+            EduLink.Domain.Enums.UserRole.SchoolAdmin);
+
+        var demoTeacher = UpsertDemoUser(
+            demoTeacherId,
+            "Elif Toksoy",
+            "elif.toksoy@notio.test",
+            "05442698494",
+            EduLink.Domain.Enums.UserRole.Teacher);
+
+        var demoParent = UpsertDemoUser(
+            demoParentId,
+            "Sezer Darendeli",
+            "sezer.darendeli@notio.test",
+            "05337102007",
+            EduLink.Domain.Enums.UserRole.Parent);
+
+        db.SaveChanges();
+
+        if (demoSchool.PrimaryAdminUserId != demoSchoolAdmin.Id)
+        {
+            demoSchool.PrimaryAdminUserId = demoSchoolAdmin.Id;
+            db.SaveChanges();
+        }
+
+        var demoClass = db.Classes.FirstOrDefault(c => c.Id == demoClassId);
+        if (demoClass is null)
+        {
+            demoClass = new EduLink.Domain.Entities.Class
+            {
+                Id = demoClassId,
+                Name = "Harfler Dünyası",
+                SchoolId = demoSchoolId,
+                TeacherId = demoTeacher.Id,
+                AcademicYear = "2025-2026",
                 CreatedAt = DateTime.UtcNow
             };
-            db.Conversations.Add(conversation);
+            db.Classes.Add(demoClass);
+        }
+        else
+        {
+            demoClass.Name = "Harfler Dünyası";
+            demoClass.SchoolId = demoSchoolId;
+            demoClass.TeacherId = demoTeacher.Id;
+            demoClass.AcademicYear = "2025-2026";
         }
 
-        foreach (var participantId in participantIds.Distinct())
+        db.SaveChanges();
+
+        var demoStudent = db.Students.FirstOrDefault(s => s.Id == demoStudentId);
+        if (demoStudent is null)
         {
-            var exists = db.ConversationParticipants.Any(cp => cp.ConversationId == conversationId && cp.UserId == participantId);
-            if (!exists)
+            demoStudent = new EduLink.Domain.Entities.Student
             {
-                db.ConversationParticipants.Add(new EduLink.Domain.Entities.ConversationParticipant
+                Id = demoStudentId,
+                FullName = "Rana Darendeli",
+                BirthDate = new DateOnly(2020, 9, 1),
+                ClassId = demoClassId,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Students.Add(demoStudent);
+        }
+        else
+        {
+            demoStudent.FullName = "Rana Darendeli";
+            demoStudent.BirthDate = new DateOnly(2020, 9, 1);
+            demoStudent.ClassId = demoClassId;
+            demoStudent.IsActive = true;
+        }
+
+        if (!db.StudentParents.Any(sp => sp.StudentId == demoStudentId && sp.ParentId == demoParent.Id))
+        {
+            db.StudentParents.Add(new EduLink.Domain.Entities.StudentParent
+            {
+                StudentId = demoStudentId,
+                ParentId = demoParent.Id,
+                Relationship = "Baba",
+                IsPrimaryContact = true,
+                CanPickup = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        db.SaveChanges();
+
+        void EnsureDirectConversation(Guid conversationId, params Guid[] participantIds)
+        {
+            var conversation = db.Conversations
+                .Include(c => c.Participants)
+                .FirstOrDefault(c => c.Id == conversationId);
+
+            if (conversation is null)
+            {
+                conversation = new EduLink.Domain.Entities.Conversation
                 {
-                    ConversationId = conversationId,
-                    UserId = participantId,
-                    JoinedAt = DateTime.UtcNow
-                });
+                    Id = conversationId,
+                    Type = EduLink.Domain.Enums.ConversationType.Direct,
+                    CreatedAt = DateTime.UtcNow
+                };
+                db.Conversations.Add(conversation);
+            }
+
+            foreach (var participantId in participantIds.Distinct())
+            {
+                var exists = db.ConversationParticipants.Any(cp => cp.ConversationId == conversationId && cp.UserId == participantId);
+                if (!exists)
+                {
+                    db.ConversationParticipants.Add(new EduLink.Domain.Entities.ConversationParticipant
+                    {
+                        ConversationId = conversationId,
+                        UserId = participantId,
+                        JoinedAt = DateTime.UtcNow
+                    });
+                }
             }
         }
-    }
 
-    void SeedConversationIfEmpty(Guid conversationId, Guid senderId, string content)
-    {
-        if (db.Messages.Any(m => m.ConversationId == conversationId))
+        void SeedConversationIfEmpty(Guid conversationId, Guid senderId, string content)
         {
-            return;
+            if (db.Messages.Any(m => m.ConversationId == conversationId))
+            {
+                return;
+            }
+
+            db.Messages.Add(new EduLink.Domain.Entities.Message
+            {
+                Id = Guid.NewGuid(),
+                ConversationId = conversationId,
+                SenderId = senderId,
+                Content = content,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
         }
 
-        db.Messages.Add(new EduLink.Domain.Entities.Message
-        {
-            Id = Guid.NewGuid(),
-            ConversationId = conversationId,
-            SenderId = senderId,
-            Content = content,
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        });
+        EnsureDirectConversation(teacherParentConversationId, demoTeacher.Id, demoParent.Id);
+        EnsureDirectConversation(parentAdminConversationId, demoParent.Id, demoSchoolAdmin.Id);
+        EnsureDirectConversation(teacherAdminConversationId, demoTeacher.Id, demoSchoolAdmin.Id);
+
+        db.SaveChanges();
+
+        SeedConversationIfEmpty(
+            teacherParentConversationId,
+            demoTeacher.Id,
+            "Merhaba, Rana bugün kitap köşesinde çok keyifliydi. Yarın kitap günü için küçük bir hikâye kitabı getirebilir misiniz?");
+
+        SeedConversationIfEmpty(
+            parentAdminConversationId,
+            demoSchoolAdmin.Id,
+            "Merhaba, okul iletişim kanalı üzerinden bize her zaman yazabilirsiniz.");
+
+        SeedConversationIfEmpty(
+            teacherAdminConversationId,
+            demoSchoolAdmin.Id,
+            "Merhaba Elif öğretmenim, veli iletişimlerinde bu hat üzerinden de destek olacağız.");
+
+        db.SaveChanges();
     }
-
-    EnsureDirectConversation(teacherParentConversationId, demoTeacher.Id, demoParent.Id);
-    EnsureDirectConversation(parentAdminConversationId, demoParent.Id, demoSchoolAdmin.Id);
-    EnsureDirectConversation(teacherAdminConversationId, demoTeacher.Id, demoSchoolAdmin.Id);
-
-    db.SaveChanges();
-
-    SeedConversationIfEmpty(
-        teacherParentConversationId,
-        demoTeacher.Id,
-        "Merhaba, Rana bugün kitap köşesinde çok keyifliydi. Yarın kitap günü için küçük bir hikâye kitabı getirebilir misiniz?");
-
-    SeedConversationIfEmpty(
-        parentAdminConversationId,
-        demoSchoolAdmin.Id,
-        "Merhaba, okul iletişim kanalı üzerinden bize her zaman yazabilirsiniz.");
-
-    SeedConversationIfEmpty(
-        teacherAdminConversationId,
-        demoSchoolAdmin.Id,
-        "Merhaba Elif öğretmenim, veli iletişimlerinde bu hat üzerinden de destek olacağız.");
-
-    db.SaveChanges();
 }
 
 // ─── Middleware Pipeline ─────────────────────────────────────────────────
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "EduLink API v1"));
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(webRootPath)
+});
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

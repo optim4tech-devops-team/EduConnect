@@ -69,6 +69,9 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(u => u.Id);
             entity.HasIndex(u => u.Email).IsUnique();
+            entity.HasIndex(u => u.Phone)
+                  .IsUnique()
+                  .HasFilter("\"Phone\" IS NOT NULL");
             entity.Property(u => u.Email).IsRequired().HasMaxLength(256);
             entity.Property(u => u.FullName).IsRequired().HasMaxLength(200);
 

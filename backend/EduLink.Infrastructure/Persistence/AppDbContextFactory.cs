@@ -14,7 +14,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
         // Allow override via env var for CI/CD
         var connectionString = Environment.GetEnvironmentVariable("EF_CONNECTION_STRING")
-            ?? "Host=localhost;Port=5433;Database=edulink_db;Username=edulink_user;Password=edulink_pass_change_me";
+            ?? "Host=localhost;Port=5432;Database=edulink;Username=edulink_user;Password=edulink_pass_change_me";
 
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString, npgsql => npgsql.UseVector());

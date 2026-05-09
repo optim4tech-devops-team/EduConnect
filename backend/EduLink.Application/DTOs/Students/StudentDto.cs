@@ -6,7 +6,10 @@ public record StudentDto(
     Guid ClassId,
     string ClassName,
     string? AvatarUrl,
-    string? Notes,
+    string? Gender,
+    List<string> Allergies,
+    string? MedicationNotes,
+    string? HealthNotes,
     bool IsActive,
     int BadgeCount,
     List<ParentSummaryDto> Parents

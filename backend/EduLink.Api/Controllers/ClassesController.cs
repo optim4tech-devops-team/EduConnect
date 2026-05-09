@@ -20,7 +20,7 @@ public class ClassesController : ControllerBase
 
     // GET /api/classes
     [HttpGet]
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> GetClasses()
     {
         var userId   = GetUserId();
@@ -44,7 +44,7 @@ public class ClassesController : ControllerBase
                 c.AcademicYear,
                 c.SchoolId,
                 c.TeacherId,
-                TeacherName   = c.Teacher.FullName,
+                TeacherName   = c.Teacher != null ? c.Teacher.FullName : null,
                 StudentCount  = c.Students.Count(s => s.IsActive),
                 c.CreatedAt
             })
@@ -55,17 +55,19 @@ public class ClassesController : ControllerBase
 
     // POST /api/classes
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "SchoolAdmin")]
     public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest request)
     {
         var schoolId = GetSchoolId();
+        User? teacher = null;
+        if (request.TeacherId.HasValue)
+        {
+            teacher = await _db.Users
+                .FirstOrDefaultAsync(u => u.Id == request.TeacherId.Value && u.SchoolId == schoolId);
 
-        // Verify the teacher exists and belongs to this school
-        var teacher = await _db.Users
-            .FirstOrDefaultAsync(u => u.Id == request.TeacherId && u.SchoolId == schoolId);
-
-        if (teacher is null)
-            return BadRequest(new { message = "Teacher not found in this school." });
+            if (teacher is null)
+                return BadRequest(new { message = "Teacher not found in this school." });
+        }
 
         var cls = new Class
         {
@@ -73,19 +75,29 @@ public class ClassesController : ControllerBase
             Name         = request.Name,
             SchoolId     = schoolId,
             TeacherId    = request.TeacherId,
-            AcademicYear = request.AcademicYear,
+            AcademicYear = request.AcademicYear ?? string.Empty,
             CreatedAt    = DateTime.UtcNow
         };
 
         _db.Classes.Add(cls);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetClass), new { id = cls.Id }, new { id = cls.Id, cls.Name });
+        return CreatedAtAction(nameof(GetClass), new { id = cls.Id }, new
+        {
+            cls.Id,
+            cls.Name,
+            cls.AcademicYear,
+            cls.SchoolId,
+            cls.TeacherId,
+            TeacherName = teacher?.FullName,
+            StudentCount = 0,
+            cls.CreatedAt
+        });
     }
 
     // GET /api/classes/{id}
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> GetClass(Guid id)
     {
         var userId   = GetUserId();
@@ -110,7 +122,7 @@ public class ClassesController : ControllerBase
             cls.AcademicYear,
             cls.SchoolId,
             cls.TeacherId,
-            TeacherName  = cls.Teacher.FullName,
+            TeacherName  = cls.Teacher != null ? cls.Teacher.FullName : null,
             Students     = cls.Students
                 .Where(s => s.IsActive)
                 .Select(s => new { s.Id, s.FullName, s.AvatarUrl, s.BirthDate })
@@ -121,7 +133,7 @@ public class ClassesController : ControllerBase
 
     // PUT /api/classes/{id}
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "SchoolAdmin")]
     public async Task<IActionResult> UpdateClass(Guid id, [FromBody] UpdateClassRequest request)
     {
         var schoolId = GetSchoolId();
@@ -143,6 +155,10 @@ public class ClassesController : ControllerBase
 
             cls.TeacherId = request.TeacherId.Value;
         }
+        else if (request.ClearTeacher)
+        {
+            cls.TeacherId = null;
+        }
 
         if (request.Name is not null)
             cls.Name = request.Name;
@@ -154,9 +170,61 @@ public class ClassesController : ControllerBase
         return Ok(new { message = "Class updated." });
     }
 
+    // POST /api/classes/{id}/teacher
+    [HttpPost("{id:guid}/teacher")]
+    [Authorize(Roles = "SchoolAdmin")]
+    public async Task<IActionResult> AssignTeacher(Guid id, [FromBody] AssignClassTeacherRequest request)
+    {
+        var schoolId = GetSchoolId();
+
+        var cls = await _db.Classes
+            .Include(c => c.Students)
+            .FirstOrDefaultAsync(c => c.Id == id && c.SchoolId == schoolId);
+
+        if (cls is null)
+            return NotFound();
+
+        if (!request.TeacherId.HasValue)
+        {
+            cls.TeacherId = null;
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                cls.Id,
+                cls.Name,
+                cls.AcademicYear,
+                cls.SchoolId,
+                cls.TeacherId,
+                TeacherName = (string?)null,
+                StudentCount = cls.Students.Count(s => s.IsActive)
+            });
+        }
+
+        var teacher = await _db.Users
+            .FirstOrDefaultAsync(u => u.Id == request.TeacherId.Value && u.SchoolId == schoolId);
+
+        if (teacher is null)
+            return BadRequest(new { message = "Teacher not found in this school." });
+
+        cls.TeacherId = teacher.Id;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            cls.Id,
+            cls.Name,
+            cls.AcademicYear,
+            cls.SchoolId,
+            cls.TeacherId,
+            TeacherName = teacher.FullName,
+            StudentCount = cls.Students.Count(s => s.IsActive)
+        });
+    }
+
     // DELETE /api/classes/{id}
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "SchoolAdmin")]
     public async Task<IActionResult> DeleteClass(Guid id)
     {
         var schoolId = GetSchoolId();
@@ -188,5 +256,6 @@ public class ClassesController : ControllerBase
     private string GetRole()   => HttpContext.Items["Role"]     as string ?? string.Empty;
 }
 
-public record CreateClassRequest(string Name, Guid TeacherId, string AcademicYear);
-public record UpdateClassRequest(string? Name, Guid? TeacherId, string? AcademicYear);
+public record CreateClassRequest(string Name, Guid? TeacherId, string? AcademicYear);
+public record UpdateClassRequest(string? Name, Guid? TeacherId, string? AcademicYear, bool ClearTeacher = false);
+public record AssignClassTeacherRequest(Guid? TeacherId);

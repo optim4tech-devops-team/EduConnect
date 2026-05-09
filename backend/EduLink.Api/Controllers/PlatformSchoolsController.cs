@@ -15,6 +15,7 @@ namespace EduLink.Api.Controllers;
 [Authorize(Roles = "Admin")]
 public class PlatformSchoolsController : ControllerBase
 {
+    private static readonly Guid PlatformSchoolId = Guid.Parse("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
     private readonly AppDbContext _db;
     private readonly IEmailService _email;
     private readonly ISmsService _sms;
@@ -207,31 +208,114 @@ public class PlatformSchoolsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteSchool(Guid id)
     {
-        var platformSchoolId = Guid.Parse("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
-        if (id == platformSchoolId)
+        if (id == PlatformSchoolId)
             return BadRequest(new { message = "Platform okulu silinemez." });
 
-        var school = await _db.Schools.FirstOrDefaultAsync(s => s.Id == id);
+        var school = await _db.Schools
+            .Include(s => s.Classes)
+            .ThenInclude(c => c.Students)
+            .FirstOrDefaultAsync(s => s.Id == id);
         if (school is null)
             return NotFound();
 
-        // Reset primary admin user's school to platform school so FK doesn't block delete
-        var adminUser = school.PrimaryAdminUserId.HasValue
-            ? await _db.Users.FirstOrDefaultAsync(u => u.Id == school.PrimaryAdminUserId)
-            : null;
+        var classIds = school.Classes.Select(c => c.Id).ToList();
+        var studentIds = school.Classes.SelectMany(c => c.Students).Select(s => s.Id).Distinct().ToList();
+        var userIds = await _db.Users
+            .Where(u => u.SchoolId == id)
+            .Select(u => u.Id)
+            .ToListAsync();
+        var normalizedPhones = await _db.Users
+            .Where(u => u.SchoolId == id && u.Phone != null)
+            .Select(u => u.Phone!)
+            .ToListAsync();
+        var assignmentIds = await _db.Assignments
+            .Where(a => classIds.Contains(a.ClassId))
+            .Select(a => a.Id)
+            .ToListAsync();
+        var postIds = await _db.Posts
+            .Where(p => classIds.Contains(p.ClassId))
+            .Select(p => p.Id)
+            .ToListAsync();
+        var formSubmissionIds = await _db.FormSubmissions
+            .Where(fs => fs.StudentId != null && studentIds.Contains(fs.StudentId.Value))
+            .Select(fs => fs.Id)
+            .ToListAsync();
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
-            // Detach admin user from this school
-            if (adminUser is not null)
+            if (userIds.Count > 0)
             {
-                _db.Users.Remove(adminUser);
+                await _db.Messages.Where(m => userIds.Contains(m.SenderId)).ExecuteDeleteAsync();
+                await _db.ConversationParticipants.Where(cp => userIds.Contains(cp.UserId)).ExecuteDeleteAsync();
+                await _db.Conversations.Where(c => !c.Participants.Any()).ExecuteDeleteAsync();
             }
+
+            if (postIds.Count > 0)
+            {
+                await _db.PostStudentTags.Where(t => postIds.Contains(t.PostId)).ExecuteDeleteAsync();
+                await _db.PostMedias.Where(m => postIds.Contains(m.PostId)).ExecuteDeleteAsync();
+                await _db.Posts.Where(p => postIds.Contains(p.Id)).ExecuteDeleteAsync();
+            }
+
+            if (assignmentIds.Count > 0)
+            {
+                await _db.Submissions.Where(s => assignmentIds.Contains(s.AssignmentId)).ExecuteDeleteAsync();
+                await _db.Assignments.Where(a => assignmentIds.Contains(a.Id)).ExecuteDeleteAsync();
+            }
+
+            if (classIds.Count > 0)
+            {
+                await _db.Attendances.Where(a => classIds.Contains(a.ClassId)).ExecuteDeleteAsync();
+            }
+
+            if (studentIds.Count > 0)
+            {
+                await _db.DailyReports.Where(r => studentIds.Contains(r.StudentId)).ExecuteDeleteAsync();
+                await _db.StudentObservations.Where(o => studentIds.Contains(o.StudentId)).ExecuteDeleteAsync();
+                await _db.StudentBadges.Where(b => studentIds.Contains(b.StudentId)).ExecuteDeleteAsync();
+                await _db.StudentFaceEncodings.Where(e => studentIds.Contains(e.StudentId)).ExecuteDeleteAsync();
+                await _db.StudentParents.Where(sp => studentIds.Contains(sp.StudentId)).ExecuteDeleteAsync();
+                if (formSubmissionIds.Count > 0)
+                {
+                    await _db.FormSubmissionValues.Where(v => formSubmissionIds.Contains(v.FormSubmissionId)).ExecuteDeleteAsync();
+                }
+                await _db.FormSubmissions
+                    .Where(fs => fs.StudentId.HasValue && studentIds.Contains(fs.StudentId.Value))
+                    .ExecuteDeleteAsync();
+                await _db.Students.Where(s => studentIds.Contains(s.Id)).ExecuteDeleteAsync();
+            }
+
+            if (normalizedPhones.Count > 0)
+            {
+                var otpIdentifiers = normalizedPhones
+                    .Select(NormalizePhoneNumber)
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .Distinct()
+                    .ToList();
+                if (otpIdentifiers.Count > 0)
+                {
+                    await _db.OtpCodes.Where(o => otpIdentifiers.Contains(o.Identifier)).ExecuteDeleteAsync();
+                }
+            }
+
+            await _db.ClassRoutineRules.Where(r => r.SchoolId == id).ExecuteDeleteAsync();
+            await _db.Classes.Where(c => c.SchoolId == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.TeacherId, c => null));
+            await _db.Classes.Where(c => c.SchoolId == id).ExecuteDeleteAsync();
+
+            await _db.Badges.Where(b => b.SchoolId == id).ExecuteDeleteAsync();
+            await _db.Announcements.Where(a => a.SchoolId == id).ExecuteDeleteAsync();
+            await _db.SchoolCalendarEvents.Where(e => e.SchoolId == id).ExecuteDeleteAsync();
+            await _db.MealPlanEntries.Where(m => m.SchoolId == id).ExecuteDeleteAsync();
+            await _db.StudentObservations.Where(o => o.SchoolId == id).ExecuteDeleteAsync();
+            await _db.ComplianceAcceptances.Where(a => a.SchoolId == id).ExecuteDeleteAsync();
+            await _db.ComplianceDocuments.Where(d => d.SchoolId == id).ExecuteDeleteAsync();
 
             school.PrimaryAdminUserId = null;
             await _db.SaveChangesAsync();
 
+            await _db.Users.Where(u => u.SchoolId == id).ExecuteDeleteAsync();
             _db.Schools.Remove(school);
             await _db.SaveChangesAsync();
             await tx.CommitAsync();

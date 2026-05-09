@@ -134,16 +134,21 @@ public class AuthService
         if (includeSchool)
             query = query.Include(u => u.School);
 
-        return await query.FirstOrDefaultAsync(u =>
-            u.IsActive &&
-            u.Phone != null &&
-            candidates.Contains(
-                u.Phone
-                    .Replace(" ", "")
-                    .Replace("-", "")
-                    .Replace("(", "")
-                    .Replace(")", "")
-                    .Replace("+", "")));
+        var matches = await query
+            .Where(u =>
+                u.IsActive &&
+                u.Phone != null &&
+                candidates.Contains(
+                    u.Phone
+                        .Replace(" ", "")
+                        .Replace("-", "")
+                        .Replace("(", "")
+                        .Replace(")", "")
+                        .Replace("+", "")))
+            .Take(2)
+            .ToListAsync();
+
+        return matches.Count == 1 ? matches[0] : null;
     }
 
     private static string NormalizePhoneNumber(string phoneNumber)

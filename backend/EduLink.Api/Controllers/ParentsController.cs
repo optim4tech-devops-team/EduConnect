@@ -268,6 +268,22 @@ public class ParentsController : ControllerBase
         return Ok(new { message = "Veli guncellendi." });
     }
 
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "SchoolAdmin")]
+    public async Task<IActionResult> DeleteParent(Guid id)
+    {
+        var schoolId = GetSchoolId();
+        var parent = await _db.Users
+            .FirstOrDefaultAsync(u => u.Id == id && u.SchoolId == schoolId && u.Role == UserRole.Parent);
+
+        if (parent is null)
+            return NotFound();
+
+        parent.IsActive = false;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private async Task<IActionResult?> SyncStudentAssignmentsAsync(Guid parentId, Guid schoolId, List<ParentStudentAssignmentRequest> assignments)
     {
         var studentIds = assignments.Select(a => a.StudentId).Distinct().ToList();

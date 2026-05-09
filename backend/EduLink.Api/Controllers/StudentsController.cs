@@ -6,6 +6,9 @@ using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IO.Compression;
+using System.Text.Json;
+using System.Xml.Linq;
 
 namespace EduLink.Api.Controllers;
 
@@ -14,18 +17,21 @@ namespace EduLink.Api.Controllers;
 [Authorize]
 public class StudentsController : ControllerBase
 {
+    private static readonly JsonSerializerOptions StudentProfileJsonOptions = new(JsonSerializerDefaults.Web);
     private readonly AppDbContext _db;
     private readonly AiService _aiService;
+    private readonly IWebHostEnvironment _environment;
 
-    public StudentsController(AppDbContext db, AiService aiService)
+    public StudentsController(AppDbContext db, AiService aiService, IWebHostEnvironment environment)
     {
         _db = db;
         _aiService = aiService;
+        _environment = environment;
     }
 
-    /// <summary>Returns all students. Admins/Teachers can filter by classId.</summary>
+    /// <summary>Returns all students. School admins/teachers can filter by classId.</summary>
     [HttpGet]
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> GetStudents([FromQuery] Guid? classId)
     {
         var schoolId = GetSchoolId();
@@ -42,31 +48,14 @@ public class StudentsController : ControllerBase
 
         var students = await query
             .OrderBy(s => s.FullName)
-            .Select(s => new StudentDto(
-                s.Id,
-                s.FullName,
-                s.BirthDate,
-                s.ClassId,
-                s.Class.Name,
-                s.AvatarUrl,
-                s.Notes,
-                s.IsActive,
-                s.StudentBadges.Count,
-                s.StudentParents.Select(sp => new ParentSummaryDto(
-                    sp.Parent.Id,
-                    sp.Parent.FullName,
-                    sp.Parent.Phone,
-                    sp.Parent.AvatarUrl
-                )).ToList()
-            ))
             .ToListAsync();
 
-        return Ok(students);
+        return Ok(students.Select(BuildStudentDto).ToList());
     }
 
     /// <summary>Creates a new student.</summary>
     [HttpPost]
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> CreateStudent([FromBody] CreateStudentRequest request)
     {
         var schoolId = GetSchoolId();
@@ -84,7 +73,8 @@ public class StudentsController : ControllerBase
             FullName = request.FullName,
             ClassId = request.ClassId,
             BirthDate = request.BirthDate,
-            Notes = request.Notes,
+            Notes = SerializeStudentProfile(request),
+            AvatarUrl = request.AvatarUrl,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -94,18 +84,9 @@ public class StudentsController : ControllerBase
 
         var cls = await _db.Classes.FindAsync(request.ClassId);
 
-        var dto = new StudentDto(
-            student.Id,
-            student.FullName,
-            student.BirthDate,
-            student.ClassId,
-            cls?.Name ?? string.Empty,
-            student.AvatarUrl,
-            student.Notes,
-            student.IsActive,
-            0,
-            new List<ParentSummaryDto>()
-        );
+        student.Class = cls!;
+
+        var dto = BuildStudentDto(student);
 
         return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, dto);
     }
@@ -126,30 +107,14 @@ public class StudentsController : ControllerBase
         if (student is null)
             return NotFound();
 
-        var dto = new StudentDto(
-            student.Id,
-            student.FullName,
-            student.BirthDate,
-            student.ClassId,
-            student.Class.Name,
-            student.AvatarUrl,
-            student.Notes,
-            student.IsActive,
-            student.StudentBadges.Count,
-            student.StudentParents.Select(sp => new ParentSummaryDto(
-                sp.Parent.Id,
-                sp.Parent.FullName,
-                sp.Parent.Phone,
-                sp.Parent.AvatarUrl
-            )).ToList()
-        );
+        var dto = BuildStudentDto(student);
 
         return Ok(dto);
     }
 
     /// <summary>Updates an existing student.</summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> UpdateStudent(Guid id, [FromBody] CreateStudentRequest request)
     {
         var schoolId = GetSchoolId();
@@ -171,15 +136,139 @@ public class StudentsController : ControllerBase
         student.FullName = request.FullName;
         student.ClassId = request.ClassId;
         student.BirthDate = request.BirthDate;
-        student.Notes = request.Notes;
+        student.Notes = SerializeStudentProfile(request);
+        student.AvatarUrl = request.AvatarUrl;
 
         await _db.SaveChangesAsync();
         return NoContent();
     }
 
+    /// <summary>Uploads a student avatar image and returns a public URL.</summary>
+    [HttpPost("avatar-upload")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
+    public async Task<IActionResult> UploadAvatar([FromForm] StudentAvatarUploadRequest request)
+    {
+        if (request.File is null || request.File.Length == 0)
+            return BadRequest(new { message = "Bir gorsel dosyasi secmelisin." });
+
+        if (string.IsNullOrWhiteSpace(request.File.ContentType) || !request.File.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Sadece gorsel dosyalari yuklenebilir." });
+
+        var extension = Path.GetExtension(request.File.FileName);
+        if (string.IsNullOrWhiteSpace(extension))
+            extension = ".jpg";
+
+        var uploadsRoot = _environment.WebRootPath;
+        if (string.IsNullOrWhiteSpace(uploadsRoot))
+        {
+            uploadsRoot = Path.Combine(_environment.ContentRootPath, "wwwroot");
+        }
+
+        var studentUploadsPath = Path.Combine(uploadsRoot, "uploads", "students");
+        Directory.CreateDirectory(studentUploadsPath);
+
+        var fileName = $"{Guid.NewGuid():N}{extension}";
+        var filePath = Path.Combine(studentUploadsPath, fileName);
+
+        await using (var stream = System.IO.File.Create(filePath))
+        {
+            await request.File.CopyToAsync(stream);
+        }
+
+        var publicUrl = $"{Request.Scheme}://{Request.Host}/uploads/students/{fileName}";
+        return Ok(new { url = publicUrl });
+    }
+
+    /// <summary>Imports students in bulk from a Notio template XLSX file.</summary>
+    [HttpPost("import")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
+    public async Task<IActionResult> ImportStudents([FromForm] StudentImportRequest request)
+    {
+        if (request.File is null || request.File.Length == 0)
+            return BadRequest(new { message = "Import icin bir Excel dosyasi secmelisin." });
+
+        try
+        {
+            var schoolId = GetSchoolId();
+            var rows = await ParseStudentImportRowsAsync(request.File);
+            var classes = await _db.Classes
+                .Where(c => c.SchoolId == schoolId)
+                .ToListAsync();
+
+            var classMap = classes
+                .GroupBy(c => c.Name.Trim().ToLowerInvariant())
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var imported = 0;
+            var errors = new List<string>();
+
+            foreach (var row in rows)
+            {
+                if (string.IsNullOrWhiteSpace(row.FullName) && string.IsNullOrWhiteSpace(row.ClassName))
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(row.FullName))
+                {
+                    errors.Add($"Satir {row.RowNumber}: Ogrenci adi zorunludur.");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(row.ClassName))
+                {
+                    errors.Add($"Satir {row.RowNumber}: Sinif adi zorunludur.");
+                    continue;
+                }
+
+                if (!classMap.TryGetValue(row.ClassName.Trim().ToLowerInvariant(), out var cls))
+                {
+                    errors.Add($"Satir {row.RowNumber}: '{row.ClassName}' sinifi bulunamadi.");
+                    continue;
+                }
+
+                DateOnly? birthDate = null;
+                if (!string.IsNullOrWhiteSpace(row.BirthDate))
+                {
+                    if (!DateOnly.TryParse(row.BirthDate, out var parsedBirthDate))
+                    {
+                        errors.Add($"Satir {row.RowNumber}: Dogum tarihi YYYY-MM-DD formatinda olmali.");
+                        continue;
+                    }
+
+                    birthDate = parsedBirthDate;
+                }
+
+                _db.Students.Add(new Student
+                {
+                    Id = Guid.NewGuid(),
+                    FullName = row.FullName.Trim(),
+                    ClassId = cls.Id,
+                    BirthDate = birthDate,
+                    Notes = SerializeStudentProfile(row),
+                    AvatarUrl = string.IsNullOrWhiteSpace(row.AvatarUrl) ? null : row.AvatarUrl.Trim(),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+                imported += 1;
+            }
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                imported,
+                failed = errors.Count,
+                errors
+            });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
     /// <summary>Soft-deletes a student by setting IsActive to false.</summary>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> DeleteStudent(Guid id)
     {
         var schoolId = GetSchoolId();
@@ -198,7 +287,7 @@ public class StudentsController : ControllerBase
 
     /// <summary>Assigns a parent user to a student.</summary>
     [HttpPost("{id:guid}/assign-parent")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> AssignParent(Guid id, [FromBody] AssignParentRequest request)
     {
         var schoolId = GetSchoolId();
@@ -234,7 +323,7 @@ public class StudentsController : ControllerBase
 
     /// <summary>Enqueues a Hangfire job to enroll the student's face photos in the AI service.</summary>
     [HttpPost("{id:guid}/enroll-face")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [Authorize(Roles = "SchoolAdmin,Teacher")]
     public async Task<IActionResult> EnrollFace(Guid id, [FromBody] EnrollFaceRequest request)
     {
         var schoolId = GetSchoolId();
@@ -261,8 +350,273 @@ public class StudentsController : ControllerBase
         var val = HttpContext.Items["SchoolId"];
         return val is Guid g ? g : Guid.Empty;
     }
+
+    private static async Task<List<StudentImportRow>> ParseStudentImportRowsAsync(IFormFile file)
+    {
+        await using var stream = file.OpenReadStream();
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".xlsx" => await ParseXlsxRowsAsync(stream),
+            _ => throw new InvalidOperationException("Yalnizca .xlsx uzantili Notio Excel sablonu destekleniyor.")
+        };
+    }
+
+    private static async Task<List<StudentImportRow>> ParseXlsxRowsAsync(Stream stream)
+    {
+        using var memory = new MemoryStream();
+        await stream.CopyToAsync(memory);
+        memory.Position = 0;
+
+        using var archive = new ZipArchive(memory, ZipArchiveMode.Read, leaveOpen: false);
+        var sharedStrings = ReadSharedStrings(archive);
+        var sheetEntry = archive.GetEntry("xl/worksheets/sheet1.xml")
+            ?? throw new InvalidOperationException("Excel dosyasinda ilk sayfa bulunamadi.");
+
+        using var sheetStream = sheetEntry.Open();
+        var sheet = XDocument.Load(sheetStream);
+        XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        var rows = sheet.Descendants(ns + "sheetData").Elements(ns + "row").ToList();
+        if (rows.Count == 0)
+            return new List<StudentImportRow>();
+
+        var headers = ReadRowValues(rows[0], sharedStrings);
+        var indexMap = headers
+            .Select((value, index) => new { value = value.Trim(), index })
+            .Where(item => !string.IsNullOrWhiteSpace(item.value))
+            .ToDictionary(item => item.value, item => item.index, StringComparer.OrdinalIgnoreCase);
+
+        var requiredHeaders = new[] { "FullName", "ClassName" };
+        var missingHeaders = requiredHeaders
+            .Where(header => !indexMap.ContainsKey(header))
+            .ToList();
+
+        if (missingHeaders.Count > 0)
+            throw new InvalidOperationException($"Excel sablonunda eksik kolon var: {string.Join(", ", missingHeaders)}");
+
+        var result = new List<StudentImportRow>();
+        foreach (var row in rows.Skip(1))
+        {
+            var values = ReadRowValues(row, sharedStrings);
+            string GetValue(string key)
+                => indexMap.TryGetValue(key, out var idx) && idx < values.Count ? values[idx] : string.Empty;
+
+            result.Add(new StudentImportRow(
+                (int?)row.Attribute("r") ?? 0,
+                GetValue("FullName"),
+                GetValue("ClassName"),
+                GetValue("BirthDate"),
+                GetValue("Gender"),
+                GetValue("Allergies"),
+                GetValue("MedicationNotes"),
+                GetValue("HealthNotes"),
+                string.IsNullOrWhiteSpace(GetValue("HealthNotes")) ? GetValue("Notes") : GetValue("HealthNotes"),
+                GetValue("AvatarUrl")
+            ));
+        }
+
+        return result;
+    }
+
+    private static List<string> ReadSharedStrings(ZipArchive archive)
+    {
+        var sharedStringEntry = archive.GetEntry("xl/sharedStrings.xml");
+        if (sharedStringEntry is null)
+            return new List<string>();
+
+        using var sharedStream = sharedStringEntry.Open();
+        var doc = XDocument.Load(sharedStream);
+        XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        return doc.Descendants(ns + "si")
+            .Select(si => string.Concat(si.Descendants(ns + "t").Select(t => t.Value)))
+            .ToList();
+    }
+
+    private static List<string> ReadRowValues(XElement row, List<string> sharedStrings)
+    {
+        XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        var cells = row.Elements(ns + "c").ToList();
+        var values = new List<string>();
+
+        foreach (var cell in cells)
+        {
+            var cellReference = (string?)cell.Attribute("r") ?? string.Empty;
+            var columnIndex = GetColumnIndex(cellReference);
+            while (values.Count < columnIndex)
+                values.Add(string.Empty);
+
+            values.Add(ReadCellValue(cell, sharedStrings));
+        }
+
+        return values;
+    }
+
+    private static string ReadCellValue(XElement cell, List<string> sharedStrings)
+    {
+        XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        var cellType = (string?)cell.Attribute("t");
+        if (string.Equals(cellType, "inlineStr", StringComparison.OrdinalIgnoreCase))
+            return cell.Element(ns + "is")?.Element(ns + "t")?.Value ?? string.Empty;
+
+        var rawValue = cell.Element(ns + "v")?.Value ?? string.Empty;
+        if (string.Equals(cellType, "s", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(rawValue, out var sharedIndex) &&
+            sharedIndex >= 0 &&
+            sharedIndex < sharedStrings.Count)
+        {
+            return sharedStrings[sharedIndex];
+        }
+
+        return rawValue;
+    }
+
+    private static int GetColumnIndex(string cellReference)
+    {
+        var letters = new string(cellReference.TakeWhile(char.IsLetter).ToArray());
+        if (string.IsNullOrWhiteSpace(letters))
+            return 0;
+
+        var index = 0;
+        foreach (var letter in letters.ToUpperInvariant())
+            index = (index * 26) + (letter - 'A' + 1);
+
+        return index - 1;
+    }
+
+    private static StudentDto BuildStudentDto(Student student)
+    {
+        var profile = DeserializeStudentProfile(student.Notes);
+
+        return new StudentDto(
+            student.Id,
+            student.FullName,
+            student.BirthDate,
+            student.ClassId,
+            student.Class?.Name ?? string.Empty,
+            student.AvatarUrl,
+            profile.Gender,
+            profile.Allergies,
+            profile.MedicationNotes,
+            profile.HealthNotes,
+            student.IsActive,
+            student.StudentBadges.Count,
+            student.StudentParents.Select(sp => new ParentSummaryDto(
+                sp.Parent.Id,
+                sp.Parent.FullName,
+                sp.Parent.Phone,
+                sp.Parent.AvatarUrl
+            )).ToList()
+        );
+    }
+
+    private static StudentProfileData DeserializeStudentProfile(string? rawNotes)
+    {
+        if (string.IsNullOrWhiteSpace(rawNotes))
+            return new StudentProfileData(null, new List<string>(), null, null);
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<StudentProfileData>(rawNotes, StudentProfileJsonOptions);
+            if (parsed is not null)
+            {
+                return parsed with
+                {
+                    Allergies = NormalizeAllergies(parsed.Allergies)
+                };
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return new StudentProfileData(null, new List<string>(), null, rawNotes);
+    }
+
+    private static string? SerializeStudentProfile(CreateStudentRequest request)
+        => SerializeStudentProfile(
+            request.Gender,
+            request.Allergies,
+            request.MedicationNotes,
+            request.HealthNotes);
+
+    private static string? SerializeStudentProfile(StudentImportRow row)
+        => SerializeStudentProfile(
+            row.Gender,
+            ParseAllergies(row.Allergies),
+            row.MedicationNotes,
+            row.HealthNotes);
+
+    private static string? SerializeStudentProfile(
+        string? gender,
+        IEnumerable<string>? allergies,
+        string? medicationNotes,
+        string? healthNotes)
+    {
+        var normalizedGender = string.IsNullOrWhiteSpace(gender) ? null : gender.Trim();
+        var normalizedAllergies = NormalizeAllergies(allergies);
+        var normalizedMedicationNotes = string.IsNullOrWhiteSpace(medicationNotes) ? null : medicationNotes.Trim();
+        var normalizedHealthNotes = string.IsNullOrWhiteSpace(healthNotes) ? null : healthNotes.Trim();
+
+        if (normalizedGender is null &&
+            normalizedAllergies.Count == 0 &&
+            normalizedMedicationNotes is null &&
+            normalizedHealthNotes is null)
+        {
+            return null;
+        }
+
+        return JsonSerializer.Serialize(
+            new StudentProfileData(
+                normalizedGender,
+                normalizedAllergies,
+                normalizedMedicationNotes,
+                normalizedHealthNotes),
+            StudentProfileJsonOptions);
+    }
+
+    private static List<string> NormalizeAllergies(IEnumerable<string>? allergies)
+        => allergies?
+            .Select(allergy => allergy.Trim())
+            .Where(allergy => !string.IsNullOrWhiteSpace(allergy))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList()
+        ?? new List<string>();
+
+    private static List<string> ParseAllergies(string? rawAllergies)
+    {
+        if (string.IsNullOrWhiteSpace(rawAllergies))
+            return new List<string>();
+
+        return new List<string> { rawAllergies.Trim() };
+    }
 }
 
 // Local request models used only in this controller
 public record AssignParentRequest(Guid ParentId);
 public record EnrollFaceRequest(List<string> PhotoUrls);
+public class StudentAvatarUploadRequest
+{
+    public IFormFile? File { get; set; }
+}
+public class StudentImportRequest
+{
+    public IFormFile? File { get; set; }
+}
+public record StudentImportRow(
+    int RowNumber,
+    string FullName,
+    string ClassName,
+    string BirthDate,
+    string Gender,
+    string Allergies,
+    string MedicationNotes,
+    string HealthNotes,
+    string Notes,
+    string AvatarUrl
+);
+public record StudentProfileData(
+    string? Gender,
+    List<string> Allergies,
+    string? MedicationNotes,
+    string? HealthNotes
+);
