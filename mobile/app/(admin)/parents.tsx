@@ -1,3 +1,1 @@
-import ManageParentsScreen from '@/screens/admin/ManageParentsScreen';
-
-export default ManageParentsScreen;
+export { default } from '@/screens/admin/ManageParentsScreen';

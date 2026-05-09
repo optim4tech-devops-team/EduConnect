@@ -18,25 +18,29 @@ import { useAuthStore } from '@/store/authStore';
 import { isValidTurkishPhoneNumber, normalizePhoneNumber } from '@/utils/phone';
 import { getHomeRouteForRole } from '@/utils/roleRoutes';
 import Colors from '@/theme/colors';
-import { getFixtureOtpCode } from '@/mocks/authFixtures';
 
-type Step = 'phone' | 'otp';
+type Step = 'phone' | 'password' | 'otp';
+
+const isWeb = Platform.OS === 'web';
 
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ fixtureRole?: string | string[]; redirect?: string | string[] }>();
-  const { lookup, sendOtp, verifyOtp, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
+  const { lookup, loginByPhone, sendOtp, verifyOtp, loginWithTestFixtureKey, loginWithPassword, schoolInfo, isLoading, error, clearError } = useAuthStore();
 
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phonePassword, setPhonePassword] = useState('');
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Web'de platform admin toggle başlangıçta kapalı; mobilde hiç gösterilmez
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
   const otpRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const didAutoLoginRef = useRef(false);
-  const fixtureOtpCode = getFixtureOtpCode(phoneNumber);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -76,10 +80,17 @@ export default function LoginScreen() {
     clearError();
     try {
       await lookup(normalizedPhone);
-      animateStep(() => setStep('otp'));
-      await sendOtp(normalizedPhone);
-      setCountdown(60);
-      setTimeout(() => otpRef.current?.focus(), 400);
+      if (isWeb) {
+        // Web: okul yöneticisi → telefon + şifre
+        animateStep(() => setStep('password'));
+        setTimeout(() => passwordRef.current?.focus(), 400);
+      } else {
+        // Mobil: öğretmen / veli → OTP
+        animateStep(() => setStep('otp'));
+        await sendOtp(normalizedPhone);
+        setCountdown(60);
+        setTimeout(() => otpRef.current?.focus(), 400);
+      }
     } catch {
       // error set by store
     }
@@ -96,7 +107,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handleVerify = async () => {
+  const handleVerifyOtp = async () => {
     if (otp.length !== 6) return;
     clearError();
     try {
@@ -107,6 +118,16 @@ export default function LoginScreen() {
           ? '/change-password'
           : getHomeRouteForRole(nextUser?.role ?? 'Parent'),
       );
+    } catch {
+      // error set by store
+    }
+  };
+
+  const handlePhonePasswordLogin = async () => {
+    if (!phonePassword) return;
+    clearError();
+    try {
+      await loginByPhone(phoneNumber, phonePassword);
     } catch {
       // error set by store
     }
@@ -169,7 +190,7 @@ export default function LoginScreen() {
           </View>
           <Text style={styles.appName}>Notio</Text>
           <Text style={styles.tagline}>
-            {step === 'phone' ? 'Onun dünyasına bir pencere.' : 'SMS kodunuzu girin'}
+            {step === 'phone' ? 'Onun dünyasına bir pencere.' : step === 'password' ? 'Şifrenizi girin' : 'SMS kodunuzu girin'}
           </Text>
           {schoolInfo?.schoolLogoUrl ? (
             <View style={styles.schoolBadge}>
@@ -180,16 +201,16 @@ export default function LoginScreen() {
         </View>
 
         <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          {Platform.OS === 'web' ? (
+          {showAdminLogin ? (
             <>
-              <Text style={styles.cardTitle}>Yönetici Girişi</Text>
+              <Text style={styles.cardTitle}>Platform Girişi</Text>
               <Text style={styles.cardSubtitle}>E-posta ve şifrenizi girin</Text>
 
               <View style={styles.inputWrapper}>
                 <Ionicons name="mail-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="ornek@okul.com"
+                  placeholder="admin@notioedu.com"
                   placeholderTextColor={Colors.TEXT_MUTED}
                   value={email}
                   onChangeText={setEmail}
@@ -234,6 +255,14 @@ export default function LoginScreen() {
                   </>
                 )}
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.switchLoginRow}
+                onPress={() => { setShowAdminLogin(false); clearError(); }}
+              >
+                <Ionicons name="arrow-back-outline" size={15} color={Colors.TEXT_MUTED} />
+                <Text style={styles.switchLoginText}>Telefon ile giriş</Text>
+              </TouchableOpacity>
             </>
           ) : step === 'phone' ? (
             <>
@@ -276,29 +305,94 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              <View style={styles.quickAccessSection}>
-                <Text style={styles.quickAccessTitle}>Geçici test girişleri</Text>
-                <View style={styles.quickAccessRow}>
-                  <TouchableOpacity
-                    style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
-                    onPress={() => handleFixtureLogin('parent')}
-                    disabled={isLoading}
-                  >
-                    <Ionicons name="people-outline" size={18} color={Colors.PRIMARY} />
-                    <Text style={styles.quickAccessButtonText}>Veli</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
-                    onPress={() => handleFixtureLogin('teacher')}
-                    disabled={isLoading}
-                  >
-                    <Ionicons name="school-outline" size={18} color={Colors.PRIMARY} />
-                    <Text style={styles.quickAccessButtonText}>Öğretmen</Text>
-                  </TouchableOpacity>
+              {/* Platform admin toggle — sadece web'de */}
+              {isWeb ? (
+                <TouchableOpacity
+                  style={styles.switchLoginRow}
+                  onPress={() => { setShowAdminLogin(true); clearError(); }}
+                >
+                  <Text style={styles.switchLoginText}>Platform Yöneticisi misiniz?</Text>
+                  <Ionicons name="arrow-forward-outline" size={15} color={Colors.TEXT_MUTED} />
+                </TouchableOpacity>
+              ) : (
+                /* Mobil test girişleri — sadece native */
+                <View style={styles.quickAccessSection}>
+                  <Text style={styles.quickAccessTitle}>Geçici test girişleri</Text>
+                  <View style={styles.quickAccessRow}>
+                    <TouchableOpacity
+                      style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
+                      onPress={() => handleFixtureLogin('parent')}
+                      disabled={isLoading}
+                    >
+                      <Ionicons name="people-outline" size={18} color={Colors.PRIMARY} />
+                      <Text style={styles.quickAccessButtonText}>Veli</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.quickAccessButton, isLoading && styles.quickAccessButtonDisabled]}
+                      onPress={() => handleFixtureLogin('teacher')}
+                      disabled={isLoading}
+                    >
+                      <Ionicons name="school-outline" size={18} color={Colors.PRIMARY} />
+                      <Text style={styles.quickAccessButtonText}>Öğretmen</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
+              )}
+            </>
+          ) : step === 'password' ? (
+            /* ── Web: Şifre adımı ── */
+            <>
+              <Text style={styles.cardTitle}>Şifre Girin</Text>
+              <Text style={styles.cardSubtitle}>
+                <Text style={styles.maskedId}>{schoolInfo?.maskedIdentifier ?? normalizePhoneNumber(phoneNumber)}</Text>
+                {'\n'}hesabınızın şifresini girin
+              </Text>
+
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color={Colors.PRIMARY} style={styles.inputIcon} />
+                <TextInput
+                  ref={passwordRef}
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor={Colors.TEXT_MUTED}
+                  value={phonePassword}
+                  onChangeText={setPhonePassword}
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={handlePhonePasswordLogin}
+                />
+              </View>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.ERROR} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.button, (isLoading || !phonePassword) && styles.buttonDisabled]}
+                onPress={handlePhonePasswordLogin}
+                disabled={isLoading || !phonePassword}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Giriş Yap</Text>
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.resendRow}>
+                <TouchableOpacity onPress={() => { setStep('phone'); clearError(); setPhonePassword(''); }}>
+                  <Text style={styles.backText}>← Telefonu değiştir</Text>
+                </TouchableOpacity>
               </View>
             </>
           ) : (
+            /* ── Mobil: OTP adımı ── */
             <>
               <Text style={styles.cardTitle}>Doğrulama Kodu</Text>
               <Text style={styles.cardSubtitle}>
@@ -318,13 +412,9 @@ export default function LoginScreen() {
                   keyboardType="number-pad"
                   maxLength={6}
                   returnKeyType="done"
-                  onSubmitEditing={handleVerify}
+                  onSubmitEditing={handleVerifyOtp}
                 />
               </View>
-
-              {fixtureOtpCode ? (
-                <Text style={styles.fixtureHint}>Test kodu: {fixtureOtpCode}</Text>
-              ) : null}
 
               {error ? (
                 <View style={styles.errorBox}>
@@ -335,7 +425,7 @@ export default function LoginScreen() {
 
               <TouchableOpacity
                 style={[styles.button, (isLoading || otp.length !== 6) && styles.buttonDisabled]}
-                onPress={handleVerify}
+                onPress={handleVerifyOtp}
                 disabled={isLoading || otp.length !== 6}
               >
                 {isLoading ? (
@@ -425,7 +515,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 22, fontWeight: '700', color: Colors.TEXT, marginBottom: 6 },
   cardSubtitle: { fontSize: 14, color: Colors.TEXT_MUTED, marginBottom: 24, lineHeight: 20 },
   maskedId: { fontWeight: '700', color: Colors.PRIMARY },
-  fixtureHint: { fontSize: 13, color: Colors.PRIMARY, fontWeight: '700', marginTop: -6, marginBottom: 12 },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -469,6 +558,21 @@ const styles = StyleSheet.create({
   resendText: { color: Colors.PRIMARY, fontSize: 14, fontWeight: '600' },
   resendDisabled: { color: Colors.SLATE_300 },
   backText: { color: Colors.TEXT_MUTED, fontSize: 14 },
+  switchLoginRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 18,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: Colors.SECONDARY,
+  },
+  switchLoginText: {
+    color: Colors.TEXT_MUTED,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   quickAccessSection: {
     marginTop: 18,
     paddingTop: 18,

@@ -16,6 +16,10 @@ export default function TeacherLayout() {
       <Tabs.Screen name="students" options={{ title: 'Öğrenciler', tabBarIcon: ({ color }) => <Ionicons name="people" size={24} color={color} /> }} />
       <Tabs.Screen name="messages" options={{ title: 'Mesajlar', tabBarIcon: ({ color }) => <Ionicons name="chatbubbles" size={24} color={color} /> }} />
       <Tabs.Screen name="profile" options={{ title: 'Profil', tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} /> }} />
+      {/* Hidden screens — accessible via router.push but not shown in tab bar */}
+      <Tabs.Screen name="posts" options={{ href: null }} />
+      <Tabs.Screen name="observations" options={{ href: null }} />
+      <Tabs.Screen name="badges" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -35,6 +35,7 @@ interface AuthState {
   sendOtp: (identifier: string) => Promise<void>;
   verifyOtp: (identifier: string, code: string) => Promise<void>;
   loginWithPassword: (email: string, password: string) => Promise<void>;
+  loginByPhone: (phone: string, password: string) => Promise<void>;
   loginWithTestFixtureKey: (role: 'parent' | 'teacher') => Promise<void>;
   logout: () => Promise<void>;
   setTokens: (access: string, refresh: string) => Promise<void>;
@@ -150,6 +151,24 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       set({ isLoading: false, error: 'E-posta veya şifre hatalı.' });
       throw new Error('E-posta veya şifre hatalı.');
+    }
+  },
+
+  loginByPhone: async (phone: string, password: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const normalizedPhone = normalizePhoneNumber(phone);
+      const { data } = await authApi.loginByPhone(normalizedPhone, password);
+      const user = mapToUserDto(data, normalizedPhone);
+      await Promise.all([
+        storage.setItem('accessToken', data.accessToken),
+        storage.setItem('refreshToken', data.refreshToken),
+        storage.setItem('user', JSON.stringify(user)),
+      ]);
+      set({ user, accessToken: data.accessToken, isLoading: false });
+    } catch {
+      set({ isLoading: false, error: 'Telefon numarası veya şifre hatalı.' });
+      throw new Error('Telefon numarası veya şifre hatalı.');
     }
   },
 

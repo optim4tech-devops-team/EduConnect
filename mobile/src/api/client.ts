@@ -392,6 +392,8 @@ export const authApi = {
     apiClient.post('/auth/send-otp', { identifier: phoneNumber }),
   verifyOtp: (phoneNumber: string, code: string) =>
     apiClient.post<AuthResponse>('/auth/verify-otp', { identifier: phoneNumber, code }),
+  loginByPhone: (phone: string, password: string) =>
+    apiClient.post<AuthResponse>('/auth/login-by-phone', { phone, password }),
 };
 
 export const classApi = {
@@ -586,22 +588,9 @@ export const observationApi = {
 };
 
 export const parentApi = {
-  list: (params?: { page?: number; pageSize?: number }) =>
+  list: (params?: { search?: string; page?: number; pageSize?: number }) =>
     apiClient.get<ParentDto[]>('/parents', { params }),
   get: (id: string) => apiClient.get<ParentDto>(`/parents/${id}`),
-  create: (data: {
-    fullName: string;
-    email?: string;
-    phone: string;
-    avatarUrl?: string;
-    isActive?: boolean;
-    students?: {
-      studentId: string;
-      relationship?: string;
-      isPrimaryContact?: boolean;
-      canPickup?: boolean;
-    }[];
-  }) => apiClient.post<ParentDto>('/parents', data),
   me: () => apiClient.get<{
     id: string;
     fullName: string;
@@ -610,6 +599,10 @@ export const parentApi = {
     avatarUrl?: string;
     students: { studentId: string; studentName: string; classId: string; className: string; relationship?: string; isPrimaryContact: boolean; canPickup: boolean }[];
   }>('/parents/me'),
+  create: (data: { fullName: string; email?: string; phone: string; avatarUrl?: string; isActive?: boolean; students?: Array<{ studentId: string; relationship?: string; isPrimaryContact?: boolean; canPickup?: boolean }> }) =>
+    apiClient.post<ParentDto>('/parents', data),
+  update: (id: string, data: { fullName: string; email?: string; phone: string; avatarUrl?: string; isActive?: boolean; students?: Array<{ studentId: string; relationship?: string; isPrimaryContact?: boolean; canPickup?: boolean }> }) =>
+    apiClient.put<ParentDto>(`/parents/${id}`, data),
   assignToStudent: (studentId: string, parentId: string) =>
     apiClient.post(`/students/${studentId}/assign-parent`, { parentId }),
 };

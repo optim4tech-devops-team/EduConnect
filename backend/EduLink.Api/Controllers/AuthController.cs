@@ -74,6 +74,19 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Authenticates a user by phone number and password.</summary>
+    [HttpPost("login-by-phone")]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> LoginByPhone([FromBody] LoginByPhoneRequest request)
+    {
+        var result = await _authService.LoginByPhoneAsync(request.Phone, request.Password);
+        if (result is null)
+            return Unauthorized(new { message = "Telefon numarası veya şifre hatalı." });
+
+        return Ok(result);
+    }
+
     /// <summary>Issues new tokens using a valid refresh token.</summary>
     [HttpPost("refresh")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
@@ -157,3 +170,4 @@ public class AuthController : ControllerBase
 }
 
 public record ChangePasswordRequest(string NewPassword);
+public record LoginByPhoneRequest(string Phone, string Password);

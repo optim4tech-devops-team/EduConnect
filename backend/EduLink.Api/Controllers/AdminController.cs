@@ -18,6 +18,7 @@ public class AdminController : ControllerBase
         _db = db;
     }
 
+    // GET /api/admin/stats
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {

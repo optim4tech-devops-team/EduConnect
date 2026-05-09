@@ -34,9 +34,23 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'addClass',    label: 'Sınıf Ekle',     icon: 'add-circle-outline',  route: '/(admin)/classes'   },
-  { key: 'addStudent',  label: 'Öğrenci Ekle',   icon: 'people-outline',      route: '/(admin)/students'  },
-  { key: 'addTeacher',  label: 'Öğretmen Ekle',  icon: 'person-add-outline',  route: '/(admin)/teachers'  },
+  { key: 'addStudent',  label: 'Öğrenciler',     icon: 'people-outline',      route: '/(admin)/students'  },
+  { key: 'addTeacher',  label: 'Öğretmenler',    icon: 'person-add-outline',  route: '/(admin)/teachers'  },
   { key: 'parents',     label: 'Veliler',         icon: 'heart-outline',       route: '/(admin)/parents'   },
+];
+
+const MOCK_STATS: AdminStatsDto = {
+  classCount:   6,
+  teacherCount: 8,
+  studentCount: 124,
+  parentCount:  98,
+};
+
+const MOCK_CLASSES: ClassDto[] = [
+  { id: 'c1', name: 'Papatyalar', teacherId: 't1', teacherName: 'Ayşe Yılmaz',  studentCount: 22, schoolId: 's1' },
+  { id: 'c2', name: 'Güneşler',   teacherId: 't2', teacherName: 'Mehmet Kaya',  studentCount: 19, schoolId: 's1' },
+  { id: 'c3', name: 'Yıldızlar',  teacherId: 't3', teacherName: 'Fatma Demir',  studentCount: 21, schoolId: 's1' },
+  { id: 'c4', name: 'Kartallar',  teacherId: 't4', teacherName: 'Ali Çelik',    studentCount: 18, schoolId: 's1' },
 ];
 
 export default function AdminDashboard() {

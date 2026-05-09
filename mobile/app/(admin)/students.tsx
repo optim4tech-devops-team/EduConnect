@@ -1,3 +1,1 @@
-import ManageStudentsScreen from '@/screens/admin/ManageStudentsScreen';
-
-export default ManageStudentsScreen;
+export { default } from '@/screens/admin/ManageStudentsScreen';
