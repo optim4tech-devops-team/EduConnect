@@ -1,0 +1,17 @@
+{{- if .Values.configMap.enabled }}
+{{- $filePath := .Values.configMap.appSettingsFile | default "files/default.json" }}
+{{- if (.Files.Glob $filePath) }}
+{{- $fileContent := .Files.Get $filePath }}
+{{- $renderedTpl := tpl $fileContent . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMap.name }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  {{ .Values.configMap.fileName | default "AppSettings.json" }}: |-
+{{ $renderedTpl | indent 4 }}
+{{- else }}
+{{- fail (printf "Config file not found: %s (relative to subchart root). Ensure files/ exists in microservice-base/." $filePath) }}
+{{- end }}
+{{- end }}
