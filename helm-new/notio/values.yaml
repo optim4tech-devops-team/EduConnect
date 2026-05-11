@@ -3,6 +3,11 @@ global:
   storageClass: &storageClass "local-path" # longhorn, local-path, hostPath
 
 # Infra Structure ----------------------------------------------
+infra:
+  postgresql:
+    enabled: true
+  redis:
+    enabled: true
 
 infra-postgresql:
   fullnameOverride: postgres
@@ -116,7 +121,7 @@ api-gateway:
     ocelotFile: files/Ocelot.gateway.json
 
 # UI ---------------------------------------------------
-# TODO
+
 ui-admin:
   enabled: true
   nameOverride: ui-admin
@@ -126,7 +131,6 @@ ui-admin:
   imagePullSecrets:
     - name: reg-hub-secret
 
-# TODO
 ui-landing:
   enabled: true
   nameOverride: ui-landing
@@ -138,7 +142,6 @@ ui-landing:
 
 # Rest -------------------------------------------------
 
-# TODO
 ai-service:
   enabled: true
   nameOverride: ai-service
