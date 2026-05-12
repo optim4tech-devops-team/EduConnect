@@ -11,7 +11,8 @@ import ParentsPage from './pages/ParentsPage';
 import PlatformDashboardPage from './pages/PlatformDashboardPage';
 import PlatformSchoolsPage from './pages/PlatformSchoolsPage';
 import ReportsPage from './pages/ReportsPage';
-import { ChartIcon, ClassIcon, HeartIcon, PanelIcon, StudentIcon, TeacherIcon } from './components/layout/AdminLayout';
+import DemoRequestsPage from './pages/DemoRequestsPage';
+import { ChartIcon, ClassIcon, HeartIcon, InboxIcon, PanelIcon, StudentIcon, TeacherIcon } from './components/layout/AdminLayout';
 
 interface AuthContextValue {
   session: UserSession | null;
@@ -83,12 +84,14 @@ function ProtectedRoutes() {
     const menuItems = [
       { to: '/', label: 'Panel', icon: <PanelIcon /> },
       { to: '/schools', label: 'Okullar', icon: <ClassIcon /> },
+      { to: '/demo-requests', label: 'Demo Talepleri', icon: <InboxIcon /> },
       { to: '/reports', label: 'Raporlar', icon: <ChartIcon /> },
     ];
 
     const pageTitleMap = {
       '/': 'Platform Paneli',
       '/schools': 'Okul Yönetimi',
+      '/demo-requests': 'Demo Talepleri',
       '/reports': 'Platform Raporlari',
     };
 
@@ -108,6 +111,7 @@ function ProtectedRoutes() {
         >
           <Route path="/" element={<PlatformDashboardPage token={session.accessToken} />} />
           <Route path="/schools" element={<PlatformSchoolsPage token={session.accessToken} />} />
+          <Route path="/demo-requests" element={<DemoRequestsPage token={session.accessToken} />} />
           <Route path="/reports" element={<ReportsPage mode="platform" token={session.accessToken} />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

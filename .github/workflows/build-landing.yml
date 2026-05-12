@@ -1,19 +1,19 @@
-name: Admin Panel — Build & Deploy
+name: Landing Page — Build & Deploy
 
 on:
   push:
     branches: [master]
     paths:
-      - 'admin-panel/**'
-      - '.github/workflows/deploy-notio-web.yml'
+      - 'landing/**'
+      - '.github/workflows/build-landing.yml'
   workflow_dispatch:
 
 env:
-  IMAGE: registry.notioedu.com/notio/notio-web
+  IMAGE: registry.notioedu.com/notio/landing
 
 jobs:
   build:
-    name: Build & Push Admin Panel
+    name: Build & Push Landing Page
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,17 +31,15 @@ jobs:
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
-          context: ./admin-panel
-          file: ./admin-panel/Dockerfile
+          context: ./landing
+          file: ./landing/Dockerfile
           platforms: linux/amd64
           push: true
-          build-args: |
-            VITE_API_URL=/api
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
-          cache-from: type=gha,scope=admin-panel
-          cache-to: type=gha,mode=max,scope=admin-panel
+          cache-from: type=gha,scope=landing
+          cache-to: type=gha,mode=max,scope=landing
 
   deploy:
     name: Deploy to k8s (notio)
@@ -59,7 +57,7 @@ jobs:
 
       - name: Update image and rollout
         run: |
-          kubectl set image deployment/notio-web \
-            notio-web=${{ env.IMAGE }}:${{ github.sha }} \
+          kubectl set image deployment/notio-landing \
+            landing=${{ env.IMAGE }}:${{ github.sha }} \
             -n notio
-          kubectl rollout status deployment/notio-web -n notio --timeout=120s
+          kubectl rollout status deployment/notio-landing -n notio --timeout=120s

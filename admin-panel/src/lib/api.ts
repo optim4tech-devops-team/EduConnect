@@ -210,6 +210,19 @@ export interface StudentImportResult {
   errors: string[];
 }
 
+export interface DemoRequestDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  schoolName: string;
+  phone: string;
+  studentCount?: string;
+  city?: string;
+  status: string;
+  notes?: string;
+  createdAt: string;
+}
+
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
@@ -435,6 +448,21 @@ export const api = {
       {
         method: 'POST',
         body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  demoRequests: (token: string, status?: string, page = 1, pageSize = 50) =>
+    request<{ items: DemoRequestDto[]; total: number; page: number; pageSize: number }>(
+      `/demo-requests${buildQuery({ status, page, pageSize })}`,
+      {},
+      token,
+    ),
+  updateDemoStatus: (token: string, id: string, status: string, notes?: string) =>
+    request<{ id: string; status: string }>(
+      `/demo-requests/${id}/status`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status, notes }),
       },
       token,
     ),

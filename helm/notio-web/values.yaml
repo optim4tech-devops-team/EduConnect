@@ -1,12 +1,12 @@
 image:
-  repository: registry.bibanka.com/test/notio-web
+  repository: registry.notioedu.com/notio/notio-web
   tag: "1.0.0"
   pullPolicy: Always
 
 imagePullSecrets:
   - name: reg-hub-secret
 
-namespace: vault
+namespace: notio
 
 replicaCount: 1
 
@@ -14,9 +14,10 @@ service:
   port: 80
 
 ingress:
-  host: platform-notio.bidyno.com
-  additionalHost: school.bidyno.com
-  tlsSecret: wildcard-bidyno-tls
+  host: platform.notioedu.com
+  additionalHost: platform.notioedu.com
+  tlsSecret: notioedu-wildcard-tls
+  clusterIssuer: letsencrypt-prod
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "20m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"

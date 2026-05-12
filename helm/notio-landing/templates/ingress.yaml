@@ -19,20 +19,6 @@ spec:
     - host: {{ .Values.ingress.host }}
       http:
         paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Values.ingress.apiBackend.service }}
-                port:
-                  number: {{ .Values.ingress.apiBackend.port }}
-          - path: /hubs
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Values.ingress.apiBackend.service }}
-                port:
-                  number: {{ .Values.ingress.apiBackend.port }}
           - path: /
             pathType: Prefix
             backend:
@@ -43,20 +29,6 @@ spec:
     - host: {{ .Values.ingress.additionalHost }}
       http:
         paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Values.ingress.apiBackend.service }}
-                port:
-                  number: {{ .Values.ingress.apiBackend.port }}
-          - path: /hubs
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Values.ingress.apiBackend.service }}
-                port:
-                  number: {{ .Values.ingress.apiBackend.port }}
           - path: /
             pathType: Prefix
             backend:

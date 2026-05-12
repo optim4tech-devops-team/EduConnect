@@ -4,7 +4,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: edulink-postgres-pvc
-  namespace: vault
+  namespace: notio
 spec:
   accessModes:
     - ReadWriteOnce
@@ -17,7 +17,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: edulink-postgres
-  namespace: vault
+  namespace: notio
 spec:
   serviceName: edulink-postgres
   replicas: 1
@@ -66,7 +66,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: edulink-postgres
-  namespace: vault
+  namespace: notio
 spec:
   selector:
     app: edulink-postgres
@@ -79,7 +79,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: edulink-redis
-  namespace: vault
+  namespace: notio
 spec:
   replicas: 1
   selector:
@@ -105,7 +105,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: edulink-redis
-  namespace: vault
+  namespace: notio
 spec:
   selector:
     app: edulink-redis
@@ -118,7 +118,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: edulink-secrets
-  namespace: vault
+  namespace: notio
 type: Opaque
 stringData:
   POSTGRES_USER: edulink_user
@@ -137,7 +137,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: edulink-ai
-  namespace: vault
+  namespace: notio
 spec:
   replicas: 1
   selector:
@@ -152,7 +152,7 @@ spec:
         - name: reg-hub-secret
       containers:
         - name: edulink-ai
-          image: registry.bibanka.com/test/edulink-ai:latest
+          image: registry.notioedu.com/notio/edulink-ai:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -187,7 +187,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: edulink-ai
-  namespace: vault
+  namespace: notio
 spec:
   selector:
     app: edulink-ai
@@ -200,7 +200,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: edulink-api
-  namespace: vault
+  namespace: notio
 spec:
   replicas: 1
   selector:
@@ -222,7 +222,7 @@ spec:
           command: ['sh', '-c', 'until nc -z edulink-redis 6379; do echo waiting for redis; sleep 2; done']
       containers:
         - name: edulink-api
-          image: registry.bibanka.com/test/edulink-api:latest
+          image: registry.notioedu.com/notio/edulink-api:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
@@ -298,7 +298,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: edulink-api
-  namespace: vault
+  namespace: notio
 spec:
   selector:
     app: edulink-api
@@ -311,7 +311,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: edulink-api
-  namespace: vault
+  namespace: notio
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
@@ -319,10 +319,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - edulink.bidyno.com
-      secretName: wildcard-bidyno-tls
+        - api.notioedu.com
+      secretName: notioedu-wildcard-tls
   rules:
-    - host: edulink.bidyno.com
+    - host: api.notioedu.com
       http:
         paths:
           - path: /
@@ -338,7 +338,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: edulink-gateway
-  namespace: vault
+  namespace: notio
 spec:
   replicas: 1
   selector:
@@ -353,7 +353,7 @@ spec:
         - name: reg-hub-secret
       containers:
         - name: edulink-gateway
-          image: registry.bibanka.com/test/edulink-gateway:latest
+          image: registry.notioedu.com/notio/edulink-gateway:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
@@ -371,7 +371,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: edulink-gateway
-  namespace: vault
+  namespace: notio
 spec:
   selector:
     app: edulink-gateway
@@ -383,7 +383,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: edulink-gateway
-  namespace: vault
+  namespace: notio
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
@@ -391,10 +391,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - apigateway-notio.bidyno.com
-      secretName: wildcard-bidyno-tls
+        - platform.notioedu.com
+      secretName: notioedu-wildcard-tls
   rules:
-    - host: apigateway-notio.bidyno.com
+    - host: platform.notioedu.com
       http:
         paths:
           - path: /

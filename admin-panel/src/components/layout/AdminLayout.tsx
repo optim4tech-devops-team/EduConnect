@@ -228,3 +228,18 @@ export function ChartIcon() {
     </IconFrame>
   );
 }
+
+export function InboxIcon() {
+  return (
+    <IconFrame>
+      <path
+        d="M3 12l2-7h14l2 7M3 12h4l2 3h6l2-3h4M3 12v7h18v-7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </IconFrame>
+  );
+}

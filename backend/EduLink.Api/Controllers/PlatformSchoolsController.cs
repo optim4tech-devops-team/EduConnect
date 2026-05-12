@@ -20,7 +20,7 @@ public class PlatformSchoolsController : ControllerBase
     private readonly ISmsService _sms;
 
     // Panel URL for school admins — override via Sms:SchoolPanelUrl config
-    private const string DefaultPanelUrl = "https://school.bidyno.com";
+    private const string DefaultPanelUrl = "https://platform.notioedu.com";
 
     public PlatformSchoolsController(AppDbContext db, IEmailService email, ISmsService sms)
     {

@@ -40,6 +40,7 @@ public class AppDbContext : DbContext
     public DbSet<FormField> FormFields => Set<FormField>();
     public DbSet<FormSubmission> FormSubmissions => Set<FormSubmission>();
     public DbSet<FormSubmissionValue> FormSubmissionValues => Set<FormSubmissionValue>();
+    public DbSet<DemoRequest> DemoRequests => Set<DemoRequest>();
 
     // ── Model configuration ──────────────────────────────────────────────────
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -525,6 +526,20 @@ public class AppDbContext : DbContext
                   .HasForeignKey(a => a.ClassId)
                   .IsRequired(false)
                   .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ── DemoRequest ───────────────────────────────────────────────────────
+        modelBuilder.Entity<DemoRequest>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.FirstName).IsRequired().HasMaxLength(100);
+            entity.Property(d => d.LastName).IsRequired().HasMaxLength(100);
+            entity.Property(d => d.SchoolName).IsRequired().HasMaxLength(200);
+            entity.Property(d => d.Phone).IsRequired().HasMaxLength(30);
+            entity.Property(d => d.StudentCount).HasMaxLength(20);
+            entity.Property(d => d.City).HasMaxLength(100);
+            entity.Property(d => d.Status).IsRequired().HasMaxLength(30).HasDefaultValue("new");
+            entity.Property(d => d.Notes).HasMaxLength(1000);
         });
     }
 

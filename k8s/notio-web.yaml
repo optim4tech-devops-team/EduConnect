@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: notio-web
-  namespace: vault
+  namespace: notio
 spec:
   replicas: 1
   selector:
@@ -17,7 +17,7 @@ spec:
         - name: reg-hub-secret
       containers:
         - name: notio-web
-          image: registry.bibanka.com/test/notio-web:latest
+          image: registry.notioedu.com/notio/notio-web:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -32,7 +32,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: notio-web
-  namespace: vault
+  namespace: notio
 spec:
   selector:
     app: notio-web
@@ -44,18 +44,19 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: notio-web
-  namespace: vault
+  namespace: notio
   annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/proxy-body-size: "20m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - platform-notio.bidyno.com
-      secretName: wildcard-bidyno-tls
+        - platform.notioedu.com
+      secretName: notioedu-wildcard-tls
   rules:
-    - host: platform-notio.bidyno.com
+    - host: platform.notioedu.com
       http:
         paths:
           - path: /api

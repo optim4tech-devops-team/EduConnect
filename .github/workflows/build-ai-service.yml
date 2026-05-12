@@ -1,19 +1,19 @@
-name: Admin Panel — Build & Deploy
+name: AI Service — Build & Deploy
 
 on:
   push:
     branches: [master]
     paths:
-      - 'admin-panel/**'
-      - '.github/workflows/deploy-notio-web.yml'
+      - 'ai-service/**'
+      - '.github/workflows/build-ai-service.yml'
   workflow_dispatch:
 
 env:
-  IMAGE: registry.notioedu.com/notio/notio-web
+  IMAGE: registry.notioedu.com/notio/ai-service
 
 jobs:
   build:
-    name: Build & Push Admin Panel
+    name: Build & Push AI Service
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,17 +31,15 @@ jobs:
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
-          context: ./admin-panel
-          file: ./admin-panel/Dockerfile
+          context: ./ai-service
+          file: ./ai-service/Dockerfile
           platforms: linux/amd64
           push: true
-          build-args: |
-            VITE_API_URL=/api
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
-          cache-from: type=gha,scope=admin-panel
-          cache-to: type=gha,mode=max,scope=admin-panel
+          cache-from: type=gha,scope=ai-service
+          cache-to: type=gha,mode=max,scope=ai-service
 
   deploy:
     name: Deploy to k8s (notio)
@@ -59,7 +57,7 @@ jobs:
 
       - name: Update image and rollout
         run: |
-          kubectl set image deployment/notio-web \
-            notio-web=${{ env.IMAGE }}:${{ github.sha }} \
+          kubectl set image deployment/notio-ai \
+            ai-service=${{ env.IMAGE }}:${{ github.sha }} \
             -n notio
-          kubectl rollout status deployment/notio-web -n notio --timeout=120s
+          kubectl rollout status deployment/notio-ai -n notio --timeout=180s

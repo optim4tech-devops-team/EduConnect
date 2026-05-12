@@ -1,14 +1,30 @@
 version: '3.9'
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Notio — Local Development Stack
+#
+# Başlatmak için:
+#   cp .env.example .env          # ilk seferinde
+#   docker compose up --build
+#
+# Servisler (tarayıcıdan erişim):
+#   http://localhost       → Admin Panel (platform.notioedu.com lokal)
+#   http://localhost:3000  → Landing Page (notioedu.com lokal)
+#   http://localhost:5001  → Backend API (debug)
+#   http://localhost:5000  → API Gateway (debug)
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
+
+  # ── Veritabanı ──────────────────────────────────────────────────────────────
   db:
     image: pgvector/pgvector:pg16
-    container_name: edulink_db
+    container_name: notio_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-edulink}
-      POSTGRES_USER: ${POSTGRES_USER:-edulink_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edulink_pass_change_me}
+      POSTGRES_DB:       ${POSTGRES_DB:-edulink}
+      POSTGRES_USER:     ${POSTGRES_USER:-edulink_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edulink_pass}
     ports:
       - "5432:5432"
     volumes:
@@ -19,9 +35,10 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis ────────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: edulink_redis
+    container_name: notio_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -33,15 +50,16 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── AI Servisi (Python/FastAPI + face encoding) ─────────────────────────────
   ai-service:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
-    container_name: edulink_ai
+    container_name: notio_ai
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-edulink_user}:${POSTGRES_PASSWORD:-edulink_pass_change_me}@db:5432/${POSTGRES_DB:-edulink}
-      AI_SERVICE_API_KEY: ${AI_SERVICE_API_KEY:-ai-internal-key-change-me}
+      DATABASE_URL:        postgresql://${POSTGRES_USER:-edulink_user}:${POSTGRES_PASSWORD:-edulink_pass}@db:5432/${POSTGRES_DB:-edulink}
+      AI_SERVICE_API_KEY:  ${AI_SERVICE_API_KEY:-ai-dev-key}
     ports:
       - "8000:8000"
     depends_on:
@@ -54,35 +72,94 @@ services:
       retries: 8
       start_period: 30s
 
+  # ── Backend API (ASP.NET Core 8) ─────────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: EduLink.Api/Dockerfile
-    container_name: edulink_backend
+    container_name: notio_backend
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ASPNETCORE_URLS: http://+:5001
-      ConnectionStrings__DefaultConnection: "Host=db;Database=${POSTGRES_DB:-edulink};Username=${POSTGRES_USER:-edulink_user};Password=${POSTGRES_PASSWORD:-edulink_pass_change_me}"
-      ConnectionStrings__Redis: ${REDIS_URL:-redis:6379}
-      Jwt__Secret: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production-min-32-chars}
-      Jwt__ExpiryMinutes: ${JWT_EXPIRY_MINUTES:-60}
-      Jwt__RefreshExpiryDays: ${JWT_REFRESH_EXPIRY_DAYS:-30}
-      Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME}
-      Cloudinary__ApiKey: ${CLOUDINARY_API_KEY}
-      Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET}
-      AiService__BaseUrl: ${AI_SERVICE_URL:-http://ai-service:8000}
-      AiService__ApiKey: ${AI_SERVICE_API_KEY:-ai-internal-key-change-me}
-      Firebase__ServerKey: ${FIREBASE_SERVER_KEY}
+      ASPNETCORE_URLS:        http://+:5000
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:-edulink};Username=${POSTGRES_USER:-edulink_user};Password=${POSTGRES_PASSWORD:-edulink_pass}"
+      ConnectionStrings__Redis: "redis:6379"
+      Jwt__Secret:                ${JWT_SECRET:-dev-secret-key-at-least-32-characters-long!!}
+      Jwt__ExpiryMinutes:         ${JWT_EXPIRY_MINUTES:-60}
+      Jwt__RefreshExpiryDays:     ${JWT_REFRESH_EXPIRY_DAYS:-30}
+      Cloudinary__CloudName:      ${CLOUDINARY_CLOUD_NAME:-dev}
+      Cloudinary__ApiKey:         ${CLOUDINARY_API_KEY:-dev}
+      Cloudinary__ApiSecret:      ${CLOUDINARY_API_SECRET:-dev}
+      AiService__BaseUrl:         http://ai-service:8000
+      AiService__ApiKey:          ${AI_SERVICE_API_KEY:-ai-dev-key}
+      Firebase__ServerKey:        ${FIREBASE_SERVER_KEY:-dev}
+      Sms__Mode:                  Mock
+      Sms__Sender:                NOTIO
+      Bootstrap__PlatformAdminPassword: ${PLATFORM_ADMIN_PASSWORD:-Admin123!}
+      Seed__EnableDemoSchool:     ${ENABLE_DEMO_SCHOOL:-false}
+      Email__SmtpHost:            ${SMTP_HOST:-localhost}
+      Email__SmtpPort:            ${SMTP_PORT:-25}
+      Email__From:                ${SMTP_FROM:-noreply@notioedu.com}
+      Otp__MasterCode:            "000000"
     ports:
-      - "5001:5001"
+      - "5001:5000"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
       ai-service:
-        condition: service_healthy
+        condition: service_started
+
+  # ── API Gateway (YARP reverse proxy) ─────────────────────────────────────────
+  gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: notio_gateway
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: http://+:5000
+      ReverseProxy__Clusters__backend-cluster__Destinations__destination1__Address: http://backend:5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - backend
+
+  # ── Admin Panel (React/Vite → nginx) ─────────────────────────────────────────
+  notio-web:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: notio_web
+    restart: unless-stopped
+    depends_on:
+      - gateway
+
+  # ── Nginx Router (localhost:80 → admin panel + api routing) ──────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: notio_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx-local.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - notio-web
+      - gateway
+
+  # ── Landing Page (nginx serving static HTML) ─────────────────────────────────
+  landing:
+    build:
+      context: ./landing
+      dockerfile: Dockerfile
+    container_name: notio_landing
+    restart: unless-stopped
+    ports:
+      - "3000:80"
 
 volumes:
   pgdata:
