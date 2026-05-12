@@ -1,0 +1,25 @@
+{
+  "Routes": [
+    {
+      "Key": "Treasury",
+      "UpstreamPathTemplate": "/api/treasury/{everything}",
+      "DownstreamPathTemplate": "/api/treasury/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "treasury-service.development.svc.cluster.local",
+          "Port": 80
+        }
+      ]
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "https://gateway.notioedu.com",
+    "DownstreamScheme": "http",
+    "MetadataOptions": {
+      "Metadata": {
+        "AllowAnonymous": "false"
+      }
+    }
+  }
+}

@@ -1,0 +1,192 @@
+global:
+  namespace: &namespace default
+  storageClass: &storageClass "local-path" # longhorn, local-path, hostPath
+
+# Infra Structure ----------------------------------------------
+infra:
+  postgresql:
+    enabled: true
+  redis:
+    enabled: true
+
+infra-postgresql:
+  fullnameOverride: postgres
+  architecture: standalone
+
+  image:
+    repository: postgres
+    tag: "15"
+
+  auth:
+    enablePostgresUser: true
+    postgresPassword: "password"
+    username: "postgres"
+    database: "initDB"
+    existingSecret: ""  # postgres-secret
+
+  primary:
+    service:
+      type: NodePort # ClusterIP NodePort
+      port: 5432
+      nodePorts:
+        postgresql: "30503"
+
+    persistence:
+      enabled: true
+      size: 50Gi
+#      storageClass: "" # → default StorageClass
+      storageClass: *storageClass  # local-path veya hostPath için empty
+
+    extraVolumes:
+      - name: postgres-run
+        emptyDir: { }
+
+    extraVolumeMounts:
+      - name: postgres-run
+        mountPath: /var/run/postgresql
+
+    configuration: |
+      archive_mode = off
+
+# Redis
+infra-redis-shared:
+  fullnameOverride: redis-shared
+  image:
+    repository: redis
+    tag: "6.0"
+  replica:
+    replicaCount: 1
+  auth:
+    enabled: true
+    password: "mypassword"
+#    existingSecret: "redis-secret"
+  master:
+    persistence:
+      enabled: false
+      size: 8Gi
+    service:
+      type: NodePort
+      port: 6379
+      nodePorts:
+        redis: "30018"
+
+# Service-specific overrides
+# Gateway ----------------------------------------------
+
+api-gateway:
+  enabled: true
+  name: &name gateway
+  nameOverride: *name
+  image:
+    repository: registry.bibanka.com/test/edulink-gateway
+    tag: latest
+  imagePullSecrets:
+    - name: reg-hub-secret
+  service:
+    name: *name
+    ports:
+      - name: http
+        port: 80
+        targetPort: 5000
+  extraEnvs:
+    - name: ASPNETCORE_ENVIRONMENT
+      value: Production
+  container:
+    name: *name
+    port: 5000
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: gateway.notioedu.com
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: wildcard-notio-tls
+        hosts:
+          - gateway.notioedu.com
+    annotations:
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: /$1
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+  configMap:
+    name: *name
+    appSettingsFile: files/AppSettings.json
+  ocelotConfigMap:
+    enabled: true
+    name: *name
+    ocelotFile: files/Ocelot.gateway.json
+
+# UI ---------------------------------------------------
+
+ui-admin:
+  enabled: true
+  nameOverride: ui-admin
+  image:
+    repository: registry.bibanka.com/test/notio-admin
+    tag: latest
+  imagePullSecrets:
+    - name: reg-hub-secret
+
+ui-landing:
+  enabled: true
+  nameOverride: ui-landing
+  image:
+    repository: registry.bibanka.com/test/notio-web
+    tag: latest
+  imagePullSecrets:
+    - name: reg-hub-secret
+
+# Rest -------------------------------------------------
+
+ai-service:
+  enabled: true
+  nameOverride: ai-service
+  image:
+    repository: registry.bibanka.com/test/edulink-ai
+    tag: latest
+  imagePullSecrets:
+    - name: reg-hub-secret
+
+
+backend-service:
+  enabled: true
+  fullnameOverride: backend-api
+  replicas: 1
+  image:
+    repository: registry.bibanka.com/test/notio-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  imagePullSecrets:
+    - name: reg-hub-secret
+  service:
+    port: 8080
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: backend.notioedu.com
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: wildcard-notio-tls
+        hosts:
+          - backend.notioedu.com
+  extraEnvs:
+    - name: ASPNETCORE_ENVIRONMENT
+      value: Production
+    - name: ASPNETCORE_URLS
+      value: "http://+:8080"
+    - name: ConnectionStrings__DefaultConnection
+      value: "Host=localhost;Port=5432;Database=edulink;Username=edulink_user;Password=edulink_pass_change_me"
+    - name: ConnectionStrings__Redis
+      value: "localhost:6379"
+    - name: AiService__BaseUrl
+      value: "http://ai-service:8000"
+  configMap:
+    name: backend-api
+    appSettingsFile: files/AppSettings.json

@@ -1,0 +1,68 @@
+apiVersion: v2
+name: notio-umbrella
+description: Umbrella for all microservices
+type: application
+version: 0.1.0
+appVersion: "1.0"
+dependencies:
+
+  # Infra (shared, development namespace) ---------------
+
+  - name: postgresql
+    version: "15"
+    repository: "https://charts.bitnami.com/bitnami"
+    alias: infra-postgresql
+    condition: infra.postgresql.enabled
+    tags: [ database ]
+
+  - name: redis
+    version: "19.5.2"   # <-- chart version 19.5.2
+    repository: "https://charts.bitnami.com/bitnami"
+    alias: infra-redis-shared
+    condition: infra.redis.enabled
+    tags: [ cache ]
+
+
+  # Gateway ----------------------------------------------
+
+  - name: api-gateway
+    version: "0.1.0"
+    repository: "file://../services/api-gateway"
+    alias: api-gateway
+    condition: api-gateway.enabled
+    tags:
+      - gateway
+
+  # UI ---------------------------------------------------
+  - name: ui-admin
+    version: "0.1.0"
+    repository: "file://../services/ui-admin"
+    alias: ui-admin
+    condition: ui-admin.enabled
+    tags:
+      - ui
+
+  - name: ui-landing
+    version: "0.1.0"
+    repository: "file://../services/ui-landing"
+    alias: ui-landing
+    condition: ui-landing.enabled
+    tags:
+      - ui
+
+  # Rest -------------------------------------------------
+  - name: ai-service
+    version: "0.1.0"
+    repository: "file://../services/ai-service"
+    alias: ai-service
+    condition: ai-service.enabled
+    tags:
+      - ms
+
+  - name: backend-service
+    version: "0.1.0"
+    repository: "file://../services/backend"
+    alias: backend-service
+    condition: backend-service.enabled
+    tags:
+      - ms
