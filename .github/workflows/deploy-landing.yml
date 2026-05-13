@@ -1,0 +1,72 @@
+name: Deploy Notio Landing
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "landing/**"
+      - "k8s/notio-landing.yaml"
+      - ".github/workflows/deploy-landing.yml"
+  workflow_dispatch:
+
+env:
+  REGISTRY: registry.notioedu.com
+  LANDING_IMAGE: registry.notioedu.com/notio/landing
+
+jobs:
+  build-landing:
+    name: Build and Push Landing Image
+    runs-on: [self-hosted, github-k8s-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Registry
+        run: echo "$REGISTRY_PASSWORD" | docker login ${{ env.REGISTRY }} -u "$REGISTRY_USERNAME" --password-stdin
+        env:
+          REGISTRY_USERNAME: ${{ secrets.NOTIO_REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.NOTIO_REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Landing
+        uses: docker/build-push-action@v5
+        with:
+          context: ./landing
+          file: ./landing/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.LANDING_IMAGE }}:${{ github.sha }}
+            ${{ env.LANDING_IMAGE }}:latest
+          cache-from: type=gha,scope=landing
+          cache-to: type=gha,mode=max,scope=landing
+
+  deploy-landing:
+    name: Deploy Landing to Kubernetes
+    runs-on: [self-hosted, github-k8s-runner]
+    needs: build-landing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Apply landing manifest
+        run: kubectl apply -f k8s/notio-landing.yaml
+
+      - name: Update image and rollout
+        run: |
+          kubectl set image deployment/notio-landing \
+            notio-landing=${{ env.LANDING_IMAGE }}:${{ github.sha }} \
+            -n vault
+          kubectl rollout status deployment/notio-landing -n vault --timeout=180s

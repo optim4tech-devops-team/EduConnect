@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notio-landing
+  namespace: vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notio-landing
+  template:
+    metadata:
+      labels:
+        app: notio-landing
+    spec:
+      imagePullSecrets:
+        - name: reg-notio-secret
+      containers:
+        - name: notio-landing
+          image: registry.notioedu.com/notio/landing:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notio-landing
+  namespace: vault
+spec:
+  selector:
+    app: notio-landing
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: notio-landing
+  namespace: vault
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - landing.notioedu.com
+      secretName: wildcard-notioedu-tls
+  rules:
+    - host: landing.notioedu.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: notio-landing
+                port:
+                  number: 80

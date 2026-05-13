@@ -1,255 +1,187 @@
 <!DOCTYPE html>
 <html lang="tr">
   <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Notio | Anaokulu İletişim ve Yönetim Platformu</title>
-    <meta name="description" content="Notio; anaokulları için fotoğraf paylaşımı, veli iletişimi, formlar, yoklama ve okul yönetimini tek bir uygulamada sunan modern preschool platformudur." />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <meta
+      name="description"
+      content="Notio; anaokulları için fotoğraf paylaşımı, veli iletişimi, formlar, yoklama ve okul yönetimini tek bir uygulamada sunan modern okul platformudur."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
   </head>
   <body>
-
-    <!-- ═══ NAV ═══════════════════════════════════════════════════════════ -->
     <header class="site-nav" id="top">
-      <a class="brand" href="#top" aria-label="Notio ana sayfa">
-        <img class="brand-mark" src="./assets/notio-bird-mark.png" alt="Notio" />
+      <a class="brand" href="./index.html" aria-label="Notio ana sayfa">
+        <img class="brand-mark" src="./assets/notio-logo.png" alt="Notio" />
         <span class="brand-word">Notio</span>
       </a>
 
-      <nav class="nav-links" aria-label="Bölümler">
-        <a href="#ozellikler">Özellikler</a>
-        <a href="#nasil">Nasıl Çalışır</a>
-        <a href="#mobil">Mobil Uygulama</a>
-        <a href="#webpanel">Web Paneli</a>
-        <a href="#roller">Roller</a>
-        <a href="#sss">SSS</a>
-      </nav>
+      <button
+        class="nav-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="site-menu"
+        aria-label="Menüyü aç"
+        data-nav-toggle
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
 
-      <div class="nav-actions">
-        <a class="ghost-button" href="#demo">Demo Talep Et</a>
-        <a class="solid-button" href="https://platform.notioedu.com" target="_blank" rel="noreferrer">Panele Gir</a>
+      <div class="nav-panel" id="site-menu" data-nav-panel>
+        <nav class="nav-links" aria-label="Bölümler">
+          <a href="#ozellikler" data-nav-link data-section-link>Özellikler</a>
+          <a href="#katmanlar" data-nav-link data-section-link>Katmanlar</a>
+          <a href="#roller" data-nav-link data-section-link>Roller</a>
+          <a href="#nasil" data-nav-link data-section-link>Nasıl Çalışır</a>
+          <a href="#demo" data-nav-link data-section-link>İletişim</a>
+        </nav>
+
+        <div class="nav-actions">
+          <a class="ghost-button" href="https://platform-notio.bidyno.com" target="_blank" rel="noreferrer">Panele Gir</a>
+          <a class="solid-button" href="#demo" data-nav-link>Demo Talep Et</a>
+        </div>
       </div>
     </header>
 
     <main>
+      <section class="hero" id="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">Anaokulları için yeni nesil platform</span>
 
-      <!-- ═══ HERO ══════════════════════════════════════════════════════════ -->
-      <section class="hero-full" id="hero">
-        <div class="hero-bg-orbs">
-          <div class="orb orb-1"></div>
-          <div class="orb orb-2"></div>
-          <div class="orb orb-3"></div>
-        </div>
+          <h1>Anaokulu iletişimini ve operasyonunu tek panelde yönet.</h1>
 
-        <div class="hero-content">
-          <div class="hero-badge">
-            <img src="./assets/notio-bird-mark.png" alt="Notio" class="hero-badge-logo" />
-            <span>Anaokulları için yeni nesil platform</span>
-          </div>
-
-          <h1 class="hero-title">
-            Okul, öğretmen ve veli<br>
-            <span class="hero-title-accent">aynı dili konuşur.</span>
-          </h1>
-
-          <p class="hero-subtitle">
-            Fotoğraf paylaşımı, veli iletişimi, dijital formlar, yoklama ve okul yönetimi —
-            hepsi tek platformda. Kurulum yok, BT ekibi gerekmez.
+          <p class="hero-lead">
+            Notio; okul müdürünün operasyonu yönetmesini, öğretmenin günlük akışlarını hızla yürütmesini ve velinin gün boyu güvenle bilgi almasını sağlar.
           </p>
 
-          <div class="hero-cta-row">
-            <a class="solid-button large" href="#demo">Ücretsiz Demo Al</a>
-            <a class="ghost-button large" href="#ozellikler">Özellikleri Keşfet</a>
+          <div class="hero-brand">
+            <img class="hero-mark" src="./assets/notio-logo.png" alt="Notio" />
+            <div>
+              <p class="hero-brand-name">Notio</p>
+              <p class="hero-brand-story">
+                Platform, okul paneli ve veli deneyimini aynı veri akışında birleştiren modern okul altyapısı.
+              </p>
+            </div>
           </div>
 
-          <div class="hero-trust">
-            <span class="hero-trust-label">Pilot Referans Kurumlarımız</span>
-            <div class="hero-trust-logos">
-              <span class="trust-badge">🌸 Küçük Sıralar Anaokulları</span>
-            </div>
+          <div class="hero-actions">
+            <a class="solid-button large" href="#demo">Ücretsiz Demo Planla</a>
+            <a class="ghost-button large" href="#ozellikler">Özellikleri Gör</a>
+          </div>
+
+          <div class="hero-metrics">
+            <article>
+              <strong>Veli iletişimi</strong>
+              <span>Mesajlar, formlar ve günlük raporlar tek akışta</span>
+            </article>
+            <article>
+              <strong>Okul operasyonu</strong>
+              <span>Sınıf, öğretmen, öğrenci ve rapor yönetimi</span>
+            </article>
+            <article>
+              <strong>Mobil deneyim</strong>
+              <span>Öğretmen ve veli için sade, rol bazlı kullanım</span>
+            </article>
           </div>
         </div>
 
-        <!-- Ürün Slider -->
-        <div class="hero-slider-wrap">
-          <div class="slider-tabs">
-            <button class="slider-tab active" data-slide="0">📸 Galeri</button>
-            <button class="slider-tab" data-slide="1">💬 Mesajlar</button>
-            <button class="slider-tab" data-slide="2">📋 Formlar</button>
-            <button class="slider-tab" data-slide="3">🏅 Rozetler</button>
-          </div>
+        <div class="hero-stage" aria-label="Notio ürün sunumu">
+          <div class="stage-card stage-card-dark stage-card--dashboard">
+            <img
+              class="stage-photo"
+              src="https://unsplash.com/photos/OVDtgUhUPBY/download?force=true&w=1600"
+              alt="Anaokulunda birlikte etkinlik yapan çocuklar"
+              loading="lazy"
+            />
+            <div class="stage-overlay"></div>
 
-          <div class="slider-viewport">
-            <!-- Slide 0: Galeri -->
-            <div class="slide active">
-              <div class="slide-card slide-card--dark">
-                <div class="slide-topbar">
-                  <div class="slide-dot"></div><div class="slide-dot"></div><div class="slide-dot"></div>
-                  <span class="slide-title-bar">Fotoğraf Galerisi</span>
-                </div>
-                <div class="slide-body">
-                  <div class="slide-photo-grid">
-                    <img class="photo-thumb photo-thumb--lg" src="https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=300&h=200&fit=crop&auto=format&q=80" alt="Anaokulu etkinlik" loading="lazy" onerror="this.src='https://picsum.photos/seed/kids1/300/200'" />
-                    <img class="photo-thumb" src="https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=200&h=120&fit=crop&auto=format&q=80" alt="Çocuklar oynuyor" loading="lazy" onerror="this.src='https://picsum.photos/seed/kids2/200/120'" />
-                    <img class="photo-thumb" src="https://images.unsplash.com/photo-1509062522246-3755977927d7?w=200&h=120&fit=crop&auto=format&q=80" alt="Sınıf ortamı" loading="lazy" onerror="this.src='https://picsum.photos/seed/kids3/200/120'" />
-                    <img class="photo-thumb photo-thumb--wide" src="https://images.unsplash.com/photo-1452678952459-8d97982f3d99?w=400&h=120&fit=crop&auto=format&q=80" alt="Anaokulu aktivitesi" loading="lazy" onerror="this.src='https://picsum.photos/seed/kids4/400/120'" />
+            <div class="stage-content">
+              <div class="stage-dashboard-top">
+                <span class="stage-kicker">Okul paneli</span>
+                <span class="stage-status">Bugün 12 yeni paylaşım</span>
+              </div>
+
+              <h2>Tüm okul operasyonu tek ekranda görünür.</h2>
+              <p>
+                Veli iletişimi, sınıf yönetimi, formlar ve gün sonu bilgilendirmeleri aynı panelde sade ve okunur bir akışta ilerler.
+              </p>
+
+              <div class="pill-row">
+                <span class="pill">Veli mesajları</span>
+                <span class="pill">Dijital formlar</span>
+                <span class="pill">Günlük raporlar</span>
+              </div>
+
+              <div class="stage-preview-grid" aria-hidden="true">
+                <div class="stage-preview-card">
+                  <span class="stage-preview-label">Sabah Özeti</span>
+                  <strong>3 sınıf hazır</strong>
+                  <div class="stage-preview-lines">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                   </div>
-                  <div class="slide-meta">
-                    <div class="slide-avatar-row">
-                      <div class="s-avatar"></div>
-                      <div class="s-avatar s-avatar--2"></div>
-                      <div class="s-avatar s-avatar--3"></div>
-                    </div>
-                    <span class="slide-caption">12 öğrenci etiketlendi · az önce</span>
+                </div>
+                <div class="stage-preview-card">
+                  <span class="stage-preview-label">Veli Güncellemesi</span>
+                  <strong>12 yeni paylaşım</strong>
+                  <div class="stage-preview-tags">
+                    <span>Galeri</span>
+                    <span>Yoklama</span>
+                  </div>
+                </div>
+                <div class="stage-preview-card">
+                  <span class="stage-preview-label">Form Takibi</span>
+                  <strong>2 onay bekliyor</strong>
+                  <div class="stage-preview-lines">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                   </div>
                 </div>
               </div>
             </div>
-
-            <!-- Slide 1: Mesajlar -->
-            <div class="slide">
-              <div class="slide-card slide-card--light">
-                <div class="slide-topbar">
-                  <div class="slide-dot"></div><div class="slide-dot"></div><div class="slide-dot"></div>
-                  <span class="slide-title-bar">Veli Mesajları</span>
-                </div>
-                <div class="slide-body">
-                  <div class="msg-list">
-                    <div class="msg-row msg-row--out">
-                      <div class="msg-bubble msg-bubble--out">Bugün bahçede çok eğlendik 🌞</div>
-                      <div class="msg-time">10:32</div>
-                    </div>
-                    <div class="msg-row">
-                      <div class="s-avatar s-avatar--parent"></div>
-                      <div>
-                        <div class="msg-bubble">Harika! Çok mutlu oldum, teşekkürler 🙏</div>
-                        <div class="msg-time">10:35</div>
-                      </div>
-                    </div>
-                    <div class="msg-row msg-row--out">
-                      <div class="msg-bubble msg-bubble--out">Yarın drama etkinliğimiz var 🎭</div>
-                      <div class="msg-time">10:40</div>
-                    </div>
-                    <div class="msg-typing">
-                      <span></span><span></span><span></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Slide 2: Formlar -->
-            <div class="slide">
-              <div class="slide-card slide-card--amber">
-                <div class="slide-topbar">
-                  <div class="slide-dot"></div><div class="slide-dot"></div><div class="slide-dot"></div>
-                  <span class="slide-title-bar">Dijital Formlar</span>
-                </div>
-                <div class="slide-body">
-                  <div class="form-preview">
-                    <div class="form-preview-title">📋 Yıllık Kayıt Formu</div>
-                    <div class="form-field-mock">
-                      <div class="form-label-mock"></div>
-                      <div class="form-input-mock form-input-mock--filled"></div>
-                    </div>
-                    <div class="form-field-mock">
-                      <div class="form-label-mock"></div>
-                      <div class="form-input-mock form-input-mock--filled"></div>
-                    </div>
-                    <div class="form-field-mock">
-                      <div class="form-label-mock"></div>
-                      <div class="form-input-mock"></div>
-                    </div>
-                    <div class="form-progress-bar">
-                      <div class="form-progress-fill"></div>
-                    </div>
-                    <div class="form-status">
-                      <span class="status-dot status-dot--green"></span>
-                      24/30 veli tamamladı
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Slide 3: Rozetler -->
-            <div class="slide">
-              <div class="slide-card slide-card--dark">
-                <div class="slide-topbar">
-                  <div class="slide-dot"></div><div class="slide-dot"></div><div class="slide-dot"></div>
-                  <span class="slide-title-bar">Rozetler & Gözlemler</span>
-                </div>
-                <div class="slide-body">
-                  <div class="badge-preview">
-                    <div class="badge-student">
-                      <div class="s-avatar s-avatar--big"></div>
-                      <div class="badge-student-info">
-                        <div class="badge-name-mock"></div>
-                        <div class="badge-sub-mock"></div>
-                      </div>
-                    </div>
-                    <div class="badge-grid">
-                      <div class="badge-item badge-item--gold">🌟<span>Güne<br>Enerjili Başladı</span></div>
-                      <div class="badge-item badge-item--blue">🤝<span>Paylaşımcı<br>Davranış</span></div>
-                      <div class="badge-item badge-item--green">🎨<span>Yaratıcı<br>Çalışma</span></div>
-                      <div class="badge-item badge-item--purple">📚<span>Kitap<br>Kurdu</span></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="slider-progress">
-            <div class="progress-bar"><div class="progress-fill"></div></div>
           </div>
         </div>
       </section>
 
-      <!-- ═══ STATS STRIP ═══════════════════════════════════════════════════ -->
       <div class="stats-strip">
         <div class="stat-item">
-          <strong>500+</strong>
-          <span>Aktif Öğrenci</span>
+          <strong>Kurulum kolay</strong>
+          <span>Toplu aktarım ve hızlı başlangıç</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <strong>%98</strong>
-          <span>Veli Memnuniyeti</span>
+          <strong>KVKK uyumlu</strong>
+          <span>Onay, izin ve form süreçleri tek yerde</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <strong>9</strong>
-          <span>Çekirdek Modül</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <strong>24/7</strong>
-          <span>Teknik Destek</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <strong>iOS & Android</strong>
-          <span>Mobil Uygulama</span>
+          <strong>Tek panel</strong>
+          <span>Platform, okul ve mobil aynı akışta</span>
         </div>
       </div>
 
-      <!-- ═══ ÖZELLİKLER ════════════════════════════════════════════════════ -->
       <section class="section" id="ozellikler">
         <div class="section-heading">
           <span class="eyebrow">Neler Yapabilirsiniz</span>
           <h2>Anaokulunun tüm ihtiyaçları tek platformda</h2>
           <p>
-            Notio; akademik ağırlıklı değil, iletişim ve veli bağını güçlendiren 9 çekirdek modülle anaokulunuzu tam olarak dijitalleştirir.
+            Notio; akademik ağırlıklı değil, iletişim ve veli bağını güçlendiren modüllerle anaokulunuzu dijitalleştirir.
           </p>
         </div>
 
         <div class="feature-grid">
-
           <article class="feature-card">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -258,8 +190,8 @@
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
             </div>
-            <h3>Fotoğraf & Galeri</h3>
-            <p>Sınıf anlarını yüksek kaliteli galerilerle velilerle paylaş. Öğrenci etiketleme ve onaylı yayın akışı ile her fotoğraf güvenle iletilir.</p>
+            <h3>Fotoğraf Galerileri</h3>
+            <p>Sınıf anılarını yüksek kaliteli galerilerle velilerle paylaş. Onaylı yayın akışıyla her fotoğraf güvenle iletilir.</p>
           </article>
 
           <article class="feature-card">
@@ -269,7 +201,7 @@
               </svg>
             </div>
             <h3>Veli İletişimi</h3>
-            <p>Öğretmen-veli birebir mesajlaşma, sınıf duyuruları ve anlık bildirimlerle velilerle gerçek zamanlı bağlantıda kal. SignalR altyapısı ile mesajlar anında iletilir.</p>
+            <p>Birebir ve toplu mesajlaşma, duyurular ve anlık bildirimlerle velilerle sürekli bağlantıda kal.</p>
           </article>
 
           <article class="feature-card">
@@ -279,35 +211,44 @@
                 <polyline points="14 2 14 8 20 8"/>
                 <line x1="16" y1="13" x2="8" y2="13"/>
                 <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
               </svg>
             </div>
             <h3>Dijital Formlar</h3>
-            <p>Kayıt, izin, sağlık, teslim ve bilgilendirme formlarını yeniden kullanılabilir şablonlarla dijitalleştir. Veliler telefondan doldurup onaylıyor.</p>
+            <p>Kayıt, izin, sağlık, teslim ve bilgilendirme formlarını yeniden kullanılabilir şablonlarla dijitalleştir.</p>
           </article>
 
           <article class="feature-card">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <circle cx="12" cy="8" r="4"/>
-                <path d="M12 12v9"/>
-                <path d="M8 17l4-4 4 4"/>
+                <path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+                <polyline points="16 11 17 13 21 9"/>
               </svg>
             </div>
-            <h3>Rozetler & Olumlu Gözlemler</h3>
-            <p>Öğrencilere rozet ver, gelişim notları ekle ve başarı anlarını velilerle paylaş. Kutlama ve motivasyon odaklı modern bir akış.</p>
+            <h3>Yoklama Takibi</h3>
+            <p>Günlük devam takibini mobil üzerinden saniyeler içinde tamamla. Veliler anlık bilgilendirme alır.</p>
           </article>
 
           <article class="feature-card">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
               </svg>
             </div>
-            <h3>Öğrenci & Veli Yönetimi</h3>
-            <p>Öğrenci profilleri, veli ilişkilendirme, teslim yetkisi, alerji ve sağlık notları tek bir ekranda. Veli-öğrenci bağı metadata ile tam tanımlı.</p>
+            <h3>Rozet ve Gözlemler</h3>
+            <p>Davranış takibi yerine sıcak ve paylaşılabilir bir gelişim dili kur. Başarılar rozetlerle kutlanır.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+              </svg>
+            </div>
+            <h3>Günlük Raporlar</h3>
+            <p>Öğretmenler günün özetini, yemek, uyku ve etkinlik bilgilerini velilere otomatik olarak iletir.</p>
           </article>
 
           <article class="feature-card">
@@ -317,240 +258,207 @@
                 <line x1="16" y1="2" x2="16" y2="6"/>
                 <line x1="8" y1="2" x2="8" y2="6"/>
                 <line x1="3" y1="10" x2="21" y2="10"/>
-                <path d="M9 16l2 2 4-4"/>
               </svg>
             </div>
-            <h3>Yoklama Takibi</h3>
-            <p>Günlük toplu yoklama kaydı, sınıf ve tarih bazlı raporlama. Öğrenci bazlı devamsızlık özetini tek bakışta gör, veliye bildir.</p>
+            <h3>Okul Takvimi</h3>
+            <p>Etkinlikler, tatiller ve önemli tarihler tüm velilere anında duyurulur. Hiçbir şey kaçmaz.</p>
           </article>
 
           <article class="feature-card">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-                <line x1="6" y1="1" x2="6" y2="4"/>
-                <line x1="10" y1="1" x2="10" y2="4"/>
-                <line x1="14" y1="1" x2="14" y2="4"/>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
             </div>
-            <h3>Bildirimler & Duyurular</h3>
-            <p>Push bildirim, SMS ve e-posta fallback ile hiçbir mesaj kaybolmaz. Okul geneli, sınıf odaklı veya bireysel duyuruları anında gönder.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-            </div>
-            <h3>AI Yüz Tanıma</h3>
-            <p>Grup fotoğraflarında öğrencileri otomatik etiketle. Face enrollment ile yüz verisi kayıt edilir, paylaşım akışı zeki ve hızlı hale gelir.</p>
+            <h3>KVKK Uyumlu</h3>
+            <p>Veri güvenliği ve kişisel bilgi işleme izinleri platforma entegredir. Yasal uyum süreci yönetilebilir kalır.</p>
           </article>
 
           <article class="feature-card feature-card--highlight">
-            <div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
-              <div style="flex:1;min-width:240px;">
-                <div class="feature-icon" style="margin-bottom:12px;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
-                  </svg>
-                </div>
-                <h3>Web Yönetim Paneli</h3>
-                <p>Okul müdürü ve idari ekip için tam yetkili web arayüzü. Sınıf kurulumundan veli onayına kadar tüm operasyonlar tek ekranda.</p>
-              </div>
-              <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                <div style="padding:14px 18px;border-radius:14px;background:rgba(32,73,55,.06);border:1px solid rgba(32,73,55,.12);">
-                  <strong style="display:block;font-size:0.82rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);margin-bottom:4px;">Okul Müdürü</strong>
-                  <span style="font-size:0.9rem;color:var(--muted);">Sınıf, öğretmen, öğrenci ve veli yönetimi</span>
-                </div>
-                <div style="padding:14px 18px;border-radius:14px;background:rgba(227,160,79,.08);border:1px solid rgba(227,160,79,.2);">
-                  <strong style="display:block;font-size:0.82rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-deep);margin-bottom:4px;">İdari Ekip</strong>
-                  <span style="font-size:0.9rem;color:var(--muted);">Form şablonları, duyuru ve içerik moderasyonu</span>
-                </div>
-              </div>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                <line x1="12" y1="18" x2="12.01" y2="18"/>
+              </svg>
             </div>
+            <h3>Mobil Öncelikli</h3>
+            <p>iOS ve Android uygulamaları ile öğretmenler ve veliler her an her yerden platforma erişir. Telefon numarasıyla hızlı giriş.</p>
           </article>
-
         </div>
       </section>
 
-      <!-- ═══ NASIL ÇALIŞIR ══════════════════════════════════════════════════ -->
-      <section class="section" id="nasil">
+      <section class="section architecture-section" id="katmanlar">
+        <div class="section-heading">
+          <span class="eyebrow">Ürün Katmanları</span>
+          <h2>Tek ürün ailesi, üç farklı operasyon seviyesi</h2>
+          <p>
+            Notio sadece bir veli uygulaması değil. Platform yönetimi, okul operasyonu ve mobil deneyimi aynı bilgi modeli üzerinden birbirine bağlayan bir ürün ailesidir.
+          </p>
+        </div>
+
+        <div class="layer-grid">
+          <article class="layer-card layer-card--platform">
+            <span class="module-index">01</span>
+            <h3>Platform Yönetimi</h3>
+            <p>Yeni okul aç, plan yönet, yöneticileri ata ve çoklu okul büyümesini aynı panelden kontrol et.</p>
+            <ul>
+              <li>Okul oluşturma ve yönetici atama</li>
+              <li>Paket ve kota takibi</li>
+              <li>Çoklu okul görünürlüğü</li>
+            </ul>
+          </article>
+
+          <article class="layer-card layer-card--school">
+            <span class="module-index">02</span>
+            <h3>Okul Operasyonu</h3>
+            <p>Okul müdürü için sınıf, öğrenci, öğretmen, veli, rapor ve takvim akışlarını tek web panelde toplar.</p>
+            <ul>
+              <li>Öğrenci ve veli kayıt yönetimi</li>
+              <li>Raporlar, sağlık ve eksik kayıt takibi</li>
+              <li>Yemek takvimi ve etkinlik veri girişi</li>
+            </ul>
+          </article>
+
+          <article class="layer-card layer-card--mobile">
+            <span class="module-index">03</span>
+            <h3>Mobil Deneyim</h3>
+            <p>Öğretmen ve veli tarafı, okul panelinde girilen verileri mobilde sade ve zamanında tüketir.</p>
+            <ul>
+              <li>Günlük rapor ve medya paylaşımı</li>
+              <li>Bildirim ve mesajlaşma</li>
+              <li>Etkinlik, yemek ve takvim görünürlüğü</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section split-section" id="roller">
         <div class="section-heading narrow">
-          <span class="eyebrow">Başlangıç Rehberi</span>
-          <h2>4 adımda anaokulunuz dijitalde</h2>
-          <p>Notio'yu kurmak için BT ekibine veya karmaşık kurulum süreçlerine ihtiyacınız yok.</p>
+          <span class="eyebrow">Kime Hitap Ediyor</span>
+          <h2>Her rol için özelleştirilmiş bir deneyim</h2>
+          <p>Notio bir uygulama değil, bir okul sistemi gibi davranır. Her rol kendi ihtiyacına göre sadeleştirilmiş akışlar görür.</p>
+        </div>
+
+        <div class="role-grid">
+          <article class="role-card role-card--admin">
+            <div class="role-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <span class="role-label">Okul Müdürü</span>
+            <h3>Tüm okulu tek panelden yönet</h3>
+            <ul>
+              <li>Sınıf, öğrenci, öğretmen ve veli akışlarını kur</li>
+              <li>Formları, galerileri ve duyuruları yönet</li>
+              <li>Gerçek zamanlı istatistik ve raporlara eriş</li>
+              <li>KVKK belgelerini ve onayları takip et</li>
+            </ul>
+            <a class="role-cta" href="#demo">Demo Talep Et -></a>
+          </article>
+
+          <article class="role-card role-card--teacher">
+            <div class="role-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <span class="role-label">Öğretmen</span>
+            <h3>Sınıfını mobilde kolayca yönet</h3>
+            <ul>
+              <li>Fotoğraf ve günlük rapor paylaş</li>
+              <li>Yoklama al, gözlem ekle, rozet ver</li>
+              <li>Velilerle birebir ya da toplu mesajlaş</li>
+              <li>Öğrenci detaylarını ve gelişimini takip et</li>
+            </ul>
+            <a class="role-cta" href="#demo">Demo Talep Et -></a>
+          </article>
+
+          <article class="role-card role-card--parent">
+            <div class="role-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            </div>
+            <span class="role-label">Veli</span>
+            <h3>Çocuğunuzun gününü canlı takip edin</h3>
+            <ul>
+              <li>Günlük rapor ve fotoğrafları anında gör</li>
+              <li>Formları ve izinleri dijital olarak imzala</li>
+              <li>Rozet ve gelişim notlarını takip et</li>
+              <li>Öğretmenle güvenli mesajlaş</li>
+            </ul>
+            <a class="role-cta" href="#demo">Demo Talep Et -></a>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="nasil">
+        <div class="section-heading">
+          <span class="eyebrow">Kurulum Süreci</span>
+          <h2>3 adımda anaokulunuzu dijitalleştirin</h2>
+          <p>Notio'ya geçiş hızlı ve kolaydır. Teknik bilgiye gerek yok, destek ekibimiz her adımda yanınızdadır.</p>
         </div>
 
         <div class="how-grid">
-          <div class="how-card">
+          <article class="how-card">
             <div class="how-step">1</div>
             <div class="how-content">
-              <h3>Okulunuzu oluşturun</h3>
-              <p>Okul profilini açar, paket seçer ve okul yöneticisini atarsınız. Tüm süreç dakikalar içinde tamamlanır.</p>
+              <h3>Okul profilinizi oluşturun</h3>
+              <p>Sınıflarınızı, öğretmenlerinizi ve öğrencilerinizi sisteme girin. İlk kurulum ortalama 30 dakika alır. Eski kayıtlarınızı toplu aktarım ile kolayca taşıyabilirsiniz.</p>
             </div>
-          </div>
+          </article>
 
-          <div class="how-card">
+          <article class="how-card">
             <div class="how-step">2</div>
             <div class="how-content">
-              <h3>Sınıf ve kadroyu kurun</h3>
-              <p>Sınıfları oluşturun, öğretmenleri atayın. Öğrenci kayıtları ve veli ilişkilendirmeleri tek ekranda tamamlanır.</p>
+              <h3>Velileri davet edin</h3>
+              <p>Veliler telefon numarasıyla anında sisteme girer, şifre hatırlamak zorunda kalmaz. SMS ile tek tıkla davet gönderin.</p>
             </div>
-          </div>
+          </article>
 
-          <div class="how-card">
+          <article class="how-card">
             <div class="how-step">3</div>
             <div class="how-content">
-              <h3>Veliler uygulamayı indirir</h3>
-              <p>Veliler telefon numarasıyla OTP ile giriş yapar. Sistem rolü otomatik tanır; her veli yalnızca kendi çocuğunun içeriğini görür.</p>
+              <h3>Paylaşmaya ve iletişime başlayın</h3>
+              <p>Fotoğraf paylaşın, günlük raporlar oluşturun, formları dijitalleştirin. Veliler anında bildirim alır ve gelişmeleri takip eder.</p>
             </div>
-          </div>
-
-          <div class="how-card">
-            <div class="how-step">4</div>
-            <div class="how-content">
-              <h3>Okul hayata geçer</h3>
-              <p>Öğretmenler fotoğraf paylaşır, rozet verir, velilerle mesajlaşır. Veliler gerçek zamanlı olarak çocuklarının gününü takip eder.</p>
-            </div>
-          </div>
+          </article>
         </div>
       </section>
 
-      <!-- ═══ REFERANSLAR ════════════════════════════════════════════════════ -->
-      <section class="section" id="referanslar">
-        <div class="section-heading" style="text-align:center;max-width:100%;margin-bottom:40px;">
-          <span class="eyebrow" style="margin:0 auto 12px;">Referans Kurumlarımız</span>
-          <h2>Öncü kurumlar Notio ile büyüyor</h2>
-          <p style="max-width:560px;margin:12px auto 0;">Pilot programımıza katılan kurumlarımızdan deneyimler.</p>
-        </div>
-
-        <div class="testimonial-single">
-          <div class="testimonial-card testimonial-card--featured testimonial-card--wide">
-            <div class="testimonial-logo">
-              <span class="t-logo-icon">🌸</span>
-              <div>
-                <strong>Küçük Sıralar Anaokulları</strong>
-                <span>İstanbul</span>
-              </div>
-            </div>
-            <blockquote>
-              "Notio ile velilerle iletişimimiz tamamen değişti. Öğretmenlerimiz artık kağıt form doldurmak yerine çocuklara zaman ayırıyor. Veliler gün içinde paylaşılan fotoğrafları görünce güven duygusu bambaşka oluyor."
-            </blockquote>
-            <div class="testimonial-bottom">
-              <div class="testimonial-author">
-                <div class="author-avatar author-avatar--green"></div>
-                <div>
-                  <strong>Okul Müdürü</strong>
-                  <span>Küçük Sıralar Anaokulları</span>
-                </div>
-              </div>
-              <div class="testimonial-metrics">
-                <div class="t-metric">
-                  <strong>%94</strong>
-                  <span>Veli memnuniyeti</span>
-                </div>
-                <div class="t-metric">
-                  <strong>3×</strong>
-                  <span>Daha hızlı iletişim</span>
-                </div>
-                <div class="t-metric">
-                  <strong>0</strong>
-                  <span>Kağıt form</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ═══ MOBİL UYGULAMA ════════════════════════════════════════════════ -->
-      <section class="section app-section" id="mobil">
+      <section class="section app-section" id="uygulama">
         <div class="app-copy">
-          <span class="eyebrow">iOS & Android</span>
-          <h2>Öğretmen ve veli için ayrı deneyimler</h2>
+          <span class="eyebrow">Mobil Uygulama</span>
+          <h2>Her zaman, her yerden erişin</h2>
           <p>
-            Notio mobil uygulaması iki farklı role göre özelleşir. Telefon + OTP girişinin ardından sistem rolünüzü tanır ve size özel akışı açar.
+            Notio mobil uygulaması iOS ve Android'de kullanılabilir. Öğretmenler sınıftan, veliler evden, müdürler ofisten; herkes kendi rolüne uygun ekrana erişir.
           </p>
-
-          <div class="mobile-split">
-            <div class="mobile-role-card mobile-role-card--teacher">
-              <div class="mobile-role-header">
-                <span class="role-label">👩‍🏫 Öğretmen</span>
-              </div>
-              <ul class="app-features">
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Sınıf öğrenci listesi ve profiller
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Fotoğraf çek, etiketle, yayınla
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Rozet ver ve olumlu gözlem ekle
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Veli ile birebir mesajlaşma
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Günlük yoklama kaydı
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Günlük rapor ve form takibi
-                </li>
-              </ul>
-            </div>
-
-            <div class="mobile-role-card mobile-role-card--parent">
-              <div class="mobile-role-header">
-                <span class="role-label" style="background:rgba(82,160,183,.12);border-color:rgba(82,160,183,.2);color:#1a6080;">👨‍👩‍👧 Veli</span>
-              </div>
-              <ul class="app-features">
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Çocuğuna ait fotoğraf galerisi
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Rozet ve gelişim notlarını görüntüle
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Öğretmenle direkt mesajlaşma
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Dijital formlara cevap ver ve onayla
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Anlık bildirimler ve duyurular
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                  Devamsızlık ve yoklama geçmişi
-                </li>
-              </ul>
-            </div>
-          </div>
-
+          <ul class="app-features">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+              Telefon numarasıyla şifresiz giriş
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+              Anlik push bildirimleri
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+              Çevrimdışı mod desteği
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+              Rol bazlı kişiselleştirilmiş arayüz
+            </li>
+          </ul>
           <div class="app-store-buttons">
-            <a class="store-button" href="#">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-              <span><small>İndir</small>App Store</span>
-            </a>
-            <a class="store-button" href="#">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76c.33.18.7.22 1.06.12l12.5-7.22-2.9-2.9-10.66 9.99zM20.54 10.04L17.3 8.17l-3.22 3.02 3.22 3.01 3.25-1.88c.93-.54.93-1.74-.01-2.28zM1.94.25C1.62.55 1.42 1.03 1.42 1.65v20.7c0 .62.2 1.1.53 1.4l.07.06L13.1 12.74v-.26L2.02.19l-.08.06zM14.81 11.52L3.18.28l.07.06 11.56 11.18z"/></svg>
-              <span><small>İndir</small>Google Play</span>
-            </a>
+            <a class="store-button store-button--soft" href="#ozellikler" aria-label="Mobili incele">Mobili İncele</a>
+            <a class="store-button" href="#demo" aria-label="Demo planla">Demo Planla</a>
           </div>
         </div>
 
@@ -566,21 +474,24 @@
                     <div class="mock-line mock-line--sub"></div>
                   </div>
                 </div>
-                <div class="mock-stat-row">
-                  <div class="mock-stat"><div class="mock-stat-num"></div><div class="mock-stat-label"></div></div>
-                  <div class="mock-stat"><div class="mock-stat-num"></div><div class="mock-stat-label"></div></div>
-                  <div class="mock-stat"><div class="mock-stat-num"></div><div class="mock-stat-label"></div></div>
-                </div>
                 <div class="mock-card">
                   <div class="mock-img"></div>
-                  <div style="margin-top:10px;">
-                    <div class="mock-line mock-line--md"></div>
-                    <div class="mock-line mock-line--sm" style="margin-top:6px;"></div>
-                  </div>
+                  <div class="mock-line mock-line--md mock-line--top-space"></div>
+                  <div class="mock-line mock-line--sm"></div>
                 </div>
-                <div class="mock-card">
-                  <div class="mock-line mock-line--md"></div>
-                  <div class="mock-line mock-line--sm" style="margin-top:6px;"></div>
+                <div class="mock-stat-row">
+                  <div class="mock-stat">
+                    <div class="mock-stat-num"></div>
+                    <div class="mock-stat-label"></div>
+                  </div>
+                  <div class="mock-stat">
+                    <div class="mock-stat-num"></div>
+                    <div class="mock-stat-label"></div>
+                  </div>
+                  <div class="mock-stat">
+                    <div class="mock-stat-num"></div>
+                    <div class="mock-stat-label"></div>
+                  </div>
                 </div>
                 <div class="mock-action-row">
                   <div class="mock-action"></div>
@@ -592,346 +503,157 @@
         </div>
       </section>
 
-      <!-- ═══ WEB YÖNETİM PANELİ ════════════════════════════════════════════ -->
-      <section class="section" id="webpanel">
-        <div class="section-heading">
-          <span class="eyebrow">Web Yönetim Paneli</span>
-          <h2>Okulunuzun tüm kontrolü elinizde</h2>
-          <p>Okul müdürü ve idari ekip için tasarlanmış güçlü bir web paneli. Kurulumdan operasyona kadar her şey tek ekranda.</p>
-        </div>
-
-        <div class="admin-panel-grid">
-          <div class="admin-panel-main">
-            <div class="admin-card admin-card--school" style="height:100%;">
-              <div class="admin-card-header">
-                <span class="eyebrow" style="font-size:.7rem;color:var(--primary);background:rgba(32,73,55,.08);border-color:rgba(32,73,55,.12);">🏫 Okul Yönetim Paneli</span>
-                <h3>Okul Operasyon Merkezi</h3>
-                <p>Sınıf kurulumundan veli iletişimine, form yönetiminden içerik onayına kadar tüm okul operasyonlarınızı web üzerinden kolayca yönetin.</p>
-              </div>
-              <div class="admin-features-two-col">
-                <ul class="admin-feature-list">
-                  <li><span class="admin-check admin-check--green">✓</span>Sınıf oluşturma ve öğretmen atama</li>
-                  <li><span class="admin-check admin-check--green">✓</span>Öğrenci kayıt ve profil yönetimi</li>
-                  <li><span class="admin-check admin-check--green">✓</span>Veli bağlantısı ve teslim yetkisi</li>
-                  <li><span class="admin-check admin-check--green">✓</span>Form şablonu oluşturma ve takibi</li>
-                </ul>
-                <ul class="admin-feature-list">
-                  <li><span class="admin-check admin-check--green">✓</span>İçerik moderasyonu (post denetimi)</li>
-                  <li><span class="admin-check admin-check--green">✓</span>Rozet kataloğu ve gözlem kayıtları</li>
-                  <li><span class="admin-check admin-check--green">✓</span>Toplu bildirim ve duyuru yönetimi</li>
-                  <li><span class="admin-check admin-check--green">✓</span>Devamsızlık ve yoklama raporları</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div class="admin-panel-side">
-            <div class="admin-stat-card">
-              <div class="admin-stat-icon">📊</div>
-              <strong>Anlık İstatistikler</strong>
-              <p>Aktif öğrenci, devamsızlık ve paylaşım sayılarını tek bakışta görün.</p>
-            </div>
-            <div class="admin-stat-card">
-              <div class="admin-stat-icon">📝</div>
-              <strong>Form Takibi</strong>
-              <p>Hangi velinin formu doldurup doldurmadığını anlık olarak izleyin.</p>
-            </div>
-            <div class="admin-stat-card">
-              <div class="admin-stat-icon">🔔</div>
-              <strong>Toplu Bildirim</strong>
-              <p>Tüm velilere veya belirli sınıflara tek tıkla duyuru gönderin.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ═══ ROLLER ════════════════════════════════════════════════════════ -->
-      <section class="section split-section" id="roller">
-        <div class="section-heading">
-          <span class="eyebrow">Kim için?</span>
-          <h2>Herkesin rolü farklı, deneyimi kişisel</h2>
-          <p>Notio'da üç farklı kullanıcı rolü var. Her rol, yalnızca kendine ait verileri ve akışları görür.</p>
-        </div>
-
-        <div class="role-grid role-grid-3">
-
-          <div class="role-card role-card--admin">
-            <div class="role-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            </div>
-            <span class="role-label">Okul Admin</span>
-            <h3>Okul Müdürü</h3>
-            <ul>
-              <li>Sınıf ve öğretmen yönetimi</li>
-              <li>Öğrenci ve veli kayıtları</li>
-              <li>Form ve içerik moderasyonu</li>
-              <li>Bildirim ve duyuru gönderimi</li>
-            </ul>
-          </div>
-
-          <div class="role-card role-card--teacher">
-            <div class="role-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>
-            </div>
-            <span class="role-label">Öğretmen</span>
-            <h3>Sınıf Öğretmeni</h3>
-            <ul>
-              <li>Fotoğraf ve post paylaşımı</li>
-              <li>Rozet ver, gözlem ekle</li>
-              <li>Veli ile mesajlaş</li>
-              <li>Yoklama kaydı tut</li>
-            </ul>
-            <a class="role-cta" href="#mobil">Mobil deneyimi gör →</a>
-          </div>
-
-          <div class="role-card role-card--parent">
-            <div class="role-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </div>
-            <span class="role-label" style="background:rgba(82,160,183,.1);border-color:rgba(82,160,183,.2);color:#1a6080;">Veli</span>
-            <h3>Anne / Baba</h3>
-            <ul>
-              <li>Çocuğunun galerisini gör</li>
-              <li>Rozet ve gelişim notları</li>
-              <li>Formları doldur ve onayla</li>
-              <li>Öğretmenle mesajlaş</li>
-            </ul>
-            <a class="role-cta" href="#mobil">Mobil deneyimi gör →</a>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- ═══ SSS ════════════════════════════════════════════════════════════ -->
       <section class="section" id="sss">
         <div class="section-heading narrow">
           <span class="eyebrow">Sık Sorulan Sorular</span>
-          <h2>Aklınızdaki sorular için</h2>
+          <h2>Aklınızdaki sorulara cevaplar</h2>
         </div>
 
         <div class="faq-list">
           <details class="faq-item">
-            <summary>Notio hangi cihazlarda çalışıyor?</summary>
-            <p>Notio iOS ve Android mobil uygulamaları ile web tarayıcı üzerinden erişilebilen yönetim paneline sahiptir. Öğretmenler ve veliler akıllı telefonlarını kullanırken okul adminleri web panelinden çalışır.</p>
+            <summary>Notio'ya geçiş ne kadar zaman alır?</summary>
+            <p>Ortalama bir anaokulunun kurulumu 1 iş günü içinde tamamlanır. Sınıf ve öğrenci bilgilerini toplu olarak aktarabilirsiniz. Destek ekibimiz kurulum sürecinde her adımda yanınızda olur.</p>
           </details>
-
           <details class="faq-item">
-            <summary>Giriş nasıl yapılıyor? Şifre gerekiyor mu?</summary>
-            <p>Notio telefon numarası + OTP (tek kullanımlık şifre) ile çalışır. Her girişte telefonunuza doğrulama kodu gelir. Web admin paneli için şifre tabanlı giriş de desteklenmektedir.</p>
+            <summary>Veliler nasıl platforma giriş yapar?</summary>
+            <p>Veliler telefon numarası ile giriş yapar. SMS ile gelen tek kullanımlık kod ile şifre hatırlamadan sisteme erişirler.</p>
           </details>
-
           <details class="faq-item">
-            <summary>Fotoğraflar velilere nasıl ulaşıyor?</summary>
-            <p>Öğretmen fotoğraf çeker ve öğrencileri etiketler. Onaydan geçtikten sonra yalnızca etiketlenen öğrencinin velisine görünür. Grup fotoğraflarında AI yüz tanıma sistemi etiketlemeye yardımcı olur.</p>
+            <summary>Verilerimiz güvende mi? KVKK uyumlu mu?</summary>
+            <p>Evet. Notio, KVKK gerekliliklerine uyumludur. Kişisel veri işleme izinleri platform üzerinden yönetilir, velilerden dijital onay alınabilir.</p>
           </details>
-
           <details class="faq-item">
-            <summary>Formlar nasıl çalışıyor?</summary>
-            <p>Okul admini form şablonu oluşturur (kayıt formu, izin belgesi, sağlık formu vb.). Veliler bu formları mobil uygulamadan doldurur ve onay verir. Tüm gönderimler okul panelinden takip edilir.</p>
+            <summary>Kaç öğrenci ve öğretmene kadar kullanılabilir?</summary>
+            <p>Notio; küçük anaokulu işletmelerinden büyük eğitim kurumlarına kadar ölçeklenir. Planınıza göre öğrenci, öğretmen ve veli sayısı artırılabilir.</p>
           </details>
-
           <details class="faq-item">
-            <summary>Verilerim güvende mi?</summary>
-            <p>Tüm veriler şifreli bağlantı üzerinden iletilir ve güvenli sunucularda saklanır. Her kullanıcı yalnızca kendi rolüne ait verilere erişebilir. Veli, sadece kendi çocuğuyla ilgili içerikleri görür.</p>
+            <summary>Mevcut kullandığım sistemi değiştirmem gerekir mi?</summary>
+            <p>Hayır. Notio mevcut iş akışlarınıza entegre çalışır. İstediğiniz modülü aktif ederek başlayıp zamanla tüm sisteme geçebilirsiniz.</p>
           </details>
-
           <details class="faq-item">
-            <summary>Kurulum ne kadar sürer?</summary>
-            <p>Standart bir okul için kurulum ve ilk yapılandırma ortalama 30 dakika sürer. BT ekibine veya teknik bilgiye gerek yoktur. Demo sürecinde ekibimiz size eşlik eder.</p>
+            <summary>Ücretlendirme nasıl çalışıyor?</summary>
+            <p>Notio aylık abonelik modeliyle çalışır. Öğrenci sayısına ve aktif modüllere göre fiyatlandırma yapılır.</p>
           </details>
         </div>
       </section>
 
-      <!-- ═══ DEMO ════════════════════════════════════════════════════════════ -->
       <section class="section demo-section" id="demo">
         <div class="demo-copy">
           <span class="eyebrow">Ücretsiz Demo</span>
-          <h2>Notio'yu okulunuzda deneyin</h2>
-          <p>30 dakikalık canlı demo ile Notio'nun tüm özelliklerini gerçek ortamda görün. Kurulum gerektirmez, anında erişim sağlanır.</p>
+          <h2>Okulunuza uygun akışı birlikte kuralım</h2>
+          <p>Sadece ürün göstermek için değil, okulunuzun hangi modülle başlaması gerektiğini birlikte netleştirmek için görüşelim.</p>
           <ul class="demo-benefits">
-            <li>✓ Ücretsiz demo hesabı</li>
-            <li>✓ Gerçek verilerle canlı gösterim</li>
-            <li>✓ Okul Admin + Mobil uygulama turu</li>
-            <li>✓ Soru &amp; cevap oturumu</li>
-            <li>✓ Kurulum desteği dahil</li>
+            <li>30 dakikalık canlı demo</li>
+            <li>Kurulum ve geçiş planı</li>
+            <li>Platform + okul paneli + mobil akış değerlendirmesi</li>
           </ul>
         </div>
 
-        <form class="demo-form" id="demo-form">
+        <form class="demo-form" name="demo-request" onsubmit="return false;">
           <div class="form-row">
             <div class="form-field">
-              <label for="fname">Ad</label>
-              <input type="text" id="fname" placeholder="Adınız" />
+              <label for="school-name">Okul Adı</label>
+              <input type="text" id="school-name" placeholder="Anaokulunuzun adı" autocomplete="organization" />
             </div>
             <div class="form-field">
-              <label for="lname">Soyad</label>
-              <input type="text" id="lname" placeholder="Soyadınız" />
+              <label for="contact-name">Adınız</label>
+              <input type="text" id="contact-name" placeholder="Ad Soyad" autocomplete="name" />
             </div>
-          </div>
-          <div class="form-field">
-            <label for="school">Okul Adı</label>
-            <input type="text" id="school" placeholder="Okulunuzun adı" />
-          </div>
-          <div class="form-field">
-            <label for="phone">Telefon</label>
-            <input type="tel" id="phone" placeholder="+90 5__ ___ __ __" />
           </div>
           <div class="form-row">
             <div class="form-field">
-              <label for="size">Öğrenci Sayısı</label>
-              <select id="size">
+              <label for="phone">Telefon</label>
+              <input type="tel" id="phone" placeholder="+90 5XX XXX XX XX" autocomplete="tel" />
+            </div>
+            <div class="form-field">
+              <label for="email">E-posta</label>
+              <input type="email" id="email" placeholder="ornek@okul.com" autocomplete="email" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="student-count">Öğrenci Sayısı</label>
+              <select id="student-count">
                 <option value="">Seçin</option>
-                <option>1–50</option>
-                <option>51–150</option>
-                <option>151–300</option>
-                <option>300+</option>
+                <option value="0-25">0 - 25</option>
+                <option value="25-75">25 - 75</option>
+                <option value="75-150">75 - 150</option>
+                <option value="150+">150+</option>
               </select>
             </div>
             <div class="form-field">
-              <label for="city">Şehir</label>
-              <input type="text" id="city" placeholder="İstanbul" />
+              <label for="role-focus">Öncelikli İhtiyaç</label>
+              <select id="role-focus">
+                <option value="">Seçin</option>
+                <option value="platform">Platform yönetimi</option>
+                <option value="school">Okul operasyonu</option>
+                <option value="communication">Veli iletişimi</option>
+                <option value="reports">Raporlar ve veri takibi</option>
+              </select>
             </div>
           </div>
-          <button class="solid-button full-width" type="submit" id="demo-submit">Demo Talep Et</button>
-          <p class="form-note">Bilgileriniz yalnızca demo randevusu için kullanılır.</p>
-          <p class="form-note form-success" id="demo-success" style="display:none;color:#204937;font-weight:600;">Talebiniz alındı! En kısa sürede sizinle iletişime geçeceğiz.</p>
-          <p class="form-note form-error" id="demo-error" style="display:none;color:#c0392b;"></p>
+          <div class="form-row">
+            <div class="form-field form-field--full">
+              <label for="notes">Kısa Not</label>
+              <textarea id="notes" rows="4" placeholder="Şu an en çok hangi akışı dijitalleştirmek istiyorsunuz?"></textarea>
+            </div>
+          </div>
+          <button type="submit" class="solid-button large full-width">Demo Talep Et</button>
+          <p class="form-note">Size en kısa sürede geri döneceğiz.</p>
         </form>
       </section>
 
-      <!-- ═══ CLOSING ════════════════════════════════════════════════════════ -->
-      <div class="closing-panel">
+      <section class="closing-panel">
         <div class="closing-copy">
-          <span class="eyebrow">Hazır mısınız?</span>
-          <h2>Okulusunuzu dijital dönüşüme taşıyın.</h2>
-          <p>Veliler çocuklarını daha yakından tanısın. Öğretmenler daha az evrak, daha çok ilgi ile çalışsın.</p>
+          <span class="eyebrow">Hemen Başlayın</span>
+          <h2>Anaokulunuzu sıcak ve dijital bir deneyime taşıyın.</h2>
+          <p>Platform yönetimi, okul paneli ve mobil uygulama birlikte çalışır. Ekiplerinizi hızlandırır, veli güvenini güçlendirir.</p>
         </div>
-        <div class="closing-actions">
-          <a class="ghost-button large" href="#demo">Demo Al</a>
-          <a class="solid-button large" href="https://platform.notioedu.com" target="_blank" rel="noreferrer">Panele Gir</a>
-        </div>
-      </div>
 
+        <div class="closing-actions">
+          <a class="solid-button large" href="#demo">Demo Talep Et</a>
+          <a class="ghost-button large" href="https://platform-notio.bidyno.com" target="_blank" rel="noreferrer">Platforma Gir</a>
+        </div>
+      </section>
     </main>
 
-    <!-- ═══ FOOTER ═════════════════════════════════════════════════════════════ -->
     <footer class="site-footer">
       <div class="footer-top">
         <div class="footer-brand">
-          <a class="brand" href="#top">
-            <img class="brand-mark" src="./assets/notio-bird-mark.png" alt="Notio" style="width:38px;height:38px;" />
-            <span class="brand-word" style="font-size:1.4rem;">Notio</span>
+          <a class="brand footer-brand-link" href="./index.html">
+            <img class="brand-mark brand-mark-sm" src="./assets/notio-logo.png" alt="Notio" />
+            <span class="brand-word brand-word-sm">Notio</span>
           </a>
-          <p>Anaokulu iletişim ve yönetim platformu.</p>
+          <p>Anaokulu iletişim ve yönetim platformu. Sıcak ama güçlü.</p>
         </div>
 
         <div class="footer-links">
           <div class="footer-col">
             <h4>Ürün</h4>
             <a href="#ozellikler">Özellikler</a>
-            <a href="#nasil">Nasıl Çalışır</a>
-            <a href="#mobil">Mobil Uygulama</a>
-            <a href="#webpanel">Web Paneli</a>
+            <a href="#katmanlar">Katmanlar</a>
             <a href="#roller">Roller</a>
+            <a href="#nasil">Nasıl Çalışır</a>
           </div>
           <div class="footer-col">
             <h4>Destek</h4>
             <a href="#sss">SSS</a>
             <a href="#demo">Demo Talep Et</a>
-            <a href="https://platform.notioedu.com" target="_blank" rel="noreferrer">Admin Girişi</a>
+            <a href="https://platform-notio.bidyno.com" target="_blank" rel="noreferrer">Platform Girişi</a>
           </div>
           <div class="footer-col">
             <h4>Yasal</h4>
-            <a href="#">Gizlilik Politikası</a>
-            <a href="#">Kullanım Koşulları</a>
-            <a href="#">KVKK Aydınlatma</a>
+            <span class="footer-muted-link">Gizlilik Politikası (yakında)</span>
+            <span class="footer-muted-link">Kullanım Koşulları (yakında)</span>
+            <span class="footer-muted-link">KVKK Aydınlatma (yakında)</span>
           </div>
         </div>
       </div>
 
       <div class="footer-bottom">
         <p>© 2026 Notio. Tüm hakları saklıdır.</p>
-        <p>notioedu.com</p>
+        <p>Anaokulu teknolojisini daha sıcak bir dile taşımak için yapıldı.</p>
       </div>
     </footer>
-
-    <script>
-      // Hero Slider
-      const tabs   = document.querySelectorAll('.slider-tab');
-      const slides = document.querySelectorAll('.slide');
-      const fill   = document.querySelector('.progress-fill');
-      let current  = 0;
-      let timer;
-
-      function goTo(n) {
-        tabs[current].classList.remove('active');
-        slides[current].classList.remove('active');
-        current = (n + slides.length) % slides.length;
-        tabs[current].classList.add('active');
-        slides[current].classList.add('active');
-        fill.style.transition = 'none';
-        fill.style.width = '0%';
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            fill.style.transition = 'width 4s linear';
-            fill.style.width = '100%';
-          });
-        });
-      }
-
-      function startTimer() {
-        clearInterval(timer);
-        timer = setInterval(() => goTo(current + 1), 4000);
-      }
-
-      tabs.forEach((tab, i) => {
-        tab.addEventListener('click', () => { goTo(i); startTimer(); });
-      });
-
-      goTo(0);
-      startTimer();
-
-      // Demo Form
-      document.getElementById('demo-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const btn = document.getElementById('demo-submit');
-        const success = document.getElementById('demo-success');
-        const error = document.getElementById('demo-error');
-        success.style.display = 'none';
-        error.style.display = 'none';
-        btn.disabled = true;
-        btn.textContent = 'Gönderiliyor...';
-        const payload = {
-          firstName: document.getElementById('fname').value.trim(),
-          lastName: document.getElementById('lname').value.trim(),
-          schoolName: document.getElementById('school').value.trim(),
-          phone: document.getElementById('phone').value.trim(),
-          studentCount: document.getElementById('size').value,
-          city: document.getElementById('city').value.trim(),
-        };
-        try {
-          const res = await fetch('https://platform.notioedu.com/api/demo-requests', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          if (res.ok) {
-            success.style.display = 'block';
-            e.target.reset();
-          } else {
-            const data = await res.json().catch(() => ({}));
-            error.textContent = data.message || 'Bir hata oluştu, lütfen tekrar deneyin.';
-            error.style.display = 'block';
-          }
-        } catch {
-          error.textContent = 'Bağlantı hatası, lütfen tekrar deneyin.';
-          error.style.display = 'block';
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Demo Talep Et';
-        }
-      });
-    </script>
-
   </body>
 </html>
