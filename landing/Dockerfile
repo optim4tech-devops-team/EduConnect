@@ -1,6 +1,7 @@
-FROM nginx:alpine
+FROM nginx:1.27-alpine
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY index.html /usr/share/nginx/html/index.html
 COPY styles.css /usr/share/nginx/html/styles.css
-COPY assets/ /usr/share/nginx/html/assets/
-EXPOSE 80
+COPY app.js /usr/share/nginx/html/app.js
+COPY assets /usr/share/nginx/html/assets

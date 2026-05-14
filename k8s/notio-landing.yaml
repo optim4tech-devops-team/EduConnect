@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: notio-landing
-  namespace: vault
+  namespace: notio
 spec:
   replicas: 1
   selector:
@@ -14,7 +14,7 @@ spec:
         app: notio-landing
     spec:
       imagePullSecrets:
-        - name: reg-notio-secret
+        - name: zot-regcred
       containers:
         - name: notio-landing
           image: registry.notioedu.com/notio/landing:latest
@@ -32,7 +32,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: notio-landing
-  namespace: vault
+  namespace: notio
 spec:
   selector:
     app: notio-landing
@@ -44,7 +44,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: notio-landing
-  namespace: vault
+  namespace: notio
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "20m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
@@ -52,10 +52,21 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - landing.notioedu.com
-      secretName: wildcard-notioedu-tls
+        - notioedu.com
+        - www.notioedu.com
+      secretName: notioedu-wildcard-tls
   rules:
-    - host: landing.notioedu.com
+    - host: notioedu.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: notio-landing
+                port:
+                  number: 80
+    - host: www.notioedu.com
       http:
         paths:
           - path: /
