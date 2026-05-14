@@ -17,7 +17,7 @@ env:
 jobs:
   build-landing:
     name: Build and Push Landing Image
-    runs-on: github-k8s-runner
+    runs-on: [self-hosted, github-k8s-runner]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,8 +25,8 @@ jobs:
       - name: Login to Registry
         run: echo "$REGISTRY_PASSWORD" | docker login ${{ env.REGISTRY }} -u "$REGISTRY_USERNAME" --password-stdin
         env:
-          REGISTRY_USERNAME: ${{ secrets.NOTIO_REGISTRY_USERNAME }}
-          REGISTRY_PASSWORD: ${{ secrets.NOTIO_REGISTRY_PASSWORD }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -46,7 +46,7 @@ jobs:
 
   deploy-landing:
     name: Deploy Landing to Kubernetes
-    runs-on: github-k8s-runner
+    runs-on: [self-hosted, github-k8s-runner]
     needs: build-landing
     steps:
       - name: Checkout
@@ -68,5 +68,5 @@ jobs:
         run: |
           kubectl set image deployment/notio-landing \
             notio-landing=${{ env.LANDING_IMAGE }}:${{ github.sha }} \
-            -n vault
-          kubectl rollout status deployment/notio-landing -n vault --timeout=180s
+            -n notio
+          kubectl rollout status deployment/notio-landing -n notio --timeout=180s

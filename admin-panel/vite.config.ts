@@ -6,12 +6,5 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 4174,
-    proxy: {
-      '/api': {
-        target: 'https://platform.notioedu.com',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
   },
 });
