@@ -47,7 +47,7 @@ jobs:
 
   deploy-landing:
     name: Deploy Landing to Kubernetes
-    runs-on: [self-hosted, github-k8s-runner]
+    runs-on: [github-k8s-runner]
     needs: build-landing
     steps:
       - name: Checkout
