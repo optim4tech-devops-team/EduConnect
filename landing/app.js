@@ -95,7 +95,7 @@ if (navToggle) {
   });
 
   window.addEventListener('resize', () => {
-    if (window.innerWidth > 860) {
+    if (window.innerWidth > 760) {
       setExpanded(false);
     }
   });
