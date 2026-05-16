@@ -1,0 +1,12 @@
+services:
+  ai-service:
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-edulink_user}:${POSTGRES_PASSWORD}@host.docker.internal:${POSTGRES_PORT:-15432}/${POSTGRES_DB:-edulink}
+
+  backend:
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=host.docker.internal;Port=${POSTGRES_PORT:-15432};Database=${POSTGRES_DB:-edulink};Username=${POSTGRES_USER:-edulink_user};Password=${POSTGRES_PASSWORD}"
+
+  api-gateway:
+    environment:
+      ReverseProxy__Clusters__backend-cluster__Destinations__destination1__Address: http://backend:5001

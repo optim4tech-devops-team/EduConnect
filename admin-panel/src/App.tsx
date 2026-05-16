@@ -1,7 +1,7 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AdminLayout from './components/layout/AdminLayout';
-import { api, sessionStorageKey, type UserSession } from './lib/api';
+import { api, onApiSessionFailure, sessionStorageKey, type ApiSessionFailureReason, type UserSession } from './lib/api';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import ClassesPage from './pages/ClassesPage';
@@ -45,6 +45,22 @@ function readSession() {
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<UserSession | null>(() => readSession());
+
+  useEffect(() => {
+    onApiSessionFailure((reason: ApiSessionFailureReason) => {
+      window.localStorage.removeItem(sessionStorageKey);
+      setSession(null);
+
+      if (window.location.pathname !== '/login') {
+        const query = new URLSearchParams({ reason }).toString();
+        window.location.assign(`/login?${query}`);
+      }
+    });
+
+    return () => {
+      onApiSessionFailure(null);
+    };
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
     session,

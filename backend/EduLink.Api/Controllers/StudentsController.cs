@@ -512,24 +512,24 @@ public class StudentsController : ControllerBase
     private static StudentProfileData DeserializeStudentProfile(string? rawNotes)
     {
         if (string.IsNullOrWhiteSpace(rawNotes))
-            return new StudentProfileData(null, new List<string>(), null, null);
+            return new StudentProfileData(null, null, null, null);
 
         try
         {
-            var parsed = JsonSerializer.Deserialize<StudentProfileData>(rawNotes, StudentProfileJsonOptions);
-            if (parsed is not null)
-            {
-                return parsed with
-                {
-                    Allergies = NormalizeAllergies(parsed.Allergies)
-                };
-            }
+            using var document = JsonDocument.Parse(rawNotes);
+            var root = document.RootElement;
+
+            return new StudentProfileData(
+                ReadNullableText(root, "gender"),
+                ReadAllergyText(root),
+                ReadNullableText(root, "medicationNotes"),
+                ReadNullableText(root, "healthNotes"));
         }
         catch (JsonException)
         {
         }
 
-        return new StudentProfileData(null, new List<string>(), null, rawNotes);
+        return new StudentProfileData(null, null, null, rawNotes);
     }
 
     private static string? SerializeStudentProfile(CreateStudentRequest request)
@@ -542,23 +542,23 @@ public class StudentsController : ControllerBase
     private static string? SerializeStudentProfile(StudentImportRow row)
         => SerializeStudentProfile(
             row.Gender,
-            ParseAllergies(row.Allergies),
+            row.Allergies,
             row.MedicationNotes,
             row.HealthNotes);
 
     private static string? SerializeStudentProfile(
         string? gender,
-        IEnumerable<string>? allergies,
+        string? allergies,
         string? medicationNotes,
         string? healthNotes)
     {
         var normalizedGender = string.IsNullOrWhiteSpace(gender) ? null : gender.Trim();
-        var normalizedAllergies = NormalizeAllergies(allergies);
+        var normalizedAllergies = string.IsNullOrWhiteSpace(allergies) ? null : allergies.Trim();
         var normalizedMedicationNotes = string.IsNullOrWhiteSpace(medicationNotes) ? null : medicationNotes.Trim();
         var normalizedHealthNotes = string.IsNullOrWhiteSpace(healthNotes) ? null : healthNotes.Trim();
 
         if (normalizedGender is null &&
-            normalizedAllergies.Count == 0 &&
+            normalizedAllergies is null &&
             normalizedMedicationNotes is null &&
             normalizedHealthNotes is null)
         {
@@ -574,20 +574,51 @@ public class StudentsController : ControllerBase
             StudentProfileJsonOptions);
     }
 
-    private static List<string> NormalizeAllergies(IEnumerable<string>? allergies)
-        => allergies?
-            .Select(allergy => allergy.Trim())
-            .Where(allergy => !string.IsNullOrWhiteSpace(allergy))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList()
-        ?? new List<string>();
-
-    private static List<string> ParseAllergies(string? rawAllergies)
+    private static string? ReadAllergyText(JsonElement root)
     {
-        if (string.IsNullOrWhiteSpace(rawAllergies))
-            return new List<string>();
+        if (!TryGetProperty(root, "allergies", out var allergies))
+            return null;
 
-        return new List<string> { rawAllergies.Trim() };
+        if (allergies.ValueKind == JsonValueKind.String)
+            return NormalizeProfileText(allergies.GetString());
+
+        if (allergies.ValueKind == JsonValueKind.Array)
+        {
+            var values = allergies
+                .EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.String)
+                .Select(item => NormalizeProfileText(item.GetString()))
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return values.Count > 0 ? string.Join(", ", values) : null;
+        }
+
+        return null;
+    }
+
+    private static string? ReadNullableText(JsonElement root, string propertyName)
+    {
+        if (!TryGetProperty(root, propertyName, out var property) || property.ValueKind != JsonValueKind.String)
+            return null;
+
+        return NormalizeProfileText(property.GetString());
+    }
+
+    private static bool TryGetProperty(JsonElement root, string propertyName, out JsonElement property)
+    {
+        if (root.TryGetProperty(propertyName, out property))
+            return true;
+
+        var pascalCaseName = $"{char.ToUpperInvariant(propertyName[0])}{propertyName[1..]}";
+        return root.TryGetProperty(pascalCaseName, out property);
+    }
+
+    private static string? NormalizeProfileText(string? value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 }
 
@@ -616,7 +647,7 @@ public record StudentImportRow(
 );
 public record StudentProfileData(
     string? Gender,
-    List<string> Allergies,
+    string? Allergies,
     string? MedicationNotes,
     string? HealthNotes
 );

@@ -5,29 +5,30 @@ on:
     branches:
       - master
     paths:
-      - 'mobile/**'
-      - 'k8s/notio-web.yaml'
-      - '.github/workflows/deploy-notio-web.yml'
+      - "admin-panel/**"
+      - "k8s/notio-web.yaml"
+      - ".github/workflows/deploy-notio-web.yml"
   workflow_dispatch:
 
 env:
-  REGISTRY:  registry.bibanka.com
-  WEB_IMAGE: registry.bibanka.com/test/notio-web
-  WEB_API_URL: https://platform-notio.bidyno.com/api
+  REGISTRY: registry.notioedu.com
+  WEB_IMAGE: registry.notioedu.com/notio/notio-web
+  WEB_API_URL: /api
 
 jobs:
   build-web:
-    name: Build & Push Web Admin
-    runs-on: ubuntu-latest
+    name: Build and Push Web Admin Image
+    runs-on: [github-k8s-runner]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Login to Registry
-        run: echo "$REGISTRY_PASSWORD" | docker login registry.bibanka.com -u "$REGISTRY_USERNAME" --password-stdin
-        env:
-          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -35,21 +36,21 @@ jobs:
       - name: Build and Push Web Admin
         uses: docker/build-push-action@v5
         with:
-          context: ./mobile
-          file: ./mobile/Dockerfile.web
+          context: ./admin-panel
+          file: ./admin-panel/Dockerfile
           platforms: linux/amd64
           push: true
           build-args: |
-            EXPO_PUBLIC_API_URL=${{ env.WEB_API_URL }}
+            VITE_API_URL=${{ env.WEB_API_URL }}
           tags: |
             ${{ env.WEB_IMAGE }}:${{ github.sha }}
             ${{ env.WEB_IMAGE }}:latest
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,mode=max,scope=web
+          cache-from: type=gha,scope=web-admin
+          cache-to: type=gha,mode=max,scope=web-admin
 
   deploy-web:
-    name: Deploy Web Admin To Vault
-    runs-on: ubuntu-latest
+    name: Deploy Web Admin to Kubernetes
+    runs-on: [github-k8s-runner]
     needs: build-web
     steps:
       - name: Checkout
@@ -64,13 +65,22 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Apply manifest
+      - name: Ensure namespace and image pull secret
         run: |
-          kubectl apply -f k8s/notio-web.yaml
+          kubectl create namespace notio --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry zot-regcred \
+            -n notio \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ secrets.REGISTRY_USERNAME }} \
+            --docker-password='${{ secrets.REGISTRY_PASSWORD }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply web admin manifest
+        run: kubectl apply -f k8s/notio-web.yaml
 
       - name: Update image and rollout
         run: |
           kubectl set image deployment/notio-web \
             notio-web=${{ env.WEB_IMAGE }}:${{ github.sha }} \
-            -n vault
-          kubectl rollout status deployment/notio-web -n vault --timeout=120s
+            -n notio
+          kubectl rollout status deployment/notio-web -n notio --timeout=180s

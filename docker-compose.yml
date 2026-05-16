@@ -84,6 +84,36 @@ services:
       ai-service:
         condition: service_healthy
 
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: notio_apigw
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:5000
+      ReverseProxy__Clusters__backend-cluster__Destinations__destination1__Address: http://backend:5001
+    ports:
+      - "5002:5000"
+    depends_on:
+      backend:
+        condition: service_started
+
+  admin-web:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${WEB_API_URL:-http://localhost:5002/api}
+    container_name: notio_admin_web
+    restart: unless-stopped
+    ports:
+      - "4174:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+
 volumes:
   pgdata:
   redisdata:

@@ -103,7 +103,7 @@ export default function StudentsPage({ token }: StudentsPageProps) {
       classId: item.classId,
       birthDate: item.birthDate || '',
       gender: item.gender || '',
-      allergiesText: item.allergies?.join(', ') || '',
+      allergiesText: item.allergies || '',
       medicationNotes: item.medicationNotes || '',
       healthNotes: item.healthNotes || '',
     });
@@ -141,7 +141,7 @@ export default function StudentsPage({ token }: StudentsPageProps) {
         classId: form.classId,
         birthDate: form.birthDate || undefined,
         gender: form.gender || undefined,
-        allergies: form.allergiesText.trim() ? [form.allergiesText.trim()] : [],
+        allergies: form.allergiesText.trim() || undefined,
         medicationNotes: form.medicationNotes.trim() || undefined,
         healthNotes: form.healthNotes.trim() || undefined,
         avatarUrl,
@@ -473,10 +473,10 @@ export default function StudentsPage({ token }: StudentsPageProps) {
                   <td>
                     <div className="health-cell">
                       <div className="health-summary-copy">
-                        {item.allergies?.[0]?.trim() || item.medicationNotes?.trim() || item.healthNotes?.trim() ? (
+                        {item.allergies?.trim() || item.medicationNotes?.trim() || item.healthNotes?.trim() ? (
                           <>
-                            {item.allergies?.[0]?.trim() ? `Alerji: ${item.allergies[0]}` : ''}
-                            {item.allergies?.[0]?.trim() && (item.medicationNotes?.trim() || item.healthNotes?.trim()) ? ' · ' : ''}
+                            {item.allergies?.trim() ? `Alerji: ${item.allergies}` : ''}
+                            {item.allergies?.trim() && (item.medicationNotes?.trim() || item.healthNotes?.trim()) ? ' · ' : ''}
                             {item.medicationNotes?.trim() ? `Ilac: ${item.medicationNotes}` : ''}
                             {item.medicationNotes?.trim() && item.healthNotes?.trim() ? ' · ' : ''}
                             {item.healthNotes?.trim() ? item.healthNotes : ''}

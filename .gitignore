@@ -48,6 +48,7 @@ ai-service/.venv/
 # Environment
 .env
 *.env.local
+.env.*.local
 
 # Docker
 .docker/

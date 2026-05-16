@@ -7,7 +7,7 @@ public record StudentDto(
     string ClassName,
     string? AvatarUrl,
     string? Gender,
-    List<string> Allergies,
+    string? Allergies,
     string? MedicationNotes,
     string? HealthNotes,
     bool IsActive,

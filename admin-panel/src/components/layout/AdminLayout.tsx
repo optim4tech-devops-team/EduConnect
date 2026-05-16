@@ -43,7 +43,7 @@ export default function AdminLayout({
       />
 
       <aside className={`admin-sidebar${isSidebarOpen ? ' open' : ''}`}>
-        <button className="brand-card" onClick={() => navigate('/')}>
+        <button type="button" className="brand-card" onClick={() => navigate('/')}>
           <div className="brand-mark">
             <img src="/notio-bird-mark.png" alt="Notio" />
           </div>
@@ -78,27 +78,29 @@ export default function AdminLayout({
 
       <div className="admin-main">
         <header className="admin-header">
-          <div className="header-leading">
-            <button
-              type="button"
-              className="menu-toggle"
-              aria-label="Menüyü aç"
-              onClick={() => setIsSidebarOpen((current) => !current)}
-            >
-              <span />
-              <span />
-              <span />
-            </button>
-            <div>
-              <div className="page-eyebrow">{areaLabel}</div>
-              <h1 className="page-title">{getPageTitle(location.pathname, pageTitleMap)}</h1>
+          <div className="admin-header-inner">
+            <div className="header-leading">
+              <button
+                type="button"
+                className="menu-toggle"
+                aria-label="Menüyü aç"
+                onClick={() => setIsSidebarOpen((current) => !current)}
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+              <div>
+                <div className="page-eyebrow">{areaLabel}</div>
+                <h1 className="page-title">{getPageTitle(location.pathname, pageTitleMap)}</h1>
+              </div>
             </div>
-          </div>
-          <div className="header-actions">
-            <div className="school-pill">{getRoleLabel(session.role)}</div>
-            <button className="ghost-button" onClick={onLogout}>
-              Çıkış Yap
-            </button>
+            <div className="header-actions">
+              <div className="school-pill">{getRoleLabel(session.role)}</div>
+              <button className="ghost-button" onClick={onLogout}>
+                Çıkış Yap
+              </button>
+            </div>
           </div>
         </header>
 

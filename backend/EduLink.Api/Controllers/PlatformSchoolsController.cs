@@ -18,15 +18,17 @@ public class PlatformSchoolsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IEmailService _email;
     private readonly ISmsService _sms;
+    private readonly IWebHostEnvironment _environment;
 
     // Panel URL for school admins — override via Sms:SchoolPanelUrl config
     private const string DefaultPanelUrl = "https://platform.notioedu.com";
 
-    public PlatformSchoolsController(AppDbContext db, IEmailService email, ISmsService sms)
+    public PlatformSchoolsController(AppDbContext db, IEmailService email, ISmsService sms, IWebHostEnvironment environment)
     {
-        _db    = db;
-        _email = email;
-        _sms   = sms;
+        _db          = db;
+        _email       = email;
+        _sms         = sms;
+        _environment = environment;
     }
 
     [HttpGet]
@@ -143,17 +145,18 @@ public class PlatformSchoolsController : ControllerBase
             CreatedAt        = DateTime.UtcNow
         };
 
+        SchoolAdminUpsertResult assignResult;
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
             _db.Schools.Add(school);
             await _db.SaveChangesAsync();
 
-            var assignResult = await UpsertPrimarySchoolAdminAsync(school, request.PrimaryAdmin);
-            if (assignResult is not null)
+            assignResult = await UpsertPrimarySchoolAdminAsync(school, request.PrimaryAdmin);
+            if (assignResult.Error is not null)
             {
                 await tx.RollbackAsync();
-                return assignResult;
+                return assignResult.Error;
             }
 
             await tx.CommitAsync();
@@ -176,7 +179,9 @@ public class PlatformSchoolsController : ControllerBase
             school.Id,
             school.Name,
             school.Plan,
-            school.IsActive
+            school.IsActive,
+            PrimaryAdminUserId = assignResult.User?.Id,
+            PrimaryAdminTemporaryPassword = _environment.IsDevelopment() ? assignResult.TemporaryPassword : null
         });
     }
 
@@ -336,8 +341,8 @@ public class PlatformSchoolsController : ControllerBase
             school,
             new SchoolAdminSeedRequest(request.FullName, request.Phone, request.Email, request.AvatarUrl));
 
-        if (result is not null)
-            return result;
+        if (result.Error is not null)
+            return result.Error;
 
         _ = SendWelcomeNotificationsAsync(
             toEmail:    request.Email ?? "",
@@ -345,7 +350,12 @@ public class PlatformSchoolsController : ControllerBase
             toPhone:    NormalizePhoneNumber(request.Phone),
             schoolName: school.Name);
 
-        return Ok(new { school.Id, school.PrimaryAdminUserId });
+        return Ok(new
+        {
+            school.Id,
+            school.PrimaryAdminUserId,
+            PrimaryAdminTemporaryPassword = _environment.IsDevelopment() ? result.TemporaryPassword : null
+        });
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -359,18 +369,24 @@ public class PlatformSchoolsController : ControllerBase
         return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
     }
 
-    private async Task<IActionResult?> UpsertPrimarySchoolAdminAsync(
+    private async Task<SchoolAdminUpsertResult> UpsertPrimarySchoolAdminAsync(
         School school,
         SchoolAdminSeedRequest request)
     {
         var normalizedPhone = NormalizePhoneNumber(request.Phone);
         if (string.IsNullOrWhiteSpace(normalizedPhone))
-            return BadRequest(new { message = "Geçerli bir okul yöneticisi telefonu zorunludur." });
+            return new SchoolAdminUpsertResult(
+                BadRequest(new { message = "Geçerli bir okul yöneticisi telefonu zorunludur." }),
+                null,
+                null);
 
         var email = ResolveEmail(request.Email, normalizedPhone, "schooladmin");
 
         if (await _db.Users.AnyAsync(u => u.SchoolId != school.Id && (u.Email == email || u.Phone == normalizedPhone)))
-            return Conflict(new { message = "Verilen e-posta veya telefon başka bir okulda kullanılıyor." });
+            return new SchoolAdminUpsertResult(
+                Conflict(new { message = "Verilen e-posta veya telefon başka bir okulda kullanılıyor." }),
+                null,
+                null);
 
         var existingUser = await _db.Users.FirstOrDefaultAsync(u =>
             (u.Email == email || u.Phone == normalizedPhone) &&
@@ -391,7 +407,7 @@ public class PlatformSchoolsController : ControllerBase
                 Role               = UserRole.SchoolAdmin,
                 SchoolId           = school.Id,
                 IsActive           = true,
-                MustChangePassword = false,
+                MustChangePassword = true,
                 CreatedAt          = DateTime.UtcNow
             };
             _db.Users.Add(existingUser);
@@ -405,7 +421,7 @@ public class PlatformSchoolsController : ControllerBase
             existingUser.PasswordHash       = BCrypt.Net.BCrypt.HashPassword(tempPassword);
             existingUser.Role               = UserRole.SchoolAdmin;
             existingUser.IsActive           = true;
-            existingUser.MustChangePassword = false;
+            existingUser.MustChangePassword = true;
         }
 
         school.PrimaryAdminUserId = existingUser.Id;
@@ -428,7 +444,7 @@ public class PlatformSchoolsController : ControllerBase
             catch { /* SMS failure must not block account creation */ }
         }
 
-        return null;
+        return new SchoolAdminUpsertResult(null, existingUser, tempPassword);
     }
 
     private async Task SendWelcomeNotificationsAsync(
@@ -570,4 +586,10 @@ public record SchoolAdminSeedRequest(
     string Phone,
     string? Email,
     string? AvatarUrl
+);
+
+internal record SchoolAdminUpsertResult(
+    IActionResult? Error,
+    User? User,
+    string? TemporaryPassword
 );

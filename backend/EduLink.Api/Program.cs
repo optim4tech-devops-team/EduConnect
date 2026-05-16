@@ -84,10 +84,24 @@ builder.Services.AddSignalR()
     .AddStackExchangeRedis(redisConnStr); // Redis backplane for scale-out
 
 // ─── Cloudinary ───────────────────────────────────────────────────────────
+var cloudName = builder.Configuration["Cloudinary:CloudName"];
+var cloudApiKey = builder.Configuration["Cloudinary:ApiKey"];
+var cloudApiSecret = builder.Configuration["Cloudinary:ApiSecret"];
+
+if (string.IsNullOrWhiteSpace(cloudName) ||
+    string.IsNullOrWhiteSpace(cloudApiKey) ||
+    string.IsNullOrWhiteSpace(cloudApiSecret))
+{
+    // Development fallback: allow API startup when Cloudinary secrets are not present.
+    if (string.IsNullOrWhiteSpace(cloudName)) cloudName = "local-dev";
+    if (string.IsNullOrWhiteSpace(cloudApiKey)) cloudApiKey = "local-dev";
+    if (string.IsNullOrWhiteSpace(cloudApiSecret)) cloudApiSecret = "local-dev";
+}
+
 var cloudinaryAccount = new Account(
-    builder.Configuration["Cloudinary:CloudName"],
-    builder.Configuration["Cloudinary:ApiKey"],
-    builder.Configuration["Cloudinary:ApiSecret"]
+    cloudName,
+    cloudApiKey,
+    cloudApiSecret
 );
 builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 
@@ -168,6 +182,23 @@ using (var scope = app.Services.CreateScope())
     {
         db.Database.Migrate();
     }
+
+    db.Database.ExecuteSqlRaw(@"
+        CREATE TABLE IF NOT EXISTS ""DemoRequests"" (
+            ""Id"" uuid NOT NULL,
+            ""FirstName"" character varying(100) NOT NULL,
+            ""LastName"" character varying(100) NOT NULL,
+            ""SchoolName"" character varying(200) NOT NULL,
+            ""Phone"" character varying(30) NOT NULL,
+            ""StudentCount"" character varying(20),
+            ""City"" character varying(100),
+            ""Status"" character varying(30) NOT NULL DEFAULT 'new',
+            ""Notes"" character varying(1000),
+            ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT now(),
+            ""UpdatedAt"" timestamp with time zone,
+            CONSTRAINT ""PK_DemoRequests"" PRIMARY KEY (""Id"")
+        );
+    ");
 
     void DeleteSchoolGraph(Guid schoolId)
     {
@@ -586,6 +617,7 @@ using (var scope = app.Services.CreateScope())
 // ─── Middleware Pipeline ─────────────────────────────────────────────────
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "EduLink API v1"));
+app.MapGet("/healthz", () => Results.Text("ok"));
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(webRootPath)

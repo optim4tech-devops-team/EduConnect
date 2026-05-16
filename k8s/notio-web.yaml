@@ -14,7 +14,7 @@ spec:
         app: notio-web
     spec:
       imagePullSecrets:
-        - name: reg-hub-secret
+        - name: zot-regcred
       containers:
         - name: notio-web
           image: registry.notioedu.com/notio/notio-web:latest
@@ -46,7 +46,7 @@ metadata:
   name: notio-web
   namespace: notio
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "20m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
 spec:
@@ -63,14 +63,14 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: edulink-gateway
+                name: apigw
                 port:
                   number: 80
           - path: /hubs
             pathType: Prefix
             backend:
               service:
-                name: edulink-gateway
+                name: apigw
                 port:
                   number: 80
           - path: /

@@ -4,7 +4,7 @@ public record CreateStudentRequest(
     Guid ClassId,
     DateOnly? BirthDate,
     string? Gender,
-    List<string>? Allergies,
+    string? Allergies,
     string? MedicationNotes,
     string? HealthNotes,
     string? AvatarUrl

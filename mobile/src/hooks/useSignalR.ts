@@ -3,7 +3,7 @@ import * as signalR from '@microsoft/signalr';
 import { storage } from '@/utils/storage';
 import { MessageDto, NotificationDto } from '../api/client';
 
-const HUB_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace(
+const HUB_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://apigw.notioedu.com/api').replace(
   '/api',
   '/hubs/chat'
 );

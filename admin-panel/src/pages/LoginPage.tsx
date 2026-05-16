@@ -1,14 +1,19 @@
 import { FormEvent, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface LoginPageProps {
   onLogin: (email: string, password: string) => Promise<void>;
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  const location = useLocation();
   const [email, setEmail] = useState('ikinci.yonetici@notio.local');
   const [password, setPassword] = useState('Admin123!');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const reason = new URLSearchParams(location.search).get('reason');
+  const reasonMessage = getReasonMessage(reason);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -66,6 +71,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             />
           </label>
 
+          {reasonMessage ? <div className="success-banner">{reasonMessage}</div> : null}
           {error ? <div className="error-banner">{error}</div> : null}
 
           <button className="primary-button" type="submit" disabled={loading || !email || !password}>
@@ -77,4 +83,20 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       </div>
     </div>
   );
+}
+
+function getReasonMessage(reason: string | null) {
+  if (reason === 'network') {
+    return 'Sunucu baglantisi kesildigi icin tekrar giris ekranina yonlendirildiniz.';
+  }
+
+  if (reason === 'unauthorized') {
+    return 'Oturum suresi doldu. Lutfen yeniden giris yapin.';
+  }
+
+  if (reason === 'forbidden') {
+    return 'Bu panele erisim yetkiniz bulunmadigi icin cikis yapildi.';
+  }
+
+  return '';
 }

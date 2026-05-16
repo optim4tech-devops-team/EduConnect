@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import { storage } from '@/utils/storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://platform.notioedu.com/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://apigw.notioedu.com/api';
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,

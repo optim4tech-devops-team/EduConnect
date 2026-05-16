@@ -87,7 +87,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
     const classesWithoutTeacher = schoolClasses.filter((item) => !item.teacherName).length;
     const linkedParents = schoolParents.filter((parent) => parent.students.length > 0).length;
     const topClass = [...schoolClasses].sort((a, b) => b.studentCount - a.studentCount)[0];
-    const studentsWithAllergies = schoolStudents.filter((student) => (student.allergies?.length ?? 0) > 0);
+    const studentsWithAllergies = schoolStudents.filter((student) => !!student.allergies?.trim());
     const studentsWithMedicationNotes = schoolStudents.filter((student) => !!student.medicationNotes?.trim());
     const studentsWithHealthNotes = schoolStudents.filter((student) => !!student.healthNotes?.trim());
     const studentsMissingPhoto = schoolStudents.filter((student) => !student.avatarUrl);
@@ -95,7 +95,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
     const studentsMissingBirthDate = schoolStudents.filter((student) => !student.birthDate);
     const studentsMissingGender = schoolStudents.filter((student) => !student.gender);
     const studentsMissingHealthInfo = schoolStudents.filter((student) =>
-      (student.allergies?.length ?? 0) === 0 &&
+      !student.allergies?.trim() &&
       !student.medicationNotes?.trim() &&
       !student.healthNotes?.trim(),
     );
@@ -251,7 +251,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
             <span>01</span>
             <div>
               <strong>Alerji bilgisi olan ogrenciler</strong>
-              <p>{schoolSummary.studentsWithAllergies.length} ogrencide tag bazli alerji bilgisi kayitli.</p>
+              <p>{schoolSummary.studentsWithAllergies.length} ogrencide metin olarak alerji bilgisi kayitli.</p>
             </div>
           </div>
           <div className="insight-item">
@@ -367,7 +367,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
             <tbody>
               {schoolStudents
                 .filter((student) =>
-                  (student.allergies?.length ?? 0) > 0 ||
+                  !!student.allergies?.trim() ||
                   !!student.medicationNotes?.trim() ||
                   !!student.healthNotes?.trim(),
                 )
@@ -376,13 +376,13 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
                     <td>{student.fullName || student.name}</td>
                     <td>{student.className}</td>
                     <td>{student.gender || '-'}</td>
-                    <td>{student.allergies?.length ? student.allergies.join(', ') : '-'}</td>
+                    <td>{student.allergies?.trim() || '-'}</td>
                     <td>{student.medicationNotes?.trim() || '-'}</td>
                     <td>{student.healthNotes?.trim() || '-'}</td>
                   </tr>
                 ))}
               {!schoolStudents.some((student) =>
-                (student.allergies?.length ?? 0) > 0 ||
+                !!student.allergies?.trim() ||
                 !!student.medicationNotes?.trim() ||
                 !!student.healthNotes?.trim(),
               ) ? (
@@ -423,7 +423,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
                   !student.gender ||
                   !student.birthDate ||
                   (
-                    (student.allergies?.length ?? 0) === 0 &&
+                    !student.allergies?.trim() &&
                     !student.medicationNotes?.trim() &&
                     !student.healthNotes?.trim()
                   ),
@@ -437,7 +437,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
                     <td>{student.gender || 'Eksik'}</td>
                     <td>{student.birthDate || 'Eksik'}</td>
                     <td>
-                      {(student.allergies?.length ?? 0) > 0 || student.medicationNotes?.trim() || student.healthNotes?.trim()
+                      {student.allergies?.trim() || student.medicationNotes?.trim() || student.healthNotes?.trim()
                         ? 'Tamam'
                         : 'Eksik'}
                     </td>
@@ -449,7 +449,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
                 !student.gender ||
                 !student.birthDate ||
                 (
-                  (student.allergies?.length ?? 0) === 0 &&
+                  !student.allergies?.trim() &&
                   !student.medicationNotes?.trim() &&
                   !student.healthNotes?.trim()
                 ),

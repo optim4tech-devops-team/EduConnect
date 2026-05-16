@@ -47,8 +47,13 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
   const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
   const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
   const [assigningSchoolId, setAssigningSchoolId] = useState<string | null>(null);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'passive'>('all');
   const [schoolForm, setSchoolForm] = useState<SchoolFormState>(initialSchoolForm);
   const [adminForm, setAdminForm] = useState<AdminFormState>(initialAdminForm);
+
+  const selectedSchool = schools.find((school) => school.id === selectedSchoolId) ?? schools[0] ?? null;
 
   useEffect(() => {
     void loadPage();
@@ -59,10 +64,20 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
     setError(null);
 
     try {
-      const result = await api.platformSchools(token);
+      const result = await api.platformSchools(
+        token,
+        searchTerm.trim() || undefined,
+        activeFilter === 'all' ? undefined : activeFilter === 'active',
+      );
       setSchools(result);
+      setSelectedSchoolId((current) =>
+        current && result.some((school) => school.id === current)
+          ? current
+          : result[0]?.id ?? null,
+      );
     } catch {
       setSchools([]);
+      setSelectedSchoolId(null);
       setError('Okul verileri yuklenemedi.');
     } finally {
       setLoading(false);
@@ -139,7 +154,7 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
         await api.updatePlatformSchool(token, editingSchoolId, payload);
         setSuccess('Okul kaydi guncellendi.');
       } else {
-        await api.createPlatformSchool(token, {
+        const result = await api.createPlatformSchool(token, {
           ...payload,
           primaryAdmin: {
             fullName: adminForm.fullName.trim(),
@@ -147,7 +162,7 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
             email: adminForm.email.trim() || undefined,
           },
         });
-        setSuccess('Yeni okul basariyla eklendi.');
+        setSuccess(formatAdminPasswordSuccess('Yeni okul basariyla eklendi.', result.primaryAdminTemporaryPassword));
       }
 
       closeForms();
@@ -170,12 +185,12 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
     setSuccess(null);
 
     try {
-      await api.assignPlatformSchoolAdmin(token, assigningSchoolId, {
+      const result = await api.assignPlatformSchoolAdmin(token, assigningSchoolId, {
         fullName: adminForm.fullName.trim(),
         phone: adminForm.phone.trim(),
         email: adminForm.email.trim() || undefined,
       });
-      setSuccess('Okul yoneticisi atandi.');
+      setSuccess(formatAdminPasswordSuccess('Okul yoneticisi atandi.', result.primaryAdminTemporaryPassword));
       closeForms();
       await loadPage();
     } catch (submitError) {
@@ -222,6 +237,52 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
 
         {error ? <div className="error-banner">{error}</div> : null}
         {success ? <div className="success-banner">{success}</div> : null}
+
+        <form
+          className="inline-form-shell compact-filter-shell"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void loadPage();
+          }}
+        >
+          <div className="form-grid">
+            <label className="field">
+              <span>Okul ara</span>
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Okul adi, telefon veya adres"
+              />
+            </label>
+            <label className="field">
+              <span>Durum</span>
+              <select
+                value={activeFilter}
+                onChange={(event) => setActiveFilter(event.target.value as 'all' | 'active' | 'passive')}
+              >
+                <option value="all">Tumu</option>
+                <option value="active">Aktif okullar</option>
+                <option value="passive">Pasif okullar</option>
+              </select>
+            </label>
+          </div>
+          <div className="inline-form-actions">
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => {
+                setSearchTerm('');
+                setActiveFilter('all');
+                setTimeout(() => void loadPage(), 0);
+              }}
+            >
+              Temizle
+            </button>
+            <button type="submit" className="primary-button">
+              Filtrele
+            </button>
+          </div>
+        </form>
 
         {isSchoolFormOpen ? (
           <form className="inline-form-shell" onSubmit={handleSchoolSubmit}>
@@ -327,6 +388,45 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
           </form>
         ) : null}
 
+        {selectedSchool ? (
+          <div className="inline-form-shell platform-detail-card">
+            <div className="inline-form-header">
+              <div>
+                <div className="section-eyebrow">Okul detayi</div>
+                <strong>{selectedSchool.name}</strong>
+                <p className="panel-copy compact-copy">
+                  {selectedSchool.address || 'Adres bilgisi girilmemis.'}
+                </p>
+              </div>
+              <span className="soft-pill">{selectedSchool.isActive ? 'Aktif' : 'Pasif'} · {selectedSchool.plan}</span>
+            </div>
+            <div className="stats-grid inline-stats">
+              <article className="metric-card">
+                <span>Sinif</span>
+                <strong>{selectedSchool.classCount}</strong>
+              </article>
+              <article className="metric-card">
+                <span>Ogrenci</span>
+                <strong>{selectedSchool.studentCount}</strong>
+              </article>
+              <article className="metric-card">
+                <span>Ogretmen</span>
+                <strong>{selectedSchool.teacherCount}</strong>
+              </article>
+              <article className="metric-card">
+                <span>Veli</span>
+                <strong>{selectedSchool.parentCount}</strong>
+              </article>
+            </div>
+            <div className="soft-inline-list">
+              <span className="soft-pill">Telefon: {selectedSchool.phone || '-'}</span>
+              <span className="soft-pill">Yonetici: {selectedSchool.primaryAdminName || 'Atanmadi'}</span>
+              <span className="soft-pill">Yonetici Tel: {selectedSchool.primaryAdminPhone || '-'}</span>
+              <span className="soft-pill">Limit: {selectedSchool.maxStudents} ogrenci / {selectedSchool.maxTeachers} ogretmen</span>
+            </div>
+          </div>
+        ) : null}
+
         <div className="table-shell">
           <table className="data-table">
             <thead>
@@ -356,6 +456,9 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
                       <button type="button" className="mini-button" onClick={() => openEditForm(school)}>
                         Duzenle
                       </button>
+                      <button type="button" className="mini-button" onClick={() => setSelectedSchoolId(school.id)}>
+                        Detay
+                      </button>
                       <button type="button" className="mini-button" onClick={() => openAssignAdminForm(school)}>
                         Yonetici
                       </button>
@@ -382,4 +485,10 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
       </section>
     </div>
   );
+}
+
+function formatAdminPasswordSuccess(message: string, temporaryPassword?: string) {
+  return temporaryPassword
+    ? `${message} Gecici yonetici sifresi: ${temporaryPassword}`
+    : message;
 }

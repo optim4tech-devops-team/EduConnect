@@ -1,0 +1,145 @@
+name: Deploy Notio Platform Services
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "backend/**"
+      - "api-gateway/**"
+      - "k8s/notio-postgres.yaml"
+      - "k8s/notio-platform-services.yaml"
+      - ".github/workflows/deploy-platform-services.yml"
+  workflow_dispatch:
+
+env:
+  REGISTRY: registry.notioedu.com
+  API_IMAGE: registry.notioedu.com/notio/notioedu-api
+  GATEWAY_IMAGE: registry.notioedu.com/notio/apigw
+
+jobs:
+  build-api:
+    name: Build and Push Notio API
+    runs-on: [github-k8s-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Notio API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/EduLink.Api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:${{ github.sha }}
+            ${{ env.API_IMAGE }}:latest
+          cache-from: type=gha,scope=notioedu-api
+          cache-to: type=gha,mode=max,scope=notioedu-api
+
+  build-gateway:
+    name: Build and Push API Gateway
+    runs-on: [github-k8s-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push API Gateway
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api-gateway
+          file: ./api-gateway/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.GATEWAY_IMAGE }}:${{ github.sha }}
+            ${{ env.GATEWAY_IMAGE }}:latest
+          cache-from: type=gha,scope=apigw
+          cache-to: type=gha,mode=max,scope=apigw
+
+  deploy-platform:
+    name: Deploy Platform Services to Kubernetes
+    runs-on: [github-k8s-runner]
+    needs:
+      - build-api
+      - build-gateway
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Ensure namespace and registry secret
+        run: |
+          kubectl create namespace notio --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry zot-regcred \
+            -n notio \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ secrets.REGISTRY_USERNAME }} \
+            --docker-password='${{ secrets.REGISTRY_PASSWORD }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Ensure database and API secrets
+        run: |
+          if ! kubectl get secret notio-postgres-secret -n notio >/dev/null 2>&1; then
+            POSTGRES_PASSWORD="$(openssl rand -hex 16)"
+            kubectl create secret generic notio-postgres-secret \
+              -n notio \
+              --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
+          fi
+
+          if ! kubectl get secret notio-api-secrets -n notio >/dev/null 2>&1; then
+            JWT_SECRET="$(openssl rand -hex 32)"
+            kubectl create secret generic notio-api-secrets \
+              -n notio \
+              --from-literal=JWT_SECRET="$JWT_SECRET" \
+              --from-literal=CLOUDINARY_CLOUD_NAME="${{ secrets.CLOUDINARY_CLOUD_NAME }}" \
+              --from-literal=CLOUDINARY_API_KEY="${{ secrets.CLOUDINARY_API_KEY }}" \
+              --from-literal=CLOUDINARY_API_SECRET="${{ secrets.CLOUDINARY_API_SECRET }}" \
+              --from-literal=FIREBASE_SERVER_KEY="${{ secrets.FIREBASE_SERVER_KEY }}" \
+              --from-literal=AI_SERVICE_API_KEY="${{ secrets.AI_SERVICE_API_KEY }}"
+          fi
+
+      - name: Apply platform manifests
+        run: |
+          kubectl apply -f k8s/notio-postgres.yaml
+          kubectl apply -f k8s/notio-platform-services.yaml
+
+      - name: Update images and rollout
+        run: |
+          kubectl set image deployment/notioedu-api \
+            notioedu-api=${{ env.API_IMAGE }}:${{ github.sha }} \
+            -n notio
+          kubectl set image deployment/apigw \
+            apigw=${{ env.GATEWAY_IMAGE }}:${{ github.sha }} \
+            -n notio
+          kubectl rollout status deployment/notioedu-api -n notio --timeout=240s
+          kubectl rollout status deployment/apigw -n notio --timeout=180s

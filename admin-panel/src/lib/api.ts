@@ -88,7 +88,7 @@ export interface StudentDto {
   gender?: string;
   badgeCount: number;
   birthDate?: string;
-  allergies?: string[];
+  allergies?: string;
   medicationNotes?: string;
   healthNotes?: string;
   isActive?: boolean;
@@ -105,7 +105,7 @@ export interface CreateStudentPayload {
   classId: string;
   birthDate?: string;
   gender?: string;
-  allergies?: string[];
+  allergies?: string;
   medicationNotes?: string;
   healthNotes?: string;
   avatarUrl?: string;
@@ -225,15 +225,46 @@ export interface DemoRequestDto {
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
+export type ApiSessionFailureReason = 'unauthorized' | 'forbidden' | 'network';
+
+let sessionFailureHandler: ((reason: ApiSessionFailureReason) => void) | null = null;
+
+export function onApiSessionFailure(handler: ((reason: ApiSessionFailureReason) => void) | null) {
+  sessionFailureHandler = handler;
+}
+
+function notifySessionFailure(reason: ApiSessionFailureReason, token?: string) {
+  if (!token) {
+    return;
+  }
+  sessionFailureHandler?.(reason);
+}
+
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers ?? {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers ?? {}),
+      },
+    });
+  } catch {
+    notifySessionFailure('network', token);
+    throw new Error('Sunucu baglantisi kurulamadi. Lutfen tekrar giris yapin.');
+  }
+
+  if (response.status === 401) {
+    notifySessionFailure('unauthorized', token);
+    throw new Error('Oturum suresi doldu. Lutfen tekrar giris yapin.');
+  }
+
+  if (response.status === 403) {
+    notifySessionFailure('forbidden', token);
+    throw new Error('Bu islem icin yetkin bulunmuyor.');
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -344,13 +375,29 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_URL}/students/avatar-upload`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_URL}/students/avatar-upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+    } catch {
+      notifySessionFailure('network', token);
+      throw new Error('Sunucu baglantisi kurulamadi. Lutfen tekrar giris yapin.');
+    }
+
+    if (response.status === 401) {
+      notifySessionFailure('unauthorized', token);
+      throw new Error('Oturum suresi doldu. Lutfen tekrar giris yapin.');
+    }
+
+    if (response.status === 403) {
+      notifySessionFailure('forbidden', token);
+      throw new Error('Bu islem icin yetkin bulunmuyor.');
+    }
 
     if (!response.ok) {
       const text = await response.text();
@@ -363,13 +410,29 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_URL}/students/import`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_URL}/students/import`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+    } catch {
+      notifySessionFailure('network', token);
+      throw new Error('Sunucu baglantisi kurulamadi. Lutfen tekrar giris yapin.');
+    }
+
+    if (response.status === 401) {
+      notifySessionFailure('unauthorized', token);
+      throw new Error('Oturum suresi doldu. Lutfen tekrar giris yapin.');
+    }
+
+    if (response.status === 403) {
+      notifySessionFailure('forbidden', token);
+      throw new Error('Bu islem icin yetkin bulunmuyor.');
+    }
 
     if (!response.ok) {
       const text = await response.text();
@@ -417,7 +480,14 @@ export const api = {
       token,
     ),
   createPlatformSchool: (token: string, payload: CreatePlatformSchoolPayload) =>
-    request<{ id: string; name: string; plan: string; isActive: boolean }>(
+    request<{
+      id: string;
+      name: string;
+      plan: string;
+      isActive: boolean;
+      primaryAdminUserId?: string;
+      primaryAdminTemporaryPassword?: string;
+    }>(
       '/platform/schools',
       {
         method: 'POST',
@@ -443,7 +513,7 @@ export const api = {
       token,
     ),
   assignPlatformSchoolAdmin: (token: string, id: string, payload: PlatformSchoolAdminPayload) =>
-    request<{ id: string; primaryAdminUserId?: string }>(
+    request<{ id: string; primaryAdminUserId?: string; primaryAdminTemporaryPassword?: string }>(
       `/platform/schools/${id}/assign-admin`,
       {
         method: 'POST',
@@ -470,7 +540,7 @@ export const api = {
 
 export const sessionStorageKey = 'notio-admin-session';
 
-function buildQuery(params: Record<string, string | boolean | undefined>) {
+function buildQuery(params: Record<string, string | number | boolean | undefined>) {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== '') {
