@@ -10,20 +10,19 @@ namespace EduLink.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "MustChangePassword",
-                table: "Users",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
+            migrationBuilder.Sql("""
+                ALTER TABLE "Users"
+                ADD COLUMN IF NOT EXISTS "MustChangePassword" boolean NOT NULL DEFAULT FALSE;
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "MustChangePassword",
-                table: "Users");
+            migrationBuilder.Sql("""
+                ALTER TABLE "Users"
+                DROP COLUMN IF EXISTS "MustChangePassword";
+                """);
         }
     }
 }

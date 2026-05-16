@@ -156,7 +156,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
           <div className="insight-list">
             {Object.entries(platformSummary.planBuckets).map(([plan, count], index) => (
               <div key={plan} className="insight-item">
-                <span>{String(index + 1).padStart(2, '0')}</span>
+                <span>{index + 1 < 10 ? `0${index + 1}` : index + 1}</span>
                 <div>
                   <strong>{plan}</strong>
                   <p>Bu planda {count} okul bulunuyor.</p>

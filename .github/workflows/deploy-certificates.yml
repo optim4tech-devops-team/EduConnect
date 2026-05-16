@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - "k8s/notio-certificate.yaml"
+      - "k8s/notio-external-tls.yaml"
       - ".github/workflows/deploy-certificates.yml"
   workflow_dispatch:
 
@@ -26,11 +27,18 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Ensure namespace
-        run: kubectl create namespace notio --dry-run=client -o yaml | kubectl apply -f -
+      - name: Ensure namespaces
+        run: |
+          kubectl create namespace notio --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace registry --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Apply certificate manifest
-        run: kubectl apply -f k8s/notio-certificate.yaml
+      - name: Apply certificate manifests
+        run: |
+          kubectl apply -f k8s/notio-certificate.yaml
+          kubectl apply -f k8s/notio-external-tls.yaml
 
       - name: Wait for certificate readiness
-        run: kubectl wait certificate/notioedu-wildcard-tls -n notio --for=condition=Ready --timeout=300s
+        run: |
+          kubectl wait certificate/notioedu-wildcard-tls -n notio --for=condition=Ready --timeout=300s
+          kubectl wait certificate/notioedu-registry-tls -n registry --for=condition=Ready --timeout=300s
+          kubectl wait certificate/notioedu-k8s-tls -n default --for=condition=Ready --timeout=300s

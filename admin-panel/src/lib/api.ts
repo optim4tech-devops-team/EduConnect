@@ -240,6 +240,62 @@ function notifySessionFailure(reason: ApiSessionFailureReason, token?: string) {
   sessionFailureHandler?.(reason);
 }
 
+function isHtmlResponse(text: string, contentType: string | null) {
+  const trimmed = text.trim().toLowerCase();
+  return (
+    contentType?.includes('text/html') ||
+    trimmed.startsWith('<!doctype html') ||
+    trimmed.startsWith('<html') ||
+    trimmed.startsWith('<head')
+  );
+}
+
+function parseErrorMessage(text: string) {
+  if (!text.trim()) {
+    return '';
+  }
+
+  try {
+    const parsed = JSON.parse(text) as {
+      message?: string;
+      title?: string;
+      error?: string | { message?: string; title?: string };
+    };
+
+    if (typeof parsed.error === 'string') {
+      return parsed.error;
+    }
+
+    return parsed.message || parsed.title || parsed.error?.message || parsed.error?.title || '';
+  } catch {
+    return '';
+  }
+}
+
+async function buildApiError(response: Response, fallbackMessage: string) {
+  const text = await response.text();
+  const contentType = response.headers.get('content-type');
+
+  if (response.status === 502 || response.status === 503 || response.status === 504) {
+    return new Error('Servise şu an ulaşılamıyor. Lütfen birkaç dakika sonra tekrar deneyin.');
+  }
+
+  if (isHtmlResponse(text, contentType)) {
+    return new Error('Servis beklenen yanıtı veremedi. Lütfen sayfayı yenileyip tekrar deneyin.');
+  }
+
+  const parsedMessage = parseErrorMessage(text);
+  if (parsedMessage) {
+    return new Error(parsedMessage);
+  }
+
+  if (response.status >= 500) {
+    return new Error('Sunucu tarafında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.');
+  }
+
+  return new Error(text || fallbackMessage);
+}
+
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
   let response: Response;
   try {
@@ -267,13 +323,7 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    try {
-      const parsed = JSON.parse(text) as { message?: string; title?: string };
-      throw new Error(parsed.message || parsed.title || text || 'İstek başarısız oldu.');
-    } catch {
-      throw new Error(text || 'İstek başarısız oldu.');
-    }
+    throw await buildApiError(response, 'İstek başarısız oldu.');
   }
 
   if (response.status === 204) {
@@ -400,8 +450,7 @@ export const api = {
     }
 
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Ogrenci resmi yuklenemedi.');
+      throw await buildApiError(response, 'Öğrenci resmi yüklenemedi.');
     }
 
     return response.json() as Promise<UploadStudentAvatarResponse>;
@@ -435,13 +484,7 @@ export const api = {
     }
 
     if (!response.ok) {
-      const text = await response.text();
-      try {
-        const parsed = JSON.parse(text) as { message?: string; title?: string };
-        throw new Error(parsed.message || parsed.title || text || 'Excel import basarisiz oldu.');
-      } catch {
-        throw new Error(text || 'Excel import basarisiz oldu.');
-      }
+      throw await buildApiError(response, 'Excel import başarısız oldu.');
     }
 
     return response.json() as Promise<StudentImportResult>;
