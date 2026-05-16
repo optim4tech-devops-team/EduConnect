@@ -2,6 +2,7 @@ using EduLink.Domain.Entities;
 using EduLink.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace EduLink.Api.Controllers;
@@ -20,27 +21,64 @@ public class DemoRequestsController : ControllerBase
 
     [HttpPost]
     [AllowAnonymous]
+    [EnableRateLimiting("DemoRequestPolicy")]
     public async Task<IActionResult> Create([FromBody] CreateDemoRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.FirstName) ||
-            string.IsNullOrWhiteSpace(request.LastName) ||
-            string.IsNullOrWhiteSpace(request.SchoolName) ||
-            string.IsNullOrWhiteSpace(request.Phone))
+        if (!string.IsNullOrWhiteSpace(request.Website))
+        {
+            // Honeypot field: real users never see/fill this field.
+            return Accepted(new { message = "Demo talebiniz alindi." });
+        }
+
+        var firstName = Clean(request.FirstName);
+        var lastName = Clean(request.LastName);
+        var schoolName = Clean(request.SchoolName);
+        var phone = Clean(request.Phone);
+        var normalizedPhone = NormalizePhone(phone);
+
+        if (string.IsNullOrWhiteSpace(firstName) ||
+            string.IsNullOrWhiteSpace(lastName) ||
+            string.IsNullOrWhiteSpace(schoolName) ||
+            string.IsNullOrWhiteSpace(phone))
         {
             return BadRequest(new { message = "Ad, soyad, okul adi ve telefon zorunludur." });
+        }
+
+        if (firstName.Length > 100 ||
+            lastName.Length > 100 ||
+            schoolName.Length > 200 ||
+            phone.Length > 30 ||
+            normalizedPhone.Length < 10)
+        {
+            return BadRequest(new { message = "Demo talebi bilgileri beklenen formatta degil." });
+        }
+
+        var duplicateWindowStart = DateTime.UtcNow.AddMinutes(-10);
+        var recentPhones = await _db.DemoRequests
+            .AsNoTracking()
+            .Where(item => item.CreatedAt >= duplicateWindowStart)
+            .Select(item => item.Phone)
+            .ToListAsync();
+
+        if (recentPhones.Any(existingPhone => NormalizePhone(existingPhone) == normalizedPhone))
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                message = "Bu telefon numarasi icin demo talebi alindi. Lutfen biraz sonra tekrar deneyin."
+            });
         }
 
         var entity = new DemoRequest
         {
             Id = Guid.NewGuid(),
-            FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            SchoolName = request.SchoolName.Trim(),
-            Phone = request.Phone.Trim(),
-            StudentCount = request.StudentCount?.Trim(),
-            City = request.City?.Trim(),
+            FirstName = firstName,
+            LastName = lastName,
+            SchoolName = schoolName,
+            Phone = phone,
+            StudentCount = CleanOptional(request.StudentCount),
+            City = CleanOptional(request.City),
             Status = "new",
-            Notes = request.Notes?.Trim(),
+            Notes = BuildNotes(request),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -146,6 +184,54 @@ public class DemoRequestsController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(new { item.Id, item.Status });
     }
+
+    private static string Clean(string? value)
+    {
+        return string.Join(' ', (value ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string? CleanOptional(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return string.Join(' ', value.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string NormalizePhone(string? value)
+    {
+        return new string((value ?? string.Empty).Where(char.IsDigit).ToArray());
+    }
+
+    private static string? BuildNotes(CreateDemoRequest request)
+    {
+        var parts = new List<string>();
+        var email = CleanOptional(request.Email);
+        var roleFocus = CleanOptional(request.RoleFocus);
+        var notes = CleanOptional(request.Notes);
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            parts.Add($"E-posta: {email}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(roleFocus))
+        {
+            parts.Add($"Oncelikli ihtiyac: {roleFocus}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(notes))
+        {
+            parts.Add($"Not: {notes}");
+        }
+
+        var combined = string.Join(Environment.NewLine, parts);
+        return string.IsNullOrWhiteSpace(combined)
+            ? null
+            : combined.Length > 1000 ? combined[..1000] : combined;
+    }
 }
 
 public record CreateDemoRequest(
@@ -155,7 +241,10 @@ public record CreateDemoRequest(
     string Phone,
     string? StudentCount,
     string? City,
-    string? Notes
+    string? Notes,
+    string? Email,
+    string? RoleFocus,
+    string? Website
 );
 
 public record UpdateDemoRequestStatus(

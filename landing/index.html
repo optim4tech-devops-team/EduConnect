@@ -549,31 +549,35 @@
           </ul>
         </div>
 
-        <form class="demo-form" name="demo-request" onsubmit="return false;">
+        <form class="demo-form" id="demo-request-form" name="demo-request">
+          <div class="form-field honeypot-field" aria-hidden="true">
+            <label for="website">Web sitesi</label>
+            <input type="text" id="website" name="website" autocomplete="off" tabindex="-1" />
+          </div>
           <div class="form-row">
             <div class="form-field">
               <label for="school-name">Okul Adı</label>
-              <input type="text" id="school-name" placeholder="Anaokulunuzun adı" autocomplete="organization" />
+              <input type="text" id="school-name" name="schoolName" placeholder="Anaokulunuzun adı" autocomplete="organization" required />
             </div>
             <div class="form-field">
               <label for="contact-name">Adınız</label>
-              <input type="text" id="contact-name" placeholder="Ad Soyad" autocomplete="name" />
+              <input type="text" id="contact-name" name="contactName" placeholder="Ad Soyad" autocomplete="name" required />
             </div>
           </div>
           <div class="form-row">
             <div class="form-field">
               <label for="phone">Telefon</label>
-              <input type="tel" id="phone" placeholder="+90 5XX XXX XX XX" autocomplete="tel" />
+              <input type="tel" id="phone" name="phone" placeholder="+90 5XX XXX XX XX" autocomplete="tel" required />
             </div>
             <div class="form-field">
               <label for="email">E-posta</label>
-              <input type="email" id="email" placeholder="ornek@okul.com" autocomplete="email" />
+              <input type="email" id="email" name="email" placeholder="ornek@okul.com" autocomplete="email" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-field">
               <label for="student-count">Öğrenci Sayısı</label>
-              <select id="student-count">
+              <select id="student-count" name="studentCount">
                 <option value="">Seçin</option>
                 <option value="0-25">0 - 25</option>
                 <option value="25-75">25 - 75</option>
@@ -583,7 +587,7 @@
             </div>
             <div class="form-field">
               <label for="role-focus">Öncelikli İhtiyaç</label>
-              <select id="role-focus">
+              <select id="role-focus" name="roleFocus">
                 <option value="">Seçin</option>
                 <option value="platform">Platform yönetimi</option>
                 <option value="school">Okul operasyonu</option>
@@ -595,11 +599,12 @@
           <div class="form-row">
             <div class="form-field form-field--full">
               <label for="notes">Kısa Not</label>
-              <textarea id="notes" rows="4" placeholder="Şu an en çok hangi akışı dijitalleştirmek istiyorsunuz?"></textarea>
+              <textarea id="notes" name="notes" rows="4" placeholder="Şu an en çok hangi akışı dijitalleştirmek istiyorsunuz?"></textarea>
             </div>
           </div>
           <button type="submit" class="solid-button large full-width">Demo Talep Et</button>
           <p class="form-note">Size en kısa sürede geri döneceğiz.</p>
+          <p class="form-status" data-form-status role="status" aria-live="polite"></p>
         </form>
       </section>
 

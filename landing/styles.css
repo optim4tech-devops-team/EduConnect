@@ -1140,6 +1140,16 @@ body.is-nav-open .nav-toggle span:nth-child(3) {
   box-shadow: 0 12px 28px rgba(22, 38, 30, 0.06);
 }
 
+.honeypot-field {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ─── Reveal motion ──────────────────────────────────────────────────── */
 .reveal-item {
   opacity: 0;
@@ -1211,6 +1221,33 @@ body.is-nav-open .nav-toggle span:nth-child(3) {
   text-align: center;
   font-size: 0.82rem;
   color: var(--muted);
+}
+
+.form-status {
+  display: none;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.form-status.is-visible {
+  display: block;
+}
+
+.form-status.is-success {
+  color: #155d43;
+  background: rgba(35, 126, 86, 0.1);
+  border: 1px solid rgba(35, 126, 86, 0.2);
+}
+
+.form-status.is-error {
+  color: #9f2f24;
+  background: rgba(209, 75, 57, 0.1);
+  border: 1px solid rgba(209, 75, 57, 0.2);
 }
 
 /* ─── Closing panel ──────────────────────────────────────────────────── */

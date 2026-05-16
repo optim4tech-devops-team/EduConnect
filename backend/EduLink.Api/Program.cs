@@ -12,7 +12,9 @@ using Hangfire.PostgreSql;
 using CloudinaryDotNet;
 using EduLink.Api.Hubs;
 using EduLink.Api.Middleware;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.FileProviders;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,6 +80,34 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            message = "Cok fazla demo talebi gonderildi. Lutfen biraz sonra tekrar deneyin."
+        }, cancellationToken);
+    };
+
+    options.AddPolicy("DemoRequestPolicy", httpContext =>
+    {
+        var clientKey = ResolveClientKey(httpContext);
+        return RateLimitPartition.GetFixedWindowLimiter(
+            $"demo-request:{clientKey}",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            });
+    });
+});
 
 // ─── SignalR ──────────────────────────────────────────────────────────────
 builder.Services.AddSignalR()
@@ -623,6 +653,7 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(webRootPath)
 });
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<CurrentUserMiddleware>();
@@ -631,3 +662,15 @@ app.MapHub<ChatHub>("/hubs/chat");
 app.UseHangfireDashboard("/hangfire");
 
 app.Run();
+
+static string ResolveClientKey(HttpContext httpContext)
+{
+    var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+    if (!string.IsNullOrWhiteSpace(forwardedFor))
+    {
+        return forwardedFor.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault() ?? "unknown";
+    }
+
+    return httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+}
