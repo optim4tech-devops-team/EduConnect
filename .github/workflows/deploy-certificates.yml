@@ -1,0 +1,36 @@
+name: Deploy Notio Certificates
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "k8s/notio-certificate.yaml"
+      - ".github/workflows/deploy-certificates.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy-certificates:
+    name: Deploy TLS Certificates to Kubernetes
+    runs-on: [github-k8s-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Ensure namespace
+        run: kubectl create namespace notio --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply certificate manifest
+        run: kubectl apply -f k8s/notio-certificate.yaml
+
+      - name: Wait for certificate readiness
+        run: kubectl wait certificate/notioedu-wildcard-tls -n notio --for=condition=Ready --timeout=300s

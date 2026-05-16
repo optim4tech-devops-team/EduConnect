@@ -75,8 +75,10 @@ jobs:
             --docker-password='${{ secrets.REGISTRY_PASSWORD }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Apply web admin manifest
-        run: kubectl apply -f k8s/notio-web.yaml
+      - name: Apply certificate and web admin manifests
+        run: |
+          kubectl apply -f k8s/notio-certificate.yaml
+          kubectl apply -f k8s/notio-web.yaml
 
       - name: Update image and rollout
         run: |

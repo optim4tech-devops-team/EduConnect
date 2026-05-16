@@ -72,8 +72,10 @@ jobs:
             --docker-password='${{ secrets.REGISTRY_PASSWORD }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Apply landing manifest
-        run: kubectl apply -f k8s/notio-landing.yaml
+      - name: Apply certificate and landing manifests
+        run: |
+          kubectl apply -f k8s/notio-certificate.yaml
+          kubectl apply -f k8s/notio-landing.yaml
 
       - name: Update image and rollout
         run: |

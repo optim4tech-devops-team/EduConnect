@@ -128,9 +128,14 @@ jobs:
               --from-literal=AI_SERVICE_API_KEY="${{ secrets.AI_SERVICE_API_KEY }}"
           fi
 
-      - name: Apply platform manifests
+      - name: Apply certificate and platform manifests
         run: |
-          kubectl apply -f k8s/notio-postgres.yaml
+          kubectl apply -f k8s/notio-certificate.yaml
+          if kubectl get statefulset notio-postgres -n notio >/dev/null 2>&1; then
+            echo "notio-postgres StatefulSet already exists; skipping immutable StatefulSet re-apply."
+          else
+            kubectl apply -f k8s/notio-postgres.yaml
+          fi
           kubectl apply -f k8s/notio-platform-services.yaml
 
       - name: Update images and rollout
