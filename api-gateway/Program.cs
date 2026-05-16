@@ -48,7 +48,7 @@ builder.Services.AddRateLimiter(options =>
             $"demo-request:{clientKey}",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = 60,
                 Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
