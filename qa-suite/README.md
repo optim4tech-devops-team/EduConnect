@@ -59,6 +59,25 @@ Sadece mobile smoke:
 npm run mobile
 ```
 
+Faz 1 web ekran QA:
+
+```bash
+QA_LANDING_URL=https://notioedu.com \
+QA_WEB_ADMIN_URL=https://platform.notioedu.com \
+QA_API_BASE_URL=https://apigw.notioedu.com/api \
+QA_PLATFORM_ADMIN_EMAIL=admin@notioedu.com \
+QA_PLATFORM_ADMIN_PASSWORD=<github-secret-ile-ayni-sifre> \
+npm run faz1:web
+```
+
+GitHub Actions uzerinden manuel kosmak icin:
+
+```bash
+gh workflow run "QA Faz 1 Web Screens"
+```
+
+Not: Action icin `QA_PLATFORM_ADMIN_EMAIL` ve `QA_PLATFORM_ADMIN_PASSWORD` secret'lari tanimli olmalidir.
+
 Tum suiti tek komutta kos:
 
 ```bash
@@ -84,6 +103,10 @@ En onemlileri:
 - `QA_ADMIN_PHONE`
 - `QA_TEACHER_PHONE`
 - `QA_PARENT_PHONE`
+- `QA_LANDING_URL`
+- `QA_WEB_ADMIN_URL`
+- `QA_PLATFORM_ADMIN_EMAIL`
+- `QA_PLATFORM_ADMIN_PASSWORD`
 
 ## Notlar
 

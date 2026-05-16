@@ -1,0 +1,70 @@
+name: QA Faz 1 Web Screens
+
+on:
+  workflow_dispatch:
+    inputs:
+      landing_url:
+        description: Landing URL
+        required: false
+        default: https://notioedu.com
+      web_admin_url:
+        description: Web admin URL
+        required: false
+        default: https://platform.notioedu.com
+      api_base_url:
+        description: API Gateway base URL
+        required: false
+        default: https://apigw.notioedu.com/api
+
+jobs:
+  faz1-web-qa:
+    name: Run Faz 1 Web Screen QA
+    runs-on: [github-k8s-runner]
+    timeout-minutes: 15
+    env:
+      QA_LANDING_URL: ${{ inputs.landing_url }}
+      QA_WEB_ADMIN_URL: ${{ inputs.web_admin_url }}
+      QA_API_BASE_URL: ${{ inputs.api_base_url }}
+      QA_PLATFORM_ADMIN_EMAIL: ${{ secrets.QA_PLATFORM_ADMIN_EMAIL || 'admin@notioedu.com' }}
+      QA_PLATFORM_ADMIN_PASSWORD: ${{ secrets.QA_PLATFORM_ADMIN_PASSWORD || secrets.BOOTSTRAP_PLATFORM_ADMIN_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: qa-suite/package-lock.json
+
+      - name: Validate QA credentials
+        run: |
+          if [ -z "$QA_PLATFORM_ADMIN_EMAIL" ] || [ -z "$QA_PLATFORM_ADMIN_PASSWORD" ]; then
+            echo "QA platform admin credentials are required."
+            echo "Set QA_PLATFORM_ADMIN_EMAIL and QA_PLATFORM_ADMIN_PASSWORD repository/environment secrets."
+            exit 1
+          fi
+
+      - name: Install QA dependencies
+        working-directory: qa-suite
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: qa-suite
+        run: npx playwright install chromium
+
+      - name: Run Faz 1 web screen tests
+        working-directory: qa-suite
+        run: npm run faz1:web
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: faz1-web-playwright-report
+          path: |
+            qa-suite/reports/playwright-html
+            qa-suite/reports/playwright-junit.xml
+            qa-suite/test-results
+          if-no-files-found: ignore

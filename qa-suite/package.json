@@ -10,6 +10,7 @@
     "mobile:build": "node ./scripts/build-mobile-web.mjs",
     "mobile:test": "playwright test",
     "mobile": "node ./scripts/run-mobile-smoke.mjs",
+    "faz1:web": "playwright test tests/faz1-web.spec.js",
     "all": "node ./scripts/run-all.mjs"
   },
   "dependencies": {
