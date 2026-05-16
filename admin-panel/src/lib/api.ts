@@ -530,6 +530,7 @@ export const api = {
       isActive: boolean;
       primaryAdminUserId?: string;
       primaryAdminTemporaryPassword?: string;
+      primaryAdminMustChangePassword?: boolean;
     }>(
       '/platform/schools',
       {
@@ -556,7 +557,12 @@ export const api = {
       token,
     ),
   assignPlatformSchoolAdmin: (token: string, id: string, payload: PlatformSchoolAdminPayload) =>
-    request<{ id: string; primaryAdminUserId?: string; primaryAdminTemporaryPassword?: string }>(
+    request<{
+      id: string;
+      primaryAdminUserId?: string;
+      primaryAdminTemporaryPassword?: string;
+      primaryAdminMustChangePassword?: boolean;
+    }>(
       `/platform/schools/${id}/assign-admin`,
       {
         method: 'POST',

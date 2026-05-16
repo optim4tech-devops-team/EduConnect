@@ -341,6 +341,9 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
                     <span>Ilk yonetici e-posta</span>
                     <input value={adminForm.email} onChange={(event) => setAdminForm((current) => ({ ...current, email: event.target.value }))} />
                   </label>
+                  <p className="panel-copy compact-copy field-span-2">
+                    Okul yoneticisi sifresi otomatik uretilir, kayit sonrasi bir kez gosterilir ve ilk giriste degistirmesi istenir.
+                  </p>
                 </>
               ) : null}
             </div>
@@ -376,6 +379,9 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
                 <span>E-posta</span>
                 <input value={adminForm.email} onChange={(event) => setAdminForm((current) => ({ ...current, email: event.target.value }))} />
               </label>
+              <p className="panel-copy compact-copy field-span-2">
+                Yeni gecici sifre otomatik uretilir. Varsa mevcut okul yoneticisinin eski sifresi gecersiz olur.
+              </p>
             </div>
             <div className="inline-form-actions">
               <button type="button" className="ghost-button" onClick={closeForms}>
@@ -489,6 +495,6 @@ export default function PlatformSchoolsPage({ token }: PlatformSchoolsPageProps)
 
 function formatAdminPasswordSuccess(message: string, temporaryPassword?: string) {
   return temporaryPassword
-    ? `${message} Gecici yonetici sifresi: ${temporaryPassword}`
+    ? `${message} Gecici yonetici sifresi: ${temporaryPassword}. Bu sifre yalnizca bir kez gosterilir ve ilk giriste degistirilmelidir.`
     : message;
 }

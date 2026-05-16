@@ -11,7 +11,7 @@ namespace EduLink.Api.Controllers;
 
 [ApiController]
 [Route("api/platform/schools")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,PlatformAdmin")]
 public class PlatformSchoolsController : ControllerBase
 {
     private static readonly Guid PlatformSchoolId = Guid.Parse("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
@@ -181,7 +181,8 @@ public class PlatformSchoolsController : ControllerBase
             school.Plan,
             school.IsActive,
             PrimaryAdminUserId = assignResult.User?.Id,
-            PrimaryAdminTemporaryPassword = _environment.IsDevelopment() ? assignResult.TemporaryPassword : null
+            PrimaryAdminTemporaryPassword = assignResult.TemporaryPassword,
+            PrimaryAdminMustChangePassword = assignResult.User?.MustChangePassword ?? true
         });
     }
 
@@ -354,7 +355,8 @@ public class PlatformSchoolsController : ControllerBase
         {
             school.Id,
             school.PrimaryAdminUserId,
-            PrimaryAdminTemporaryPassword = _environment.IsDevelopment() ? result.TemporaryPassword : null
+            PrimaryAdminTemporaryPassword = result.TemporaryPassword,
+            PrimaryAdminMustChangePassword = result.User?.MustChangePassword ?? true
         });
     }
 
@@ -492,15 +494,19 @@ public class PlatformSchoolsController : ControllerBase
                                     </tr>
                                     <tr>
                                       <td style="padding:6px 0;font-size:13px;color:#64748b;">Giriş Yöntemi</td>
-                                      <td style="padding:6px 0;font-size:14px;color:#1a1a2e;font-weight:600;">Telefon numaranız + SMS doğrulama kodu</td>
+                                      <td style="padding:6px 0;font-size:14px;color:#1a1a2e;font-weight:600;">Geçici şifre ile giriş</td>
                                     </tr>
                                   </table>
                                 </td>
                               </tr>
                             </table>
 
+                            <p style="margin:0 0 12px;font-size:14px;color:#4a5568;">
+                              Geçici şifreniz SMS ile veya platform yöneticiniz tarafından paylaşılır.
+                              İlk girişten sonra şifrenizi değiştirmeniz istenir.
+                            </p>
                             <p style="margin:0;font-size:14px;color:#4a5568;">
-                              Herhangi bir sorunuz için platform yöneticisiyle iletişime geçebilirsiniz.
+                              Herhangi bir sorunuz için platform yöneticinizle iletişime geçebilirsiniz.
                             </p>
                           </td>
                         </tr>
