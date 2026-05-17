@@ -261,3 +261,14 @@ export function MealIcon() {
     </IconFrame>
   );
 }
+
+export function EventIcon() {
+  return (
+    <IconFrame>
+      <rect x="4" y="5" width="16" height="15" rx="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8 3.5v3M16 3.5v3M4 10h16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="9" cy="14.5" r="1.3" fill="currentColor" />
+      <circle cx="14" cy="14.5" r="1.3" fill="currentColor" opacity="0.85" />
+    </IconFrame>
+  );
+}

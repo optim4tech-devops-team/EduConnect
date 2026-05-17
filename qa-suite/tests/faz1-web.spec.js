@@ -261,6 +261,19 @@ test.describe('Faz 1 web ekran QA', () => {
     await page.getByRole('link', { name: 'Panel' }).click();
     await page.getByRole('link', { name: 'Yemek Takvimi' }).click();
     await expect(firstRow.locator('input').nth(0)).toHaveValue('Peynir ve zeytin');
+
+    const eventTitle = `QA Etkinlik ${unique}`;
+    await page.getByRole('link', { name: 'Etkinlikler' }).click();
+    await expect(page.getByRole('heading', { name: 'Etkinlik Programi' })).toBeVisible();
+    await page.getByRole('button', { name: 'Yeni Etkinlik' }).click();
+    await page.getByLabel('Etkinlik basligi').fill(eventTitle);
+    await page.getByLabel('Sinif').selectOption({ label: className });
+    await page.getByLabel('Etkinlik tipi').selectOption({ label: 'Etkinlik' });
+    await page.getByLabel('Gerekli malzemeler').fill('Parmak boyasi, yapistirici');
+    await page.getByLabel('Kiyafet notu').fill('Onluk giyilecek');
+    await page.getByLabel('Veliye gidecek bildirim metni').fill('Yarin etkinlik var, malzeme listesini kontrol edin.');
+    await page.getByRole('button', { name: 'Etkinligi Kaydet' }).click();
+    await expect(page.getByText(eventTitle)).toBeVisible();
   });
 });
 

@@ -251,6 +251,39 @@ export interface SaveMonthlyMealPlanPayload {
   days: MealPlanDayPayload[];
 }
 
+export interface CalendarEventDto {
+  id: string;
+  classId?: string;
+  className?: string;
+  title: string;
+  description?: string;
+  type: string;
+  category?: string;
+  startAt: string;
+  endAt?: string;
+  isAllDay: boolean;
+  isActive: boolean;
+  createdAt: string;
+  requiredMaterials?: string;
+  dressCodeNotes?: string;
+  parentNotificationText?: string;
+}
+
+export interface UpsertCalendarEventPayload {
+  classId?: string;
+  title: string;
+  eventType: string;
+  startAt: string;
+  endAt?: string;
+  isAllDay: boolean;
+  isActive: boolean;
+  description?: string;
+  category?: string;
+  requiredMaterials?: string;
+  dressCodeNotes?: string;
+  parentNotificationText?: string;
+}
+
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
 export type ApiSessionFailureReason = 'unauthorized' | 'forbidden' | 'network';
@@ -634,6 +667,38 @@ export const api = {
       {
         method: 'POST',
         body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  calendarEvents: (token: string, year?: number, month?: number, classId?: string, includeInactive?: boolean) =>
+    request<CalendarEventDto[]>(
+      `/calendar-events${buildQuery({ year, month, classId, includeInactive })}`,
+      {},
+      token,
+    ),
+  createCalendarEvent: (token: string, payload: UpsertCalendarEventPayload) =>
+    request<{ id: string }>(
+      '/calendar-events',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  updateCalendarEvent: (token: string, id: string, payload: UpsertCalendarEventPayload) =>
+    request<{ id: string }>(
+      `/calendar-events/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token,
+    ),
+  deleteCalendarEvent: (token: string, id: string) =>
+    request<void>(
+      `/calendar-events/${id}`,
+      {
+        method: 'DELETE',
       },
       token,
     ),
