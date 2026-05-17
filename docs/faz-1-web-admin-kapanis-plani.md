@@ -280,12 +280,27 @@ Faz 1 kapandi demek icin su maddeler isaretlenmis olmali:
 - [x] Web admin desktop ve mobil kirilimlarda kullanilabilir durumda.
 - [x] API Gateway canli ve frontend tarafindan kullaniliyor.
 - [x] Tum public domainlerde TLS dogru.
-- [ ] Landing workflow basarili.
-- [ ] Web admin workflow basarili.
-- [ ] Platform services workflow basarili.
-- [ ] Son Faz 1 commit'i `master` uzerinde ve production ortaminda dogrulanmis.
+- [x] Landing workflow basarili.
+- [x] Web admin workflow basarili.
+- [x] Platform services workflow basarili.
+- [x] Son Faz 1 commit'i `master` uzerinde ve production ortaminda dogrulanmis.
 
-Not: Bu listedeki son 4 madde GitHub Actions pipeline sonucu gerektirir. Kod ve lokal build tarafi tamamlandiktan sonra workflow kosumu ile isaretlenecektir.
+Kapanis kanitlari (2026-05-17):
+
+- Landing workflow (success): run `25974489970`  
+  https://github.com/optim4tech-devops-team/EduConnect/actions/runs/25974489970
+- Web admin workflow (success, Faz 1 son commit): run `25989798089`  
+  https://github.com/optim4tech-devops-team/EduConnect/actions/runs/25989798089
+- Platform services workflow (success, Faz 1 son commit): run `25989798093`  
+  https://github.com/optim4tech-devops-team/EduConnect/actions/runs/25989798093
+- Faz 1 son commit: `587100bb7893b59eb08b89ad21987f80bf2467b0` (`master`)
+- Canli endpoint dogrulamasi:
+  - `https://notioedu.com` -> 200
+  - `https://www.notioedu.com` -> 200
+  - `https://platform.notioedu.com` -> 200
+  - `https://platform.notioedu.com/healthz` -> 200
+  - `https://apigw.notioedu.com/healthz` -> 200
+  - TLS cert (platform): `CN=notioedu.com`, issuer `Let's Encrypt R13`, valid `2026-05-16` -> `2026-08-14`
 
 ## 8. Sonraki uygulama sirasi
 
