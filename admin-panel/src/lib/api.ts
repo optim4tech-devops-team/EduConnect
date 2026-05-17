@@ -269,6 +269,45 @@ export interface CalendarEventDto {
   parentNotificationText?: string;
 }
 
+export interface AttendanceSummaryByClassDto {
+  classId: string;
+  className: string;
+  totalRecords: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  excusedCount: number;
+  attendanceRate: number;
+}
+
+export interface AttendanceSummaryDto {
+  year: number;
+  month: number;
+  totalStudents: number;
+  uniqueStudentsWithAttendance: number;
+  totalRecords: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  excusedCount: number;
+  byClass: AttendanceSummaryByClassDto[];
+}
+
+export interface ExternalAnnouncementDto {
+  title: string;
+  url: string;
+  publishedAt?: string;
+  source: string;
+}
+
+export interface ExternalAnnouncementsResponseDto {
+  source: string;
+  sourceUrl: string;
+  fetchedAt: string;
+  isFallback: boolean;
+  items: ExternalAnnouncementDto[];
+}
+
 export interface UpsertCalendarEventPayload {
   classId?: string;
   title: string;
@@ -700,6 +739,18 @@ export const api = {
       {
         method: 'DELETE',
       },
+      token,
+    ),
+  attendanceSummary: (token: string, year?: number, month?: number, classId?: string) =>
+    request<AttendanceSummaryDto>(
+      `/attendance/summary${buildQuery({ year, month, classId })}`,
+      {},
+      token,
+    ),
+  externalAnnouncements: (token: string, limit = 6) =>
+    request<ExternalAnnouncementsResponseDto>(
+      `/panel/external-announcements${buildQuery({ limit })}`,
+      {},
       token,
     ),
 };

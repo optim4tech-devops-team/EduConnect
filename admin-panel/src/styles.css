@@ -836,7 +836,18 @@ textarea {
   align-items: start;
   padding: 18px;
   border-radius: 20px;
+  border: 1px solid transparent;
   background: var(--surface-soft);
+}
+
+a.insight-item {
+  text-decoration: none;
+  color: inherit;
+}
+
+a.insight-item:hover {
+  border-color: rgba(19, 76, 58, 0.18);
+  background: rgba(19, 76, 58, 0.08);
 }
 
 .insight-item span {

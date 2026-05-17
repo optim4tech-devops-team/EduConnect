@@ -244,6 +244,8 @@ test.describe('Faz 1 web ekran QA', () => {
     await expect(page.getByRole('heading', { name: 'Okul Raporlari' })).toBeVisible();
     await expect(page.getByText('Saglik bloklari')).toBeVisible();
     await expect(page.getByText('Eksik kayitlar')).toBeVisible();
+    await expect(page.getByText('Aylik yoklama ozeti')).toBeVisible();
+    await expect(page.getByText('Iletisim kapsami')).toBeVisible();
     await expect(page.getByText(studentName)).toBeVisible();
 
     await page.getByRole('link', { name: 'Yemek Takvimi' }).click();

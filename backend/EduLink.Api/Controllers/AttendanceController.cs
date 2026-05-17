@@ -183,6 +183,131 @@ public class AttendanceController : ControllerBase
         return Ok(records);
     }
 
+    // GET /api/attendance/summary?year=&month=&classId=
+    [HttpGet("summary")]
+    [Authorize(Roles = "SchoolAdmin")]
+    public async Task<IActionResult> GetSchoolAttendanceSummary(
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        [FromQuery] Guid? classId)
+    {
+        var schoolId = GetSchoolId();
+        if (schoolId == Guid.Empty)
+            return Unauthorized();
+
+        var now = DateTime.UtcNow;
+        var selectedYear = year ?? now.Year;
+        var selectedMonth = month ?? now.Month;
+
+        if (selectedYear < 2000 || selectedYear > 2100)
+            return BadRequest(new { message = "Gecerli bir yil secmelisin." });
+
+        if (selectedMonth < 1 || selectedMonth > 12)
+            return BadRequest(new { message = "Gecerli bir ay secmelisin." });
+
+        var classesQuery = _db.Classes
+            .AsNoTracking()
+            .Where(c => c.SchoolId == schoolId);
+
+        if (classId.HasValue)
+        {
+            classesQuery = classesQuery.Where(c => c.Id == classId.Value);
+        }
+
+        var classes = await classesQuery
+            .Select(c => new { c.Id, c.Name })
+            .ToListAsync();
+
+        if (classId.HasValue && classes.Count == 0)
+        {
+            return BadRequest(new { message = "Secilen sinif bu okula ait degil." });
+        }
+
+        var classIds = classes.Select(c => c.Id).ToList();
+        if (classIds.Count == 0)
+        {
+            return Ok(new
+            {
+                year = selectedYear,
+                month = selectedMonth,
+                totalStudents = 0,
+                uniqueStudentsWithAttendance = 0,
+                totalRecords = 0,
+                presentCount = 0,
+                absentCount = 0,
+                lateCount = 0,
+                excusedCount = 0,
+                byClass = Array.Empty<object>()
+            });
+        }
+
+        var firstDay = new DateOnly(selectedYear, selectedMonth, 1);
+        var nextMonth = firstDay.AddMonths(1);
+
+        var attendanceRows = await _db.Attendances
+            .AsNoTracking()
+            .Where(a =>
+                classIds.Contains(a.ClassId) &&
+                a.Date >= firstDay &&
+                a.Date < nextMonth)
+            .Select(a => new
+            {
+                a.ClassId,
+                a.StudentId,
+                a.Status
+            })
+            .ToListAsync();
+
+        var studentCount = await _db.Students
+            .AsNoTracking()
+            .Where(s => classIds.Contains(s.ClassId) && s.IsActive)
+            .CountAsync();
+
+        var presentCount = attendanceRows.Count(a => a.Status == AttendanceStatus.Present);
+        var absentCount = attendanceRows.Count(a => a.Status == AttendanceStatus.Absent);
+        var lateCount = attendanceRows.Count(a => a.Status == AttendanceStatus.Late);
+        var excusedCount = attendanceRows.Count(a => a.Status == AttendanceStatus.Excused);
+
+        var byClass = classes.Select(cls =>
+        {
+            var rows = attendanceRows.Where(item => item.ClassId == cls.Id).ToList();
+            var classPresent = rows.Count(item => item.Status == AttendanceStatus.Present);
+            var classAbsent = rows.Count(item => item.Status == AttendanceStatus.Absent);
+            var classLate = rows.Count(item => item.Status == AttendanceStatus.Late);
+            var classExcused = rows.Count(item => item.Status == AttendanceStatus.Excused);
+            var total = rows.Count;
+            var attendanceRate = total == 0
+                ? 0
+                : Math.Round((double)classPresent / total * 100, 1);
+
+            return new
+            {
+                classId = cls.Id,
+                className = cls.Name,
+                totalRecords = total,
+                presentCount = classPresent,
+                absentCount = classAbsent,
+                lateCount = classLate,
+                excusedCount = classExcused,
+                attendanceRate
+            };
+        });
+
+        return Ok(new
+        {
+            year = selectedYear,
+            month = selectedMonth,
+            totalStudents = studentCount,
+            uniqueStudentsWithAttendance = attendanceRows.Select(row => row.StudentId).Distinct().Count(),
+            totalRecords = attendanceRows.Count,
+            presentCount,
+            absentCount,
+            lateCount,
+            excusedCount,
+            byClass
+        });
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private Guid GetUserId()   => HttpContext.Items["UserId"]   is Guid g ? g             : Guid.Empty;

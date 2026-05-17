@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, type AdminStatsDto, type ClassDto } from '../lib/api';
+import { api, type AdminStatsDto, type ClassDto, type ExternalAnnouncementsResponseDto } from '../lib/api';
 
 interface DashboardPageProps {
   token: string;
@@ -16,6 +16,7 @@ const EMPTY_STATS: AdminStatsDto = {
 export default function DashboardPage({ token }: DashboardPageProps) {
   const [stats, setStats] = useState<AdminStatsDto>(EMPTY_STATS);
   const [classes, setClasses] = useState<ClassDto[]>([]);
+  const [externalAnnouncements, setExternalAnnouncements] = useState<ExternalAnnouncementsResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,13 +25,21 @@ export default function DashboardPage({ token }: DashboardPageProps) {
     async function load() {
       setLoading(true);
       try {
-        const [statsData, classesData] = await Promise.all([
+        const [statsData, classesData, announcementsData] = await Promise.all([
           api.stats(token),
           api.classes(token),
+          api.externalAnnouncements(token, 6),
         ]);
         if (!cancelled) {
           setStats(statsData);
           setClasses(classesData);
+          setExternalAnnouncements(announcementsData);
+        }
+      } catch {
+        if (!cancelled) {
+          setStats(EMPTY_STATS);
+          setClasses([]);
+          setExternalAnnouncements(null);
         }
       } finally {
         if (!cancelled) {
@@ -156,6 +165,47 @@ export default function DashboardPage({ token }: DashboardPageProps) {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="panel-card full-span">
+          <div className="panel-card-header">
+            <div>
+              <div className="section-eyebrow">Dis duyurular</div>
+              <h3>MEB duyurulari</h3>
+              <p className="panel-copy compact-copy">
+                Okul muduru icin resmi duyuru akisini panelde tek noktadan takip etmeyi kolaylastirir.
+              </p>
+            </div>
+            <span className="soft-pill">
+              {externalAnnouncements?.isFallback ? 'Gecici fallback' : 'Canli kaynak'}
+            </span>
+          </div>
+
+          {externalAnnouncements?.items?.length ? (
+            <div className="insight-list">
+              {externalAnnouncements.items.map((item, index) => (
+                <a
+                  key={`${item.title}-${index}`}
+                  className="insight-item"
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span>{index + 1 < 10 ? `0${index + 1}` : index + 1}</span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>
+                      {item.publishedAt
+                        ? `${new Date(item.publishedAt).toLocaleDateString('tr-TR')} · ${item.source}`
+                        : item.source}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="panel-copy">Duyuru akisi henuz bulunamadi.</p>
+          )}
         </div>
       </section>
     </div>

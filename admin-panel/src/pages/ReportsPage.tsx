@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, type AdminStatsDto, type ClassDto, type ParentDto, type PlatformSchoolDto, type StudentDto, type TeacherDto } from '../lib/api';
+import {
+  api,
+  type AdminStatsDto,
+  type AttendanceSummaryDto,
+  type ClassDto,
+  type ParentDto,
+  type PlatformSchoolDto,
+  type StudentDto,
+  type TeacherDto,
+} from '../lib/api';
 
 interface ReportsPageProps {
   mode: 'platform' | 'school';
@@ -21,6 +30,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
   const [schoolTeachers, setSchoolTeachers] = useState<TeacherDto[]>([]);
   const [schoolStudents, setSchoolStudents] = useState<StudentDto[]>([]);
   const [schoolParents, setSchoolParents] = useState<ParentDto[]>([]);
+  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummaryDto | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,12 +45,13 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
           return;
         }
 
-        const [stats, classes, teachers, students, parents] = await Promise.all([
+        const [stats, classes, teachers, students, parents, attendance] = await Promise.all([
           api.stats(token),
           api.classes(token),
           api.teachers(token),
           api.students(token),
           api.parents(token),
+          api.attendanceSummary(token),
         ]);
 
         if (!cancelled) {
@@ -49,6 +60,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
           setSchoolTeachers(teachers);
           setSchoolStudents(students);
           setSchoolParents(parents);
+          setAttendanceSummary(attendance);
         }
       } catch {
         if (!cancelled) {
@@ -57,6 +69,7 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
           setSchoolTeachers([]);
           setSchoolStudents([]);
           setSchoolParents([]);
+          setAttendanceSummary(null);
         }
       }
     }
@@ -99,6 +112,15 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
       !student.medicationNotes?.trim() &&
       !student.healthNotes?.trim(),
     );
+    const parentsMissingPhone = schoolParents.filter((parent) => !parent.phone?.trim());
+    const parentsMissingEmail = schoolParents.filter((parent) => !parent.email?.trim());
+    const parentStudentLinks = schoolParents.reduce((sum, parent) => sum + parent.students.length, 0);
+    const studentsWithPrimaryContact = new Set(
+      schoolParents.flatMap((parent) => parent.students
+        .filter((student) => student.isPrimaryContact)
+        .map((student) => student.studentId)),
+    );
+    const studentsWithoutPrimaryContact = schoolStudents.filter((student) => !studentsWithPrimaryContact.has(student.id));
 
     return {
       classesWithoutTeacher,
@@ -113,6 +135,10 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
       studentsMissingBirthDate,
       studentsMissingGender,
       studentsMissingHealthInfo,
+      parentsMissingPhone,
+      parentsMissingEmail,
+      parentStudentLinks,
+      studentsWithoutPrimaryContact,
     };
   }, [schoolClasses, schoolParents, schoolTeachers, schoolStudents]);
 
@@ -303,6 +329,82 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
         </div>
       </section>
 
+      <section className="panel-card">
+        <div className="panel-card-header">
+          <div>
+            <div className="section-eyebrow">Devamsizlik raporu</div>
+            <h3>Aylik yoklama ozeti</h3>
+          </div>
+        </div>
+        {attendanceSummary ? (
+          <div className="insight-list">
+            <div className="insight-item">
+              <span>01</span>
+              <div>
+                <strong>Toplam yoklama kaydi</strong>
+                <p>{attendanceSummary.totalRecords} kayit, {attendanceSummary.uniqueStudentsWithAttendance} ogrenciyi kapsiyor.</p>
+              </div>
+            </div>
+            <div className="insight-item">
+              <span>02</span>
+              <div>
+                <strong>Devamsiz ogrenci sinyali</strong>
+                <p>
+                  {attendanceSummary.absentCount} devamsiz, {attendanceSummary.lateCount} gec, {attendanceSummary.excusedCount} mazeretli kayit bulunuyor.
+                </p>
+              </div>
+            </div>
+            <div className="insight-item">
+              <span>03</span>
+              <div>
+                <strong>Devam orani</strong>
+                <p>
+                  {attendanceSummary.totalRecords > 0
+                    ? `%${Math.round((attendanceSummary.presentCount / attendanceSummary.totalRecords) * 1000) / 10}`
+                    : '%0'} (mevcut kayitlar icinde)
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="panel-copy">Yoklama verisi henuz olusmadi.</p>
+        )}
+      </section>
+
+      <section className="panel-card">
+        <div className="panel-card-header">
+          <div>
+            <div className="section-eyebrow">Veli iletisim raporu</div>
+            <h3>Iletisim kapsami</h3>
+          </div>
+        </div>
+        <div className="insight-list">
+          <div className="insight-item">
+            <span>01</span>
+            <div>
+              <strong>Toplam veli baglantisi</strong>
+              <p>{schoolSummary.parentStudentLinks} veli-ogrenci baglantisi aktif durumda.</p>
+            </div>
+          </div>
+          <div className="insight-item">
+            <span>02</span>
+            <div>
+              <strong>Birincil iletisim eksigi</strong>
+              <p>{schoolSummary.studentsWithoutPrimaryContact.length} ogrencide birincil veli iletisim kaydi eksik.</p>
+            </div>
+          </div>
+          <div className="insight-item">
+            <span>03</span>
+            <div>
+              <strong>Iletisim bilgisi eksik veliler</strong>
+              <p>
+                Telefonu eksik {schoolSummary.parentsMissingPhone.length}, e-postasi eksik {schoolSummary.parentsMissingEmail.length} veli var.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="panel-card full-span">
         <div className="panel-card-header">
           <div>
@@ -343,6 +445,51 @@ export default function ReportsPage({ mode, token }: ReportsPageProps) {
             En kalabalik sinif: {schoolSummary.topClass.name} ({schoolSummary.topClass.studentCount} ogrenci)
           </p>
         ) : null}
+      </section>
+
+      <section className="panel-card full-span">
+        <div className="panel-card-header">
+          <div>
+            <div className="section-eyebrow">Devamsizlik dagilimi</div>
+            <h3>Sinif bazli yoklama gorunumu</h3>
+          </div>
+        </div>
+        <div className="table-shell">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Sinif</th>
+                <th>Toplam kayit</th>
+                <th>Devam</th>
+                <th>Devamsiz</th>
+                <th>Gec</th>
+                <th>Mazeretli</th>
+                <th>Devam orani</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(attendanceSummary?.byClass || [])
+                .slice()
+                .sort((left, right) => right.totalRecords - left.totalRecords)
+                .map((item) => (
+                  <tr key={item.classId}>
+                    <td>{item.className}</td>
+                    <td>{item.totalRecords}</td>
+                    <td>{item.presentCount}</td>
+                    <td>{item.absentCount}</td>
+                    <td>{item.lateCount}</td>
+                    <td>{item.excusedCount}</td>
+                    <td>%{item.attendanceRate}</td>
+                  </tr>
+                ))}
+              {!(attendanceSummary?.byClass?.length) ? (
+                <tr>
+                  <td colSpan={7} className="empty-cell">Secilen ay icin yoklama kaydi bulunamadi.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="panel-card full-span">

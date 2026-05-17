@@ -40,13 +40,15 @@ Tamamlanan ana parcala:
 - Public TLS sertifika kapsami `notioedu.com`, `www`, `platform`, `apigw`, `k8s`, `registry` domainlerini kapsayacak sekilde toparlandi.
 - Login hata mesajlarinda raw HTML / nginx 503 gostermeme duzeltmesi yapildi.
 
-Devam eden uncommitted is paketi:
+Bugun tamamlanan paketler:
 
-- Landing demo formunun `api/demo-requests` endpoint'ine API Gateway uzerinden baglanmasi.
-- Demo talebi icin gateway ve backend rate limit katmani.
-- Demo talebi icin honeypot, tekrar telefon kontrolu ve temiz hata mesaji.
-- Okul yoneticisi gecici sifre davranisinin platform admin tarafinda netlestirilmesi.
-- `PlatformAdmin` rolunun platform okul endpointlerine erisim uyumunun netlestirilmesi.
+- Landing demo formu API Gateway uzerinden `POST /api/demo-requests` gonderiyor.
+- Demo talebi koruma katmani aktif: honeypot, gateway + backend rate limit, tekrar telefon kontrolu.
+- Okul yoneticisi gecici sifre + ilk giriste zorunlu sifre degistirme akisi aktif.
+- Platform okul CRUD + okul yoneticisi atama akisi gecici sifre donusu ile aktif.
+- School admin panelinde aylik yemek takvimi ve etkinlik programi canli endpointlere baglandi.
+- Raporlar ekraninda saglik + eksik kayit bloklarina ek olarak devamsizlik ve veli iletisim bloklari eklendi.
+- Dashboard icin dis duyuru akisi eklendi: `GET /api/panel/external-announcements` (cache + fallback).
 
 ## 4. P0 kapanis maddeleri
 
@@ -221,6 +223,7 @@ Bu maddeler Faz 1 kalitesini artirir. P0 kapanmadan once kritik kisimlari tamaml
 - Eksik kayit raporu: fotograf, veli baglantisi, cinsiyet, saglik bilgisi eksik kayitlar.
 - Devamsizlik raporu: backend veri modeli hazirsa okul ve sinif bazli ozet.
 - Veli iletisim raporu: bagli veli sayisi, birincil iletisim, eksik telefon/e-posta.
+- Durum (2026-05-17): tamamlandi. `admin-panel` rapor ekrani backend `attendance/summary` ve mevcut veli/ogrenci verileriyle bu bloklari canli hesapliyor.
 
 ### 5.3 Toplu ogrenci import
 
@@ -242,6 +245,7 @@ Bu maddeler Faz 1 kalitesini artirir. P0 kapanmadan once kritik kisimlari tamaml
 - Okul yoneticisi etkinlik, gereken malzeme, kiyafet, hedef sinif ve tarih bilgisi girebilmeli.
 - Mobil tarafta veliye "yarin etkinlik var" push'u atilabilecek veri yapisi hazirlanmali.
 - Tekrarlayan etkinlik ve sinif bazli etkinlik ayrimi netlesmeli.
+- Durum (2026-05-17): tamamlandi. `calendar-events` CRUD endpointleri ve school admin panel formu aktif.
 
 ### 5.6 Panel duyurulari
 
@@ -249,6 +253,7 @@ Bu maddeler Faz 1 kalitesini artirir. P0 kapanmadan once kritik kisimlari tamaml
 - Ilk adimda DB'ye kaydetmeden gateway/backend uzerinden okunabilir.
 - Scrape/curl tabanli cozumde timeout, cache ve hata durumlari net olmali.
 - Kaynak erisilemezse panel bozulmamali.
+- Durum (2026-05-17): tamamlandi. `panel/external-announcements` endpointi timeout + cache + graceful fallback ile eklendi; school dashboard widget bu endpointi kullaniyor.
 
 ## 6. Faz 1 disinda kalacaklar
 
@@ -265,20 +270,22 @@ Bu maddeler Faz 1 kapandiktan sonra ele alinacak:
 
 Faz 1 kapandi demek icin su maddeler isaretlenmis olmali:
 
-- [ ] Landing demo formu API Gateway uzerinden kayit olusturuyor.
-- [ ] Demo talepleri platform admin panelinde gorunuyor.
-- [ ] Demo endpoint rate limit, honeypot ve tekrar telefon kontrolu ile korunuyor.
-- [ ] Platform admin okul CRUD ve yonetici atama akisini tamamliyor.
-- [ ] Okul yoneticisi gecici sifre ile girip sifre degistirebiliyor.
-- [ ] Okul yoneticisi sinif, ogretmen, ogrenci ve veli akisini tamamliyor.
-- [ ] Ogrenci saglik alanlari raporlara yansiyor.
-- [ ] Web admin desktop ve mobil kirilimlarda kullanilabilir durumda.
-- [ ] API Gateway canli ve frontend tarafindan kullaniliyor.
-- [ ] Tum public domainlerde TLS dogru.
+- [x] Landing demo formu API Gateway uzerinden kayit olusturuyor.
+- [x] Demo talepleri platform admin panelinde gorunuyor.
+- [x] Demo endpoint rate limit, honeypot ve tekrar telefon kontrolu ile korunuyor.
+- [x] Platform admin okul CRUD ve yonetici atama akisini tamamliyor.
+- [x] Okul yoneticisi gecici sifre ile girip sifre degistirebiliyor.
+- [x] Okul yoneticisi sinif, ogretmen, ogrenci ve veli akisini tamamliyor.
+- [x] Ogrenci saglik alanlari raporlara yansiyor.
+- [x] Web admin desktop ve mobil kirilimlarda kullanilabilir durumda.
+- [x] API Gateway canli ve frontend tarafindan kullaniliyor.
+- [x] Tum public domainlerde TLS dogru.
 - [ ] Landing workflow basarili.
 - [ ] Web admin workflow basarili.
 - [ ] Platform services workflow basarili.
 - [ ] Son Faz 1 commit'i `master` uzerinde ve production ortaminda dogrulanmis.
+
+Not: Bu listedeki son 4 madde GitHub Actions pipeline sonucu gerektirir. Kod ve lokal build tarafi tamamlandiktan sonra workflow kosumu ile isaretlenecektir.
 
 ## 8. Sonraki uygulama sirasi
 
