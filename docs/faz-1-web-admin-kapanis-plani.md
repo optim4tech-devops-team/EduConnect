@@ -235,6 +235,7 @@ Bu maddeler Faz 1 kalitesini artirir. P0 kapanmadan once kritik kisimlari tamaml
 - Kahvalti, ogle yemegi, ara ogun alanlari kolay girilebilir olmali.
 - Bos gunler desteklenmeli.
 - Mobil tarafta veliye okunabilir aylik takvim olarak servis edilecek veri kontrati net olmali.
+- Durum (2026-05-17): `admin-panel` icinde `Yemek Takvimi` menusu eklendi ve `/api/meal-plans` + `/api/meal-plans/monthly` endpointleriyle canli baglanti kuruldu.
 
 ### 5.5 Aylik program ve etkinlik takvimi
 

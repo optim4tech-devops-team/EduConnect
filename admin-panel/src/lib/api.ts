@@ -224,6 +224,33 @@ export interface DemoRequestDto {
   createdAt: string;
 }
 
+export interface MealPlanEntryDto {
+  id: string;
+  date: string;
+  classId?: string;
+  breakfast?: string;
+  lunch?: string;
+  snack?: string;
+  allergens?: string;
+  notes?: string;
+}
+
+export interface MealPlanDayPayload {
+  day: number;
+  breakfast?: string;
+  lunch?: string;
+  snack?: string;
+  allergens?: string;
+  notes?: string;
+}
+
+export interface SaveMonthlyMealPlanPayload {
+  year: number;
+  month: number;
+  classId?: string;
+  days: MealPlanDayPayload[];
+}
+
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
 export type ApiSessionFailureReason = 'unauthorized' | 'forbidden' | 'network';
@@ -592,6 +619,21 @@ export const api = {
       {
         method: 'PATCH',
         body: JSON.stringify({ status, notes }),
+      },
+      token,
+    ),
+  mealPlan: (token: string, year: number, month: number, classId?: string) =>
+    request<MealPlanEntryDto[]>(
+      `/meal-plans${buildQuery({ year, month, classId })}`,
+      {},
+      token,
+    ),
+  saveMonthlyMealPlan: (token: string, payload: SaveMonthlyMealPlanPayload) =>
+    request<{ message: string }>(
+      '/meal-plans/monthly',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
       },
       token,
     ),

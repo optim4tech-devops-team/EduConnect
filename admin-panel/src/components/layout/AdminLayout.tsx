@@ -245,3 +245,19 @@ export function InboxIcon() {
     </IconFrame>
   );
 }
+
+export function MealIcon() {
+  return (
+    <IconFrame>
+      <path
+        d="M7 4v7M10 4v7M7 7h3M16.5 4.5c1.8 1.8 1.8 4.7 0 6.5L14 13.5M12 20h8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M14 13.5 12 16.2V20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </IconFrame>
+  );
+}

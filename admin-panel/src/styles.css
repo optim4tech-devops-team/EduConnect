@@ -855,6 +855,27 @@ textarea {
   margin-bottom: 8px;
 }
 
+.meal-plan-filter-grid {
+  margin-bottom: 18px;
+  align-items: end;
+}
+
+.meal-plan-table td input {
+  width: 100%;
+  min-width: 140px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.meal-plan-table td:first-child {
+  font-weight: 700;
+  color: var(--primary);
+}
+
 @media (max-width: 1100px) {
   .login-panel,
   .content-grid,
@@ -908,6 +929,10 @@ textarea {
 
   .avatar-preview-card {
     grid-template-columns: 1fr;
+  }
+
+  .meal-plan-filter-grid {
+    gap: 12px;
   }
 }
 

@@ -12,7 +12,8 @@ import PlatformDashboardPage from './pages/PlatformDashboardPage';
 import PlatformSchoolsPage from './pages/PlatformSchoolsPage';
 import ReportsPage from './pages/ReportsPage';
 import DemoRequestsPage from './pages/DemoRequestsPage';
-import { ChartIcon, ClassIcon, HeartIcon, InboxIcon, PanelIcon, StudentIcon, TeacherIcon } from './components/layout/AdminLayout';
+import MealPlanPage from './pages/MealPlanPage';
+import { ChartIcon, ClassIcon, HeartIcon, InboxIcon, MealIcon, PanelIcon, StudentIcon, TeacherIcon } from './components/layout/AdminLayout';
 
 interface AuthContextValue {
   session: UserSession | null;
@@ -183,6 +184,7 @@ function ProtectedRoutes() {
     { to: '/teachers', label: 'Öğretmenler', icon: <TeacherIcon /> },
     { to: '/students', label: 'Öğrenciler', icon: <StudentIcon /> },
     { to: '/parents', label: 'Veliler', icon: <HeartIcon /> },
+    { to: '/meal-plans', label: 'Yemek Takvimi', icon: <MealIcon /> },
     { to: '/reports', label: 'Raporlar', icon: <ChartIcon /> },
   ];
 
@@ -192,6 +194,7 @@ function ProtectedRoutes() {
     '/teachers': 'Öğretmen Yönetimi',
     '/students': 'Öğrenci Yönetimi',
     '/parents': 'Veli Yönetimi',
+    '/meal-plans': 'Yemek Takvimi',
     '/reports': 'Okul Raporlari',
   };
 
@@ -214,6 +217,7 @@ function ProtectedRoutes() {
         <Route path="/teachers" element={<TeachersPage token={session.accessToken} />} />
         <Route path="/students" element={<StudentsPage token={session.accessToken} />} />
         <Route path="/parents" element={<ParentsPage token={session.accessToken} />} />
+        <Route path="/meal-plans" element={<MealPlanPage token={session.accessToken} />} />
         <Route path="/reports" element={<ReportsPage mode="school" token={session.accessToken} />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

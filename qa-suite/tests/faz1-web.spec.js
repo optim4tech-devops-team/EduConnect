@@ -245,6 +245,22 @@ test.describe('Faz 1 web ekran QA', () => {
     await expect(page.getByText('Saglik bloklari')).toBeVisible();
     await expect(page.getByText('Eksik kayitlar')).toBeVisible();
     await expect(page.getByText(studentName)).toBeVisible();
+
+    await page.getByRole('link', { name: 'Yemek Takvimi' }).click();
+    await expect(page.getByRole('heading', { name: 'Aylik Yemek Takvimi' })).toBeVisible();
+
+    const firstRow = page.locator('.meal-plan-table tbody tr').first();
+    await firstRow.locator('input').nth(0).fill('Peynir ve zeytin');
+    await firstRow.locator('input').nth(1).fill('Corba ve pilav');
+    await firstRow.locator('input').nth(2).fill('Meyve');
+    await firstRow.locator('input').nth(3).fill('Sut urunu');
+    await firstRow.locator('input').nth(4).fill('Alerjen listesi veli ile paylasildi.');
+    await page.getByRole('button', { name: 'Takvimi Kaydet' }).click();
+    await expect(page.getByText('Aylik yemek takvimi kaydedildi.')).toBeVisible();
+
+    await page.getByRole('link', { name: 'Panel' }).click();
+    await page.getByRole('link', { name: 'Yemek Takvimi' }).click();
+    await expect(firstRow.locator('input').nth(0)).toHaveValue('Peynir ve zeytin');
   });
 });
 
