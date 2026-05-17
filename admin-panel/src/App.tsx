@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AdminLayout from './components/layout/AdminLayout';
 import { api, onApiSessionFailure, sessionStorageKey, type ApiSessionFailureReason, type UserSession } from './lib/api';
@@ -17,6 +17,7 @@ import { ChartIcon, ClassIcon, HeartIcon, InboxIcon, PanelIcon, StudentIcon, Tea
 interface AuthContextValue {
   session: UserSession | null;
   login: (email: string, password: string) => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -76,6 +77,20 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         schoolId: result.schoolId,
         avatarUrl: result.avatarUrl,
         phone: result.phone,
+        mustChangePassword: result.mustChangePassword,
+      };
+      window.localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
+      setSession(nextSession);
+    },
+    changePassword: async (newPassword: string) => {
+      if (!session) {
+        throw new Error('Oturum bulunamadi.');
+      }
+
+      await api.changePassword(session.accessToken, newPassword);
+      const nextSession: UserSession = {
+        ...session,
+        mustChangePassword: false,
       };
       window.localStorage.setItem(sessionStorageKey, JSON.stringify(nextSession));
       setSession(nextSession);
@@ -90,10 +105,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoutes() {
-  const { session, logout } = useAuth();
+  const { session, changePassword, logout } = useAuth();
 
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (session.mustChangePassword) {
+    return <RequiredPasswordChangePage session={session} onChangePassword={changePassword} onLogout={logout} />;
   }
 
   if (session.role === 'Admin' || session.role === 'PlatformAdmin') {
@@ -199,6 +218,114 @@ function ProtectedRoutes() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+  );
+}
+
+function RequiredPasswordChangePage({
+  session,
+  onChangePassword,
+  onLogout,
+}: {
+  session: UserSession;
+  onChangePassword: (newPassword: string) => Promise<void>;
+  onLogout: () => void;
+}) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const canSubmit = newPassword.length >= 6 && newPassword === confirmPassword && !loading;
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+
+    if (newPassword.length < 6) {
+      setError('Yeni şifre en az 6 karakter olmalıdır.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Şifreler eşleşmiyor.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onChangePassword(newPassword);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Şifre güncellenemedi.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-shell">
+      <div className="login-orb login-orb-top" />
+      <div className="login-orb login-orb-bottom" />
+
+      <div className="login-panel login-panel-compact">
+        <section className="login-hero password-hero">
+          <div className="hero-mark">
+            <img src="/notio-bird-mark.png" alt="Notio" />
+          </div>
+          <div className="hero-copy">
+            <div className="hero-title">Notio</div>
+            <p className="hero-subtitle">İlk giriş güvenliği.</p>
+            <div className="hero-chip">{session.fullName} için geçici şifreyi yenileyin.</div>
+          </div>
+        </section>
+
+        <form className="login-card" onSubmit={handleSubmit}>
+          <div className="card-kicker">Güvenlik adımı</div>
+          <h1>İlk giriş şifreni yenile</h1>
+          <p>
+            Okul yöneticisi hesabı geçici şifreyle oluşturuldu. Panele devam etmek için yalnızca
+            sizin bildiğiniz yeni bir şifre belirleyin.
+          </p>
+
+          <label className="field">
+            <span>Yeni şifre</span>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              placeholder="En az 6 karakter"
+              autoComplete="new-password"
+              data-testid="new-password"
+            />
+          </label>
+
+          <label className="field">
+            <span>Yeni şifre tekrar</span>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="Şifreyi tekrar yazın"
+              autoComplete="new-password"
+              data-testid="confirm-password"
+            />
+          </label>
+
+          {error ? <div className="error-banner">{error}</div> : null}
+
+          <button className="primary-button" type="submit" disabled={!canSubmit}>
+            {loading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
+          </button>
+
+          <button className="ghost-button button-link" type="button" onClick={onLogout}>
+            Farklı hesapla giriş yap
+          </button>
+
+          <div className="login-note">
+            Bu adım tamamlanmadan okul paneli, öğrenci, veli ve rapor ekranları açılmaz.
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 

@@ -190,6 +190,7 @@ Kabul kriterleri:
 - Landing workflow sadece `github-k8s-runner` runner label'i ile calisir.
 - Web admin workflow sadece `github-k8s-runner` runner label'i ile calisir.
 - Platform services workflow API ve gateway image'larini build edip registry'ye pushlar.
+- `qa-faz1-web` workflow'u `QA_PLATFORM_ADMIN_EMAIL` ve `QA_PLATFORM_ADMIN_PASSWORD` secret'lari olmadan baslamaz.
 - Kubernetes rollout action icinde yapilir.
 - Action sonunda rollout status veya health check basarisizsa job fail olur.
 - Registry credential ve kubeconfig secret olarak kullanilir.
@@ -200,6 +201,7 @@ Test:
 - Web admin workflow basarili.
 - Platform services workflow basarili.
 - Certificate workflow basarili.
+- `QA Faz 1 Web Screens` workflow basarili.
 - Canli domainlerde TLS ve health check dogrulanir.
 
 ## 5. P1 Faz 1 guclendirme maddeleri

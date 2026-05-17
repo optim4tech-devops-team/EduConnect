@@ -71,6 +71,11 @@ textarea {
   align-items: stretch;
 }
 
+.login-panel-compact {
+  width: min(980px, 100%);
+  grid-template-columns: 0.85fr 1fr;
+}
+
 .login-hero,
 .login-card,
 .brand-card,
@@ -92,6 +97,10 @@ textarea {
   flex-direction: column;
   justify-content: center;
   min-height: 620px;
+}
+
+.password-hero {
+  min-height: 520px;
 }
 
 .hero-mark {
@@ -241,6 +250,13 @@ textarea {
 .primary-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.login-card .ghost-button {
+  margin-top: 12px;
+  min-height: 52px;
+  border: 1px solid var(--line);
+  background: #fff;
 }
 
 .ghost-button {
@@ -849,6 +865,10 @@ textarea {
 
   .login-hero {
     min-height: auto;
+  }
+
+  .password-hero {
+    display: none;
   }
 
   .admin-sidebar {

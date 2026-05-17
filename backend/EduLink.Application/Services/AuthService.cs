@@ -298,7 +298,8 @@ public class AuthService
             AvatarUrl: user.AvatarUrl,
             SchoolId: user.SchoolId,
             Email: user.Email,
-            Phone: user.Phone
+            Phone: user.Phone,
+            MustChangePassword: user.MustChangePassword
         );
     }
 

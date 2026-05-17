@@ -23,6 +23,7 @@ export interface UserSession {
   schoolId: string;
   avatarUrl?: string;
   phone?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface AdminStatsDto {
@@ -339,6 +340,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
+  changePassword: (token: string, newPassword: string) =>
+    request<void>(
+      '/auth/change-password',
+      {
+        method: 'POST',
+        body: JSON.stringify({ newPassword }),
+      },
+      token,
+    ),
   stats: (token: string) => request<AdminStatsDto>('/admin/stats', {}, token),
   classes: (token: string) => request<ClassDto[]>('/classes', {}, token),
   createClass: (token: string, payload: CreateClassPayload) =>

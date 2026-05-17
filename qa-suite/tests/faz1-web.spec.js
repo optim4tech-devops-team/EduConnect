@@ -157,6 +157,13 @@ test.describe('Faz 1 web ekran QA', () => {
     const schoolName = `QA Faz 1 Okulu ${unique}`;
     const adminEmail = `qa-school-admin-${unique}@notio.test`;
     const adminPhone = makePhone(unique, 3000);
+    const className = `QA Sinif ${unique}`;
+    const teacherName = `QA Ogretmen ${unique}`;
+    const teacherPhone = makePhone(unique, 5000);
+    const studentName = `QA Ogrenci ${unique}`;
+    const parentName = `QA Veli ${unique}`;
+    const parentPhone = makePhone(unique, 6000);
+    const parentEmail = `qa-parent-${unique}@notio.test`;
 
     const createResponse = await request.post(`${apiBaseUrl}/platform/schools`, {
       headers: authHeaders(adminToken),
@@ -183,23 +190,61 @@ test.describe('Faz 1 web ekran QA', () => {
     expect(createdSchool.primaryAdminMustChangePassword).toBeTruthy();
 
     await loginToAdminPanel(page, adminEmail, createdSchool.primaryAdminTemporaryPassword);
+    await expect(page.getByRole('heading', { name: 'İlk giriş şifreni yenile' })).toBeVisible();
+
+    const permanentPassword = `QaFaz1!${unique}`;
+    await page.getByTestId('new-password').fill(permanentPassword);
+    await page.getByTestId('confirm-password').fill(permanentPassword);
+    await page.getByRole('button', { name: 'Şifreyi Güncelle' }).click();
+
     await expect(page.getByText(schoolName)).toBeVisible();
 
     await expect(page.getByRole('link', { name: 'Sınıflar' })).toBeVisible();
     await page.getByRole('link', { name: 'Sınıflar' }).click();
     await expect(page.getByRole('heading', { name: 'Sınıf Yönetimi' })).toBeVisible();
+    await page.getByRole('button', { name: 'Yeni Sinif' }).click();
+    await page.getByLabel('Sinif adi').fill(className);
+    await page.getByLabel('Egitim yili').fill('2026-2027');
+    await page.getByRole('button', { name: 'Sinifi Kaydet' }).click();
+    await expect(page.getByText(className)).toBeVisible();
 
     await page.getByRole('link', { name: 'Öğretmenler' }).click();
     await expect(page.getByRole('heading', { name: 'Öğretmen Yönetimi' })).toBeVisible();
+    await page.getByRole('button', { name: 'Yeni Ogretmen' }).click();
+    await page.getByLabel('Ad soyad').fill(teacherName);
+    await page.getByLabel('Telefon').fill(teacherPhone);
+    await page.getByLabel('E-posta').fill(`qa-teacher-${unique}@notio.test`);
+    await page.getByRole('button', { name: 'Ogretmeni Kaydet' }).click();
+    await expect(page.getByText(teacherName)).toBeVisible();
 
     await page.getByRole('link', { name: 'Öğrenciler' }).click();
     await expect(page.getByRole('heading', { name: 'Öğrenci Yönetimi' })).toBeVisible();
+    await page.getByRole('button', { name: 'Yeni Ogrenci' }).click();
+    await page.getByLabel('Ad soyad').fill(studentName);
+    await page.getByLabel('Sinif').selectOption({ label: className });
+    await page.getByLabel('Dogum tarihi').fill('2021-05-11');
+    await page.getByLabel('Cinsiyet').selectOption({ label: 'Kiz' });
+    await page.getByLabel('Alerjiler').fill('Fistik');
+    await page.getByLabel('Kullandigi ilaclar').fill('Aerius');
+    await page.getByLabel('Saglik notu').fill('Mevsimsel alerji takibi');
+    await page.getByRole('button', { name: 'Ogrenciyi Kaydet' }).click();
+    await expect(page.getByText(studentName)).toBeVisible();
 
     await page.getByRole('link', { name: 'Veliler' }).click();
     await expect(page.getByRole('heading', { name: 'Veli Yönetimi' })).toBeVisible();
+    await page.getByRole('button', { name: 'Yeni Veli' }).click();
+    await page.getByLabel('Ad soyad').fill(parentName);
+    await page.getByLabel('Telefon').fill(parentPhone);
+    await page.getByLabel('E-posta').fill(parentEmail);
+    await page.getByLabel('Baglanacak ogrenci').selectOption({ label: `${studentName} · ${className}` });
+    await page.getByRole('button', { name: 'Veliyi Kaydet' }).click();
+    await expect(page.getByText(parentName)).toBeVisible();
 
     await page.getByRole('link', { name: 'Raporlar' }).click();
     await expect(page.getByRole('heading', { name: 'Okul Raporlari' })).toBeVisible();
+    await expect(page.getByText('Saglik bloklari')).toBeVisible();
+    await expect(page.getByText('Eksik kayitlar')).toBeVisible();
+    await expect(page.getByText(studentName)).toBeVisible();
   });
 });
 

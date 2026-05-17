@@ -25,8 +25,8 @@ jobs:
       QA_LANDING_URL: ${{ inputs.landing_url }}
       QA_WEB_ADMIN_URL: ${{ inputs.web_admin_url }}
       QA_API_BASE_URL: ${{ inputs.api_base_url }}
-      QA_PLATFORM_ADMIN_EMAIL: ${{ secrets.QA_PLATFORM_ADMIN_EMAIL || 'admin@notioedu.com' }}
-      QA_PLATFORM_ADMIN_PASSWORD: ${{ secrets.QA_PLATFORM_ADMIN_PASSWORD || secrets.BOOTSTRAP_PLATFORM_ADMIN_PASSWORD }}
+      QA_PLATFORM_ADMIN_EMAIL: ${{ secrets.QA_PLATFORM_ADMIN_EMAIL }}
+      QA_PLATFORM_ADMIN_PASSWORD: ${{ secrets.QA_PLATFORM_ADMIN_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

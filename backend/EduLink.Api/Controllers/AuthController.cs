@@ -124,6 +124,7 @@ public class AuthController : ControllerBase
             schoolId = user.SchoolId,
             email = user.Email,
             phone = user.Phone,
+            mustChangePassword = user.MustChangePassword,
         });
     }
 
