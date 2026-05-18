@@ -327,6 +327,58 @@ export interface AdminStatsDto {
   parentCount: number;
 }
 
+export interface MealPlanDto {
+  id: string;
+  date: string;
+  classId?: string;
+  className?: string;
+  breakfast?: string;
+  lunch?: string;
+  snack?: string;
+  allergens?: string;
+  notes?: string;
+}
+
+export interface RoutineReminderDto {
+  id: string;
+  classId: string;
+  className: string;
+  title: string;
+  itemName?: string;
+  messageTemplate?: string;
+  weekday: number;
+  sendAtHour: number;
+  sendAtMinute: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ParentUpcomingReminderDto {
+  id: string;
+  kind: 'routine' | 'event';
+  targetDate: string;
+  title: string;
+  body: string;
+}
+
+export interface CalendarEventDto {
+  id: string;
+  classId?: string;
+  className?: string;
+  title: string;
+  description?: string;
+  type: 'activity' | 'trip' | 'meeting' | 'reminder' | 'other';
+  category?: string;
+  startAt: string;
+  endAt?: string;
+  isAllDay: boolean;
+  isActive: boolean;
+  createdAt: string;
+  requiredMaterials?: string;
+  dressCodeNotes?: string;
+  parentNotificationText?: string;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   page: number;
@@ -395,6 +447,44 @@ export const authApi = {
   loginByPhone: (phone: string, password: string) =>
     apiClient.post<AuthResponse>('/auth/login-by-phone', { phone, password }),
 };
+
+const mealPlanIndexById = new Map<string, { classId?: string; date: string }>();
+
+function parseMonthParam(month?: string) {
+  const current = new Date();
+  if (!month) {
+    return { year: current.getFullYear(), month: current.getMonth() + 1 };
+  }
+
+  const [yearStr, monthStr] = month.split('-');
+  const year = Number(yearStr);
+  const monthValue = Number(monthStr);
+  if (!Number.isInteger(year) || !Number.isInteger(monthValue) || monthValue < 1 || monthValue > 12) {
+    return { year: current.getFullYear(), month: current.getMonth() + 1 };
+  }
+
+  return { year, month: monthValue };
+}
+
+function toIsoDateOnly(value: string) {
+  return value.length >= 10 ? value.slice(0, 10) : value;
+}
+
+function toIsoDateTime(value: string) {
+  return value.endsWith('Z') ? value : `${value}Z`;
+}
+
+function computeNextDateForWeekday(weekday: number, hour: number, minute: number) {
+  const now = new Date();
+  const candidate = new Date(now);
+  candidate.setHours(hour, minute, 0, 0);
+  const dayDiff = (weekday - candidate.getDay() + 7) % 7;
+  candidate.setDate(candidate.getDate() + dayDiff);
+  if (candidate < now) {
+    candidate.setDate(candidate.getDate() + 7);
+  }
+  return candidate;
+}
 
 export const classApi = {
   list: () => apiClient.get<ClassDto[]>('/classes'),
@@ -500,6 +590,249 @@ export const announcementApi = {
     apiClient.get<AnnouncementDto[]>('/announcements', { params: { classId } }),
   create: (data: Partial<AnnouncementDto>) =>
     apiClient.post<AnnouncementDto>('/announcements', data),
+};
+
+export const calendarApi = {
+  routines: (classId?: string, includeInactive = false) =>
+    apiClient.get<RoutineReminderDto[]>('/routine-rules', { params: { classId, includeInactive } }),
+  createRoutine: (data: {
+    classId: string;
+    title: string;
+    itemName?: string;
+    messageTemplate?: string;
+    weekday: number;
+    sendAtHour: number;
+    sendAtMinute: number;
+    isActive?: boolean;
+  }) =>
+    apiClient.post('/routine-rules', {
+      ...data,
+      isActive: data.isActive ?? true,
+    }),
+  updateRoutine: (
+    id: string,
+    data: {
+      classId: string;
+      title: string;
+      itemName?: string;
+      messageTemplate?: string;
+      weekday: number;
+      sendAtHour: number;
+      sendAtMinute: number;
+      isActive?: boolean;
+    },
+  ) =>
+    apiClient.put(`/routine-rules/${id}`, {
+      ...data,
+      isActive: data.isActive ?? true,
+    }),
+  deleteRoutine: (id: string) => apiClient.delete(`/routine-rules/${id}`),
+  events: (params?: { year?: number; month?: number; classId?: string; includeInactive?: boolean }) =>
+    apiClient.get<CalendarEventDto[]>('/calendar-events', { params }),
+  createEvent: (data: {
+    classId?: string;
+    title: string;
+    description?: string;
+    type: CalendarEventDto['type'];
+    category?: string;
+    startAt: string;
+    endAt?: string;
+    isAllDay?: boolean;
+    isActive?: boolean;
+    requiredMaterials?: string;
+    dressCodeNotes?: string;
+    parentNotificationText?: string;
+  }) =>
+    apiClient.post('/calendar-events', {
+      classId: data.classId,
+      title: data.title,
+      description: data.description,
+      eventType: data.type,
+      category: data.category,
+      startAt: toIsoDateTime(data.startAt),
+      endAt: data.endAt ? toIsoDateTime(data.endAt) : undefined,
+      isAllDay: data.isAllDay ?? false,
+      isActive: data.isActive ?? true,
+      requiredMaterials: data.requiredMaterials,
+      dressCodeNotes: data.dressCodeNotes,
+      parentNotificationText: data.parentNotificationText,
+    }),
+  updateEvent: (
+    id: string,
+    data: {
+      classId?: string;
+      title: string;
+      description?: string;
+      type: CalendarEventDto['type'];
+      category?: string;
+      startAt: string;
+      endAt?: string;
+      isAllDay?: boolean;
+      isActive?: boolean;
+      requiredMaterials?: string;
+      dressCodeNotes?: string;
+      parentNotificationText?: string;
+    },
+  ) =>
+    apiClient.put(`/calendar-events/${id}`, {
+      classId: data.classId,
+      title: data.title,
+      description: data.description,
+      eventType: data.type,
+      category: data.category,
+      startAt: toIsoDateTime(data.startAt),
+      endAt: data.endAt ? toIsoDateTime(data.endAt) : undefined,
+      isAllDay: data.isAllDay ?? false,
+      isActive: data.isActive ?? true,
+      requiredMaterials: data.requiredMaterials,
+      dressCodeNotes: data.dressCodeNotes,
+      parentNotificationText: data.parentNotificationText,
+    }),
+  deleteEvent: (id: string) => apiClient.delete(`/calendar-events/${id}`),
+  mealPlans: async (params?: { month?: string; classId?: string }) => {
+    const { year, month } = parseMonthParam(params?.month);
+    const response = await apiClient.get<MealPlanDto[]>('/meal-plans', {
+      params: {
+        year,
+        month,
+        classId: params?.classId,
+      },
+    });
+    response.data.forEach((item) => {
+      mealPlanIndexById.set(item.id, {
+        classId: item.classId,
+        date: toIsoDateOnly(item.date),
+      });
+    });
+    return response;
+  },
+  createMealPlan: (data: {
+    classId?: string;
+    date: string;
+    breakfast?: string;
+    lunch?: string;
+    snack?: string;
+    allergens?: string;
+    notes?: string;
+  }) => {
+    const date = new Date(data.date);
+    return apiClient.post('/meal-plans/monthly', {
+      year: date.getUTCFullYear(),
+      month: date.getUTCMonth() + 1,
+      classId: data.classId,
+      days: [
+        {
+          day: date.getUTCDate(),
+          breakfast: data.breakfast,
+          lunch: data.lunch,
+          snack: data.snack,
+          allergens: data.allergens,
+          notes: data.notes,
+        },
+      ],
+    });
+  },
+  updateMealPlan: (
+    id: string,
+    data: {
+      classId?: string;
+      date: string;
+      breakfast?: string;
+      lunch?: string;
+      snack?: string;
+      allergens?: string;
+      notes?: string;
+    },
+  ) =>
+    calendarApi.createMealPlan({
+      ...data,
+      classId: data.classId ?? mealPlanIndexById.get(id)?.classId,
+      date: data.date || mealPlanIndexById.get(id)?.date || new Date().toISOString(),
+    }),
+  deleteMealPlan: (id: string) => {
+    const indexed = mealPlanIndexById.get(id);
+    if (!indexed) {
+      return Promise.reject(new Error('Yemek kaydi baglami bulunamadi.'));
+    }
+    const date = new Date(indexed.date);
+    mealPlanIndexById.delete(id);
+    return apiClient.post('/meal-plans/monthly', {
+      year: date.getUTCFullYear(),
+      month: date.getUTCMonth() + 1,
+      classId: indexed.classId,
+      days: [
+        {
+          day: date.getUTCDate(),
+          breakfast: null,
+          lunch: null,
+          snack: null,
+          allergens: null,
+          notes: null,
+        },
+      ],
+    });
+  },
+  parentUpcomingReminders: async (days = 7, classId?: string) => {
+    const now = new Date();
+    const end = new Date(now);
+    end.setDate(end.getDate() + Math.max(1, days));
+
+    const monthsToQuery = new Set<string>();
+    const cursor = new Date(now);
+    while (cursor <= end) {
+      monthsToQuery.add(`${cursor.getUTCFullYear()}-${cursor.getUTCMonth() + 1}`);
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
+    const eventResponses = await Promise.all(
+      Array.from(monthsToQuery).map((entry) => {
+        const [yearStr, monthStr] = entry.split('-');
+        return calendarApi.events({
+          year: Number(yearStr),
+          month: Number(monthStr),
+          classId,
+          includeInactive: false,
+        });
+      }),
+    );
+
+    const routineResponse = await calendarApi.routines(classId, false);
+    const eventReminders: ParentUpcomingReminderDto[] = eventResponses
+      .flatMap((response) => response.data)
+      .filter((event) => {
+        const start = new Date(event.startAt);
+        return start >= now && start <= end;
+      })
+      .map((event) => ({
+        id: `event-${event.id}`,
+        kind: 'event',
+        targetDate: event.startAt,
+        title: event.title,
+        body: event.parentNotificationText || event.description || 'Yaklasan etkinlik hatirlatmasi.',
+      }));
+
+    const routineReminders: ParentUpcomingReminderDto[] = routineResponse.data
+      .map((routine) => {
+        const next = computeNextDateForWeekday(routine.weekday, routine.sendAtHour, routine.sendAtMinute);
+        return {
+          id: `routine-${routine.id}-${next.toISOString()}`,
+          kind: 'routine' as const,
+          targetDate: next.toISOString(),
+          title: routine.title,
+          body: routine.messageTemplate || routine.itemName || 'Sinif rutini hatirlatmasi.',
+        };
+      })
+      .filter((reminder) => {
+        const target = new Date(reminder.targetDate);
+        return target >= now && target <= end;
+      });
+
+    const combined = [...eventReminders, ...routineReminders].sort(
+      (a, b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime(),
+    );
+
+    return { data: combined };
+  },
 };
 
 export const adminApi = {

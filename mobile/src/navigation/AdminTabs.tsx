@@ -7,6 +7,7 @@ import ManageClassesScreen from '../screens/admin/ManageClassesScreen';
 import ManageStudentsScreen from '../screens/admin/ManageStudentsScreen';
 import ManageParentsScreen from '../screens/admin/ManageParentsScreen';
 import ManageTeachersScreen from '../screens/admin/ManageTeachersScreen';
+import SchoolCalendarScreen from '../screens/admin/SchoolCalendarScreen';
 
 export type AdminTabParamList = {
   Panel: undefined;
@@ -14,6 +15,7 @@ export type AdminTabParamList = {
   Ogrenciler: undefined;
   Veliler: undefined;
   Ogretmenler: undefined;
+  Takvim: undefined;
 };
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
@@ -46,6 +48,8 @@ export default function AdminTabs() {
             iconName = focused ? 'person-add' : 'person-add-outline';
           } else if (route.name === 'Ogretmenler') {
             iconName = focused ? 'ribbon' : 'ribbon-outline';
+          } else if (route.name === 'Takvim') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -56,6 +60,7 @@ export default function AdminTabs() {
       <Tab.Screen name="Ogrenciler" component={ManageStudentsScreen} options={{ tabBarLabel: 'Öğrenciler' }} />
       <Tab.Screen name="Veliler" component={ManageParentsScreen} options={{ tabBarLabel: 'Veliler' }} />
       <Tab.Screen name="Ogretmenler" component={ManageTeachersScreen} options={{ tabBarLabel: 'Öğretmenler' }} />
+      <Tab.Screen name="Takvim" component={SchoolCalendarScreen} options={{ tabBarLabel: 'Takvim' }} />
     </Tab.Navigator>
   );
 }

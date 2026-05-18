@@ -66,7 +66,7 @@ export default function ParentCalendarScreen() {
       }
 
       const [reminderRes, mealRes] = await Promise.all([
-        calendarApi.parentUpcomingReminders(7),
+        calendarApi.parentUpcomingReminders(7, resolvedChild.classId),
         calendarApi.mealPlans({
           month: new Date().toISOString().slice(0, 7),
           classId: resolvedChild.classId,

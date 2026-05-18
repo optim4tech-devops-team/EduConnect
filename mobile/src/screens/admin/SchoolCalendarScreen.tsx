@@ -79,7 +79,7 @@ const weekdayOptions = [
   { value: 0, label: 'Paz' },
 ];
 
-const eventTypes: CalendarEventDto['type'][] = ['lesson', 'activity', 'reminder'];
+const eventTypes: CalendarEventDto['type'][] = ['activity', 'trip', 'meeting', 'reminder', 'other'];
 
 function formatMonth(date = new Date()) {
   return date.toISOString().slice(0, 7);

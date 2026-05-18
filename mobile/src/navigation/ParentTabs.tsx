@@ -5,6 +5,7 @@ import Colors from '../theme/colors';
 import ParentDashboard from '../screens/parent/ParentDashboard';
 import FormListScreen from '../screens/parent/FormListScreen';
 import ChildGalleryScreen from '../screens/parent/ChildGalleryScreen';
+import ParentCalendarScreen from '../screens/parent/ParentCalendarScreen';
 import MessagesScreen from '../screens/shared/MessagesScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 
@@ -12,6 +13,7 @@ export type ParentTabParamList = {
   AnaSayfa: undefined;
   Formlar: undefined;
   Fotograflar: undefined;
+  Takvim: undefined;
   Mesajlar: undefined;
   Profil: undefined;
 };
@@ -42,6 +44,8 @@ export default function ParentTabs() {
             iconName = focused ? 'document-text' : 'document-text-outline';
           } else if (route.name === 'Fotograflar') {
             iconName = focused ? 'images' : 'images-outline';
+          } else if (route.name === 'Takvim') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'Mesajlar') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Profil') {
@@ -54,6 +58,7 @@ export default function ParentTabs() {
       <Tab.Screen name="AnaSayfa" component={ParentDashboard} options={{ tabBarLabel: 'Ana Sayfa' }} />
       <Tab.Screen name="Formlar" component={FormListScreen} options={{ tabBarLabel: 'Formlar' }} />
       <Tab.Screen name="Fotograflar" component={ChildGalleryScreen} options={{ tabBarLabel: 'Fotoğraflar' }} />
+      <Tab.Screen name="Takvim" component={ParentCalendarScreen} options={{ tabBarLabel: 'Takvim' }} />
       <Tab.Screen name="Mesajlar" component={MessagesScreen} options={{ tabBarLabel: 'Mesajlar' }} />
       <Tab.Screen name="Profil" component={ProfileScreen} options={{ tabBarLabel: 'Profil' }} />
     </Tab.Navigator>

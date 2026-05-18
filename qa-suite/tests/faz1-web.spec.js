@@ -228,7 +228,7 @@ test.describe('Faz 1 web ekran QA', () => {
     await page.getByLabel('Kullandigi ilaclar').fill('Aerius');
     await page.getByLabel('Saglik notu').fill('Mevsimsel alerji takibi');
     await page.getByRole('button', { name: 'Ogrenciyi Kaydet' }).click();
-    await expect(page.getByText(studentName)).toBeVisible();
+    await expect(page.getByRole('cell', { name: studentName }).first()).toBeVisible();
 
     await page.getByRole('link', { name: 'Veliler' }).click();
     await expect(page.getByRole('heading', { name: 'Veli Yönetimi' })).toBeVisible();
@@ -246,7 +246,7 @@ test.describe('Faz 1 web ekran QA', () => {
     await expect(page.getByText('Eksik kayitlar')).toBeVisible();
     await expect(page.getByText('Aylik yoklama ozeti')).toBeVisible();
     await expect(page.getByText('Iletisim kapsami')).toBeVisible();
-    await expect(page.getByText(studentName)).toBeVisible();
+    await expect(page.getByRole('cell', { name: studentName }).first()).toBeVisible();
 
     await page.getByRole('link', { name: 'Yemek Takvimi' }).click();
     await expect(page.getByRole('heading', { name: 'Aylik Yemek Takvimi' })).toBeVisible();
@@ -266,15 +266,16 @@ test.describe('Faz 1 web ekran QA', () => {
 
     const eventTitle = `QA Etkinlik ${unique}`;
     await page.getByRole('link', { name: 'Etkinlikler' }).click();
-    await expect(page.getByRole('heading', { name: 'Etkinlik Programi' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Etkinlik Programi', level: 1 })).toBeVisible();
     await page.getByRole('button', { name: 'Yeni Etkinlik' }).click();
-    await page.getByLabel('Etkinlik basligi').fill(eventTitle);
-    await page.getByLabel('Sinif').selectOption({ label: className });
-    await page.getByLabel('Etkinlik tipi').selectOption({ label: 'Etkinlik' });
-    await page.getByLabel('Gerekli malzemeler').fill('Parmak boyasi, yapistirici');
-    await page.getByLabel('Kiyafet notu').fill('Onluk giyilecek');
-    await page.getByLabel('Veliye gidecek bildirim metni').fill('Yarin etkinlik var, malzeme listesini kontrol edin.');
-    await page.getByRole('button', { name: 'Etkinligi Kaydet' }).click();
+    const eventForm = page.locator('.inline-form-shell');
+    await eventForm.getByLabel('Etkinlik basligi').fill(eventTitle);
+    await eventForm.getByLabel('Sinif').selectOption({ label: className });
+    await eventForm.getByLabel('Etkinlik tipi').selectOption({ label: 'Etkinlik' });
+    await eventForm.getByLabel('Gerekli malzemeler').fill('Parmak boyasi, yapistirici');
+    await eventForm.getByLabel('Kiyafet notu').fill('Onluk giyilecek');
+    await eventForm.getByLabel('Veliye gidecek bildirim metni').fill('Yarin etkinlik var, malzeme listesini kontrol edin.');
+    await eventForm.getByRole('button', { name: 'Etkinligi Kaydet' }).click();
     await expect(page.getByText(eventTitle)).toBeVisible();
   });
 });
